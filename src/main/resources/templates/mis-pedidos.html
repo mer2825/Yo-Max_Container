@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Pedidos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/catalogo.css}">
+    <link rel="stylesheet" th:href="@{/css/yomax-theme.css}">
+    <style>
+        .pedido-card {
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .pedido-card:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        .pedido-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .pedido-productos {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        .badge-PENDIENTE { background-color: #6c757d; }
+        .badge-EN_REVISION { background-color: #ffc107; color: #000; }
+        .badge-APROBADO { background-color: #198754; }
+        .badge-RECHAZADO { background-color: #dc3545; }
+        .badge-PROCESADO { background-color: #0dcaf0; }
+        .banner-rechazo {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #842029;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .banner-revision {
+            background-color: #fff3cd;
+            border: 1px solid #ffe69c;
+            color: #856404;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .voucher-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<header class="sticky-top catalog-header">
+    <nav class="navbar navbar-expand-lg navbar-light shadow-sm bg-white">
+        <div class="container-fluid align-items-center">
+            <a class="navbar-brand d-flex align-items-center pe-3" th:href="@{/}">
+                <img th:if="${empresaGlobal != null && empresaGlobal.logoUrl != null}"
+                     th:src="@{${empresaGlobal.logoUrl}}"
+                     alt="Logo" class="logo me-3">
+                <span class="navbar-title fw-bold" th:text="${empresaGlobal != null ? empresaGlobal.nombre : 'Catálogo'}"></span>
+            </a>
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
+                    <li class="nav-item"><a class="nav-link text-dark px-3" th:href="@{/}">Catálogo</a></li>
+                    <li class="nav-item"><a class="nav-link text-dark px-3 active" href="#">Mis Pedidos</a></li>
+                </ul>
+                <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
+                    <button id="cart-toggle-btn" class="btn btn-cart position-relative">
+                        <i class="bi bi-cart3"></i>
+                        <span>Carrito</span>
+                        <span class="badge bg-warning text-dark position-absolute top-0 start-100 translate-middle" id="cart-count">0</span>
+                    </button>
+                    <a class="btn btn-outline-yomax" th:href="@{/logout}">Cerrar Sesión</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<main class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">Mis Pedidos</h2>
+            
+            <div id="listaPedidos">
+                <!-- Los pedidos se cargarán aquí -->
+            </div>
+            
+            <div id="sinPedidos" class="text-center py-5" style="display: none;">
+                <i class="bi bi-inbox fs-1 text-muted mb-3"></i>
+                <p class="text-muted">Aún no tienes pedidos realizados.</p>
+                <a th:href="@{/}" class="btn btn-primary">Ir al Catálogo</a>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Modal para ver detalle del pedido -->
+<div class="modal fade" id="detallePedidoModal" tabindex="-1" aria-labelledby="detallePedidoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detallePedidoModalLabel">Detalle del Pedido</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Banner de rechazo -->
+                <div id="bannerRechazo" class="banner-rechazo" style="display: none;">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Motivo del rechazo:</strong> <span id="motivoRechazoTexto"></span>
+                </div>
+                
+                <!-- Banner de revisión -->
+                <div id="bannerRevision" class="banner-revision" style="display: none;">
+                    <i class="bi bi-hourglass-split"></i>
+                    <strong>Tu pago está siendo verificado.</strong> Tiempo estimado: menos de 24 horas.
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p><strong>N° Pedido:</strong> <span id="modalNumeroPedido"></span></p>
+                        <p><strong>Fecha:</strong> <span id="modalFechaPedido"></span></p>
+                        <p><strong>Estado:</strong> <span id="modalEstado" class="badge"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Total:</strong> <span id="modalTotal" class="fw-bold"></span></p>
+                        <p><strong>Método de Pago:</strong> <span id="modalMetodoPago"></span></p>
+                    </div>
+                </div>
+                
+                <h6 class="fw-bold mb-3">Productos</h6>
+                <div class="table-responsive mb-4">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Cantidad</th>
+                                <th>Precio Unitario</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalProductosBody">
+                        </tbody>
+                    </table>
+                </div>
+                
+                <h6 class="fw-bold mb-3">Comprobante de Pago</h6>
+                <div class="text-center">
+                    <img id="modalVoucherImagen" src="" alt="Voucher" class="voucher-preview" onclick="abrirImagenFullscreen()">
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="abrirImagenFullscreen()">
+                            <i class="bi bi-fullscreen"></i> Ver en pantalla completa
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ver imagen en pantalla completa -->
+<div class="modal fade" id="imagenFullscreenModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content bg-transparent border-0">
+            <div class="modal-body p-0 text-center">
+                <img id="imagenFullscreen" src="" alt="Voucher" style="max-width: 100%; max-height: 90vh;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/mis-pedidos.js}"></script>
+</body>
+</html>

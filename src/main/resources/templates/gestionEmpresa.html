@@ -47,7 +47,19 @@
                             <label for="nosotros" class="form-label">Texto de "Nosotros"</label>
                             <textarea class="form-control" id="nosotros" th:field="*{nosotros}" rows="5" placeholder="Describe tu empresa..."></textarea>
                         </div>
-                        
+
+                        <div class="mb-3">
+                            <label for="numeroYape" class="form-label">Número Yape</label>
+                            <input type="text" class="form-control" id="numeroYape" th:field="*{numeroYape}" placeholder="Número de Yape para pagos">
+                            <small class="form-text text-muted">Número de teléfono Yape para que los clientes realicen pagos.</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="titularYape" class="form-label">Titular Yape</label>
+                            <input type="text" class="form-control" id="titularYape" th:field="*{titularYape}" placeholder="Nombre del titular de la cuenta Yape">
+                            <small class="form-text text-muted">Nombre del titular que aparecerá en las instrucciones de pago.</small>
+                        </div>
+
                         <div class="mb-3">
                             <label for="productosDestacados" class="form-label">Productos Destacados para el Carrusel</label>
                             <select class="form-select" id="productosDestacados" multiple="multiple">

@@ -15,22 +15,36 @@ $(document).ready(function() {
 
     function initializeDataTable() {
         if (dataTable) dataTable.destroy();
-        dataTable = $('#tablaVentasWeb').DataTable({
+        console.log('Inicializando DataTable con URL:', ENDPOINTS.list);
+        dataTable = $('#tablaPedidosWeb').DataTable({
             responsive: true,
             processing: true,
-            ajax: { url: ENDPOINTS.list, dataSrc: 'data' },
+            ajax: {
+                url: ENDPOINTS.list,
+                dataSrc: function(data) {
+                    console.log('Datos recibidos:', data);
+                    console.log('Cantidad de datos:', data.data ? data.data.length : 0);
+                    return data.data;
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error en AJAX:', error);
+                    console.error('Status:', xhr.status);
+                    console.error('Response:', xhr.responseText);
+                }
+            },
             columns: [
-                { data: 'id' },
-                { data: 'nombreCliente' },
-                { data: 'numeroDocumentoCliente' },
+                { data: 'numeroPedido' },
                 { data: 'fechaPedido', render: data => new Date(data).toLocaleString('es-PE') },
+                { data: 'nombreCliente' },
                 { data: 'total', render: data => `S/ ${parseFloat(data).toFixed(2)}` },
+                { data: 'estado' },
                 {
                     data: null, orderable: false, searchable: false,
                     render: (data, type, row) => `
-                        <button class="btn btn-sm btn-success action-process" data-id="${row.id}" title="Procesar Venta"><i class="bi bi-check-lg"></i></button>
-                        <button class="btn btn-sm btn-info action-edit" data-id="${row.id}" title="Editar Venta"><i class="bi bi-pencil-fill"></i></button>
-                        <button class="btn btn-sm btn-danger action-delete" data-id="${row.id}" title="Eliminar Venta"><i class="bi bi-trash-fill"></i></button>
+                        <button class="btn btn-sm btn-info action-view-voucher" data-id="${row.id}" data-voucher="${row.voucherImagen}" title="Ver Voucher"><i class="bi bi-eye"></i></button>
+                        <button class="btn btn-sm btn-primary action-view-detail" data-id="${row.id}" title="Ver Detalle"><i class="bi bi-list-ul"></i></button>
+                        <button class="btn btn-sm btn-success action-approve" data-id="${row.id}" title="Aprobar"><i class="bi bi-check-lg"></i></button>
+                        <button class="btn btn-sm btn-danger action-reject" data-id="${row.id}" title="Rechazar"><i class="bi bi-x-lg"></i></button>
                     `
                 }
             ],
@@ -40,9 +54,10 @@ $(document).ready(function() {
     }
 
     function setupEventListeners() {
-        $('#tablaVentasWeb tbody').on('click', '.action-process', handleProcesar);
-        $('#tablaVentasWeb tbody').on('click', '.action-edit', handleEdit);
-        $('#tablaVentasWeb tbody').on('click', '.action-delete', handleDelete);
+        $('#tablaPedidosWeb tbody').on('click', '.action-view-voucher', handleViewVoucher);
+        $('#tablaPedidosWeb tbody').on('click', '.action-view-detail', handleViewDetail);
+        $('#tablaPedidosWeb tbody').on('click', '.action-approve', handleApprove);
+        $('#tablaPedidosWeb tbody').on('click', '.action-reject', handleReject);
 
         // Escuchar mensajes desde el iframe de edición para recargar la tabla
         window.addEventListener('message', function(event) {
@@ -52,6 +67,109 @@ $(document).ready(function() {
                 showNotification('Venta web actualizada con éxito.', 'success');
             }
         });
+    }
+
+    function handleViewVoucher() {
+        const voucherPath = $(this).data('voucher');
+        if (voucherPath) {
+            window.open(voucherPath, '_blank');
+        } else {
+            alert('No hay voucher disponible');
+        }
+    }
+
+    function handleViewDetail() {
+        const pedidoId = $(this).data('id');
+        
+        $.ajax({
+            url: `/ventas_web/api/detalle/${pedidoId}`,
+            method: 'GET',
+            success: function(response) {
+                if (response.success) {
+                    const pedido = response.data;
+                    let detalleHtml = `
+                        <h5>Detalle del Pedido #${pedido.numeroPedido}</h5>
+                        <p><strong>Cliente:</strong> ${pedido.nombreCliente}</p>
+                        <p><strong>DNI:</strong> ${pedido.dniCliente}</p>
+                        <p><strong>Teléfono:</strong> ${pedido.telefonoCliente}</p>
+                        <p><strong>Fecha:</strong> ${new Date(pedido.fechaPedido).toLocaleString('es-PE')}</p>
+                        <p><strong>Método de Pago:</strong> ${pedido.metodoPago}</p>
+                        <p><strong>Total:</strong> S/ ${parseFloat(pedido.total).toFixed(2)}</p>
+                        <h6 class="mt-3">Items:</h6>
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Cantidad</th>
+                                    <th>Precio Unitario</th>
+                                    <th>Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    pedido.items.forEach(item => {
+                        detalleHtml += `
+                            <tr>
+                                <td>${item.producto.nombre}</td>
+                                <td>${item.cantidad}</td>
+                                <td>S/ ${parseFloat(item.precioUnitario).toFixed(2)}</td>
+                                <td>S/ ${parseFloat(item.subtotal).toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    detalleHtml += `
+                            </tbody>
+                        </table>
+                    `;
+                    
+                    alert(detalleHtml.replace(/<[^>]*>/g, '\n').replace(/\n+/g, '\n'));
+                } else {
+                    alert('Error al cargar el detalle: ' + response.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('Error al cargar el detalle: ' + error);
+            }
+        });
+    }
+
+    function handleApprove() {
+        const pedidoId = $(this).data('id');
+        if (confirm('¿Está seguro de aprobar este pedido?')) {
+            $.ajax({
+                url: `/ventas_web/api/aprobar/${pedidoId}`,
+                method: 'PUT',
+                success: function(response) {
+                    dataTable.ajax.reload();
+                    alert('Pedido aprobado con éxito');
+                },
+                error: function(xhr, status, error) {
+                    alert('Error al aprobar el pedido: ' + error);
+                }
+            });
+        }
+    }
+
+    function handleReject() {
+        const pedidoId = $(this).data('id');
+        const motivo = prompt('Por favor, ingrese el motivo de rechazo:');
+        if (motivo) {
+            $.ajax({
+                url: `/ventas_web/api/rechazar/${pedidoId}`,
+                method: 'PUT',
+                contentType: 'application/json',
+                data: JSON.stringify({ motivo: motivo }),
+                success: function(response) {
+                    dataTable.ajax.reload();
+                    alert('Pedido rechazado con éxito');
+                },
+                error: function(xhr, status, error) {
+                    alert('Error al rechazar el pedido: ' + error);
+                }
+            });
+        }
     }
 
     function handleEdit() {

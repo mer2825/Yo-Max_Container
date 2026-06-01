@@ -1,11 +1,43 @@
 document.addEventListener('DOMContentLoaded', function() {
 
+    // --- Verificar si el usuario está logueado ---
+    checkUserAuth();
+
     // --- Lógica para el Botón de Pedido ---
     const btnRealizarPedido = document.getElementById('btnRealizarPedido');
     if (btnRealizarPedido) {
         btnRealizarPedido.addEventListener('click', function() {
             window.location.href = "/login";
         });
+    }
+
+    function checkUserAuth() {
+        // Verificar si hay usuario logueado
+        fetch('/api/usuario-actual')
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('No autenticado');
+            })
+            .then(data => {
+                // Usuario logueado
+                const authBtn = document.getElementById('auth-btn');
+                const misPedidosBtn = document.getElementById('mis-pedidos-btn');
+                
+                if (authBtn) {
+                    authBtn.textContent = 'Cerrar Sesión';
+                    authBtn.href = '/logout';
+                }
+                
+                if (misPedidosBtn) {
+                    misPedidosBtn.classList.remove('d-none');
+                }
+            })
+            .catch(error => {
+                // Usuario no logueado - mantener botón de login
+                console.log('Usuario no autenticado');
+            });
     }
 
     // --- Lógica para el Carrusel Compacto ---
@@ -348,15 +380,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const customerDni = customerDniInput.value;
 
-            let subtotal = 0;
-            let totalItems = 0;
-            cart.forEach(item => {
-                subtotal += item.price * item.quantity;
-                totalItems += item.quantity;
-            });
-
             if (cart.length === 0) {
-                alert('Tu carrito está vacío. Agrega productos antes de enviar el pedido.');
+                alert('Tu carrito está vacío. Agrega productos antes de continuar.');
                 return;
             }
 
@@ -365,71 +390,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            let totalFinal = subtotal;
+            // Guardar datos del cliente en localStorage para el checkout
+            const clienteData = {
+                nombre: customerName,
+                dni: customerDni
+            };
+            localStorage.setItem('clienteData', JSON.stringify(clienteData));
+
+            // Guardar el carrito en localStorage para el checkout
+            localStorage.setItem('cart', JSON.stringify(cart));
+
+            // Aplicar descuento si corresponde
+            let totalItems = 0;
+            cart.forEach(item => {
+                totalItems += item.quantity;
+            });
+
             let hasDiscount = false;
             if (discountApplied && totalItems >= 3) {
-                totalFinal = subtotal * 0.90;
                 hasDiscount = true;
             }
+            localStorage.setItem('discountApplied', hasDiscount);
 
-            const ventaWebData = {
-                nombreCliente: customerName,
-                numeroDocumentoCliente: customerDni,
-                detalles: cart.map(item => ({
-                    producto: { id: parseInt(item.id, 10) },
-                    cantidad: item.quantity,
-                    precioUnitario: item.price
-                })),
-                total: totalFinal,
-                descuento: hasDiscount ? 0.10 : 0.0
-            };
-
-            fetch('/ventas_web/api/guardar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(ventaWebData),
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    let message = `*¡Nuevo Pedido!* 🛍\n\n`;
-                    message += `*N° de Pedido:* ${data.ventaWebId}\n`;
-                    message += `*Datos del Cliente:*\n`;
-                    message += `*- Nombre:* ${customerName}\n`;
-                    message += `*- DNI:* ${customerDni}\n\n`;
-                    message += `*Detalle del Pedido:*\n`;
-                    message += `-----------------------------------\n`;
-
-                    cart.forEach(item => {
-                        const itemTotal = (item.price * item.quantity).toFixed(2);
-                        message += `- ${item.quantity} x ${item.name} - *S/ ${itemTotal}*\n`;
-                    });
-
-                    message += `-----------------------------------\n`;
-                    if(hasDiscount) {
-                        message += `*Subtotal: S/ ${subtotal.toFixed(2)}*\n`;
-                        message += `*Descuento (10%): -S/ ${(subtotal * 0.10).toFixed(2)}*\n`;
-                    }
-                    message += `*Total del Pedido: S/ ${totalFinal.toFixed(2)}*`;
-
-                    const telefonoAttr = btnFinalizarCompra.getAttribute('data-telefono');
-                    if (telefonoAttr) {
-                        const telefonoLimpio = telefonoAttr.replace(/\D/g, '');
-                        const whatsappUrl = `https://wa.me/${telefonoLimpio}?text=${encodeURIComponent(message)}`;
-                        window.open(whatsappUrl, '_blank');
-                    }
-
-                    cart = [];
-                    discountApplied = false; // Resetear descuento
-                    updateCartUI();
-                } else {
-                    alert('Error al guardar el pedido: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Ocurrió un error al procesar el pedido.');
-            });
+            // Redirigir al checkout
+            window.location.href = '/checkout';
         });
     }
 
