@@ -14,7 +14,7 @@ public class VentaWeb {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "cliente_id")
+    @JoinColumn(name = "cliente_id", nullable = true)
     private Cliente cliente;
 
     @Column

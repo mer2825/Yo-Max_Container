@@ -36,7 +36,8 @@
                         <span>Carrito</span>
                         <span class="badge bg-warning text-dark position-absolute top-0 start-100 translate-middle" id="cart-count">0</span>
                     </button>
-                    <a class="btn btn-outline-yomax" th:href="@{/login}">Iniciar Sesión</a>
+                    <a class="btn btn-outline-yomax" id="auth-btn" th:href="@{/login}">Iniciar Sesión</a>
+                    <a class="btn btn-outline-yomax d-none" id="mis-pedidos-btn" th:href="@{/mis-pedidos}">Mis Pedidos</a>
                 </div>
             </div>
         </div>
@@ -254,7 +255,7 @@
         <div id="cart-items" class="mt-4"></div>
         <div class="mt-4">
             <p class="fw-bold">Total: S/ <span id="cart-total">0.00</span></p>
-            <button id="btn-finalizar-compra" class="btn btn-primary w-100" th:data-telefono="${empresaGlobal != null ? empresaGlobal.telefono : ''}">Enviar Pedido por WhatsApp</button>
+            <button id="btn-finalizar-compra" class="btn btn-primary w-100">Ir al Checkout</button>
         </div>
     </div>
 </div>

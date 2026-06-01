@@ -20,17 +20,44 @@
             <div class="card shadow-sm rounded-lg">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h2 class="card-title h5 fw-bold mb-0">Ventas Web Pendientes</h2>
+                        <h2 class="card-title h5 fw-bold mb-0">Pedidos Web</h2>
                     </div>
 
-                    <table id="tablaVentasWeb" class="table table-hover responsive" style="width:100%">
+                    <!-- Filtros -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Estado</label>
+                            <select class="form-select" id="filtroEstado">
+                                <option value="">Todos</option>
+                                <option value="PENDIENTE">Pendientes</option>
+                                <option value="EN_REVISION">En Revisión</option>
+                                <option value="APROBADO">Aprobados</option>
+                                <option value="RECHAZADO">Rechazados</option>
+                                <option value="PROCESADO">Procesados</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Fecha Desde</label>
+                            <input type="date" class="form-control" id="filtroFechaDesde">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Fecha Hasta</label>
+                            <input type="date" class="form-control" id="filtroFechaHasta">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Buscar</label>
+                            <input type="text" class="form-control" id="filtroBusqueda" placeholder="Nombre o DNI del cliente">
+                        </div>
+                    </div>
+
+                    <table id="tablaPedidosWeb" class="table table-hover responsive" style="width:100%">
                         <thead>
                         <tr>
-                            <th>ID</th>
+                            <th>N° Pedido</th>
+                            <th>Fecha y Hora</th>
                             <th>Cliente</th>
-                            <th>DNI</th>
-                            <th>Fecha Pedido</th>
                             <th>Total</th>
+                            <th>Estado</th>
                             <th>Acciones</th>
                         </tr>
                         </thead>

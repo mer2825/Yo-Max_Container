@@ -29,6 +29,12 @@ public class Empresa {
     @Column(columnDefinition = "TEXT")
     private String nosotros;
 
+    @Column(length = 20)
+    private String numeroYape;
+
+    @Column(length = 100)
+    private String titularYape;
+
     // Relación Many-to-Many con Productos
     @ManyToMany(fetch = FetchType.EAGER) // EAGER para que siempre se carguen con la empresa
     @JoinTable(
@@ -96,6 +102,22 @@ public class Empresa {
 
     public void setNosotros(String nosotros) {
         this.nosotros = nosotros;
+    }
+
+    public String getNumeroYape() {
+        return numeroYape;
+    }
+
+    public void setNumeroYape(String numeroYape) {
+        this.numeroYape = numeroYape;
+    }
+
+    public String getTitularYape() {
+        return titularYape;
+    }
+
+    public void setTitularYape(String titularYape) {
+        this.titularYape = titularYape;
     }
 
     public List<Producto> getProductosDestacados() {

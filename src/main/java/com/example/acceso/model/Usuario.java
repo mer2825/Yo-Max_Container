@@ -35,6 +35,12 @@ public class Usuario extends Auditable {
     @Column(nullable = false)
     private Integer estado = 1; // 1: Activo, 0: Inactivo, 2: Eliminado
 
+    @Column(length = 20)
+    private String dni;
+
+    @Column(length = 20)
+    private String telefono;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_perfil")
     private Perfil perfil;
@@ -99,6 +105,22 @@ public class Usuario extends Auditable {
 
     public void setEstado(Integer estado) {
         this.estado = estado;
+    }
+
+    public String getDni() {
+        return dni;
+    }
+
+    public void setDni(String dni) {
+        this.dni = dni;
+    }
+
+    public String getTelefono() {
+        return telefono;
+    }
+
+    public void setTelefono(String telefono) {
+        this.telefono = telefono;
     }
 
     public Perfil getPerfil() {

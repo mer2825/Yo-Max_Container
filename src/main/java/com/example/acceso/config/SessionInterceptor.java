@@ -26,7 +26,18 @@ public class SessionInterceptor implements HandlerInterceptor {
             "/css/",
             "/js/",
             "/images/",
-            "/webjars/"
+            "/webjars/",
+            "/checkout",
+            "/uploads/",
+            "/api/usuario-actual",
+            "/api/upload",
+            "/pedidos_web/api/crear",
+            "/pedidos_web/api/listar",
+            "/ventas_web/api/guardar",
+            "/ventas_web/api/listar",
+            "/ventas_web/api/detalle",
+            "/ventas_web/api/aprobar",
+            "/ventas_web/api/rechazar"
     );
 
     public SessionInterceptor(EmpresaService empresaService) {
@@ -37,10 +48,10 @@ public class SessionInterceptor implements HandlerInterceptor {
     public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) throws Exception {
         String requestURI = request.getRequestURI();
 
-        // 1. Permitir acceso a rutas públicas definidas.
+        // 1. Permitir acceso a rutas públicas definidas (sin autenticación ni verificación de permisos).
         boolean esRutaPublica = RUTAS_PUBLICAS.stream().anyMatch(requestURI::startsWith);
         if (esRutaPublica) {
-            return true;
+            return true; // Retornar inmediatamente sin más verificaciones
         }
 
         // 2. Si la ruta no es pública, verificar la sesión.

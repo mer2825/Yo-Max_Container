@@ -1,9 +1,11 @@
 package com.example.acceso.controller;
 
 import com.example.acceso.model.Categoria;
+import com.example.acceso.model.PedidoWeb;
 import com.example.acceso.model.Producto;
 import com.example.acceso.model.VentaWeb;
 import com.example.acceso.service.CategoriaService;
+import com.example.acceso.service.PedidoWebService;
 import com.example.acceso.service.ProductoService;
 import com.example.acceso.service.VentaWebService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,12 +25,14 @@ public class VentaWebController {
     private final VentaWebService ventaWebService;
     private final ProductoService productoService;
     private final CategoriaService categoriaService;
+    private final PedidoWebService pedidoWebService;
 
     @Autowired
-    public VentaWebController(VentaWebService ventaWebService, ProductoService productoService, CategoriaService categoriaService) {
+    public VentaWebController(VentaWebService ventaWebService, ProductoService productoService, CategoriaService categoriaService, PedidoWebService pedidoWebService) {
         this.ventaWebService = ventaWebService;
         this.productoService = productoService;
         this.categoriaService = categoriaService;
+        this.pedidoWebService = pedidoWebService;
     }
 
     @GetMapping("")
@@ -66,8 +70,51 @@ public class VentaWebController {
     @GetMapping("/api/listar")
     @ResponseBody
     public ResponseEntity<?> listarVentasWebApi() {
-        List<VentaWeb> ventas = ventaWebService.listarTodasLasVentasWeb();
-        return ResponseEntity.ok(Map.of("success", true, "data", ventas));
+        try {
+            System.out.println("=== ENDPOINT /ventas_web/api/listar LLAMADO ===");
+            List<PedidoWeb> pedidos = pedidoWebService.listarTodosLosPedidos();
+            System.out.println("=== CANTIDAD DE PEDIDOS: " + pedidos.size() + " ===");
+            for (PedidoWeb pedido : pedidos) {
+                System.out.println("Pedido ID: " + pedido.getId() + ", Número: " + pedido.getNumeroPedido() + ", Cliente: " + pedido.getNombreCliente());
+            }
+            return ResponseEntity.ok(Map.of("success", true, "data", pedidos));
+        } catch (Exception e) {
+            System.out.println("=== ERROR EN ENDPOINT /ventas_web/api/listar ===");
+            System.out.println("Error: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/api/detalle/{id}")
+    @ResponseBody
+    public ResponseEntity<?> obtenerDetalleVentaWeb(@PathVariable Long id) {
+        return pedidoWebService.obtenerPedidoPorId(id)
+                .map(pedido -> ResponseEntity.ok(Map.of("success", true, "data", pedido)))
+                .orElse(ResponseEntity.badRequest().body(Map.of("success", false, "message", "Pedido no encontrado")));
+    }
+
+    @PutMapping("/api/aprobar/{id}")
+    @ResponseBody
+    public ResponseEntity<?> aprobarPedido(@PathVariable Long id) {
+        try {
+            pedidoWebService.aprobarPedido(id, null);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Pedido aprobado con éxito"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/api/rechazar/{id}")
+    @ResponseBody
+    public ResponseEntity<?> rechazarPedido(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
+        try {
+            String motivo = body != null ? body.get("motivo") : null;
+            pedidoWebService.rechazarPedido(id, null, motivo);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Pedido rechazado con éxito"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        }
     }
 
     @PostMapping("/api/procesar/{id}")
@@ -90,14 +137,6 @@ public class VentaWebController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Error al eliminar la venta web: " + e.getMessage()));
         }
-    }
-
-    @GetMapping("/api/detalle/{id}")
-    @ResponseBody
-    public ResponseEntity<?> obtenerDetalleVentaWeb(@PathVariable Long id) {
-        return ventaWebService.obtenerVentaWebPorId(id)
-                .map(ventaWeb -> ResponseEntity.ok(Map.of("success", true, "data", ventaWeb)))
-                .orElse(ResponseEntity.badRequest().body(Map.of("success", false, "message", "Venta web no encontrada")));
     }
 
     @PutMapping("/api/actualizar/{id}")
