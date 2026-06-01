@@ -1,0 +1,60 @@
+/* Yo'Max theme overrides - placed to give consistent brand colors
+   Uses !important to ensure it overrides existing styles when included.
+*/
+:root{
+  --ym-pink: #ff2aa6;
+  --ym-pink-dark: #cc007f;
+  --ym-yellow: #ffd400;
+  --ym-dark: #2b0030;
+  --ym-bg: #fff4fb;
+  --ym-bg-soft: #fff0f7;
+}
+
+body{background-color:var(--ym-bg) !important; color:var(--ym-dark) !important}
+
+/* Header / Navbar */
+header .navbar{background-color:var(--ym-bg-soft) !important}
+header .navbar .nav-link{background-color:var(--ym-pink) !important; color:var(--ym-yellow) !important}
+header .navbar .nav-link:hover{background-color:var(--ym-pink-dark) !important; color:var(--ym-yellow) !important}
+.navbar .logo{border-color:var(--ym-pink-dark) !important}
+
+/* Buttons */
+.btn-outline-primary{color:var(--ym-pink-dark) !important; border-color:var(--ym-pink-dark) !important}
+.btn-outline-primary:hover, .btn-outline-primary.active{background-color:var(--ym-pink) !important; color:var(--ym-yellow) !important; border-color:var(--ym-pink) !important}
+.btn-primary{background-color:var(--ym-pink) !important; border-color:var(--ym-pink) !important; color:var(--ym-yellow) !important}
+.btn-primary:hover{background-color:var(--ym-pink-dark) !important}
+
+/* Cards and panels */
+.col-lg-3 .card, .card, .product-info-container{background:linear-gradient(145deg,var(--ym-bg-soft),var(--ym-bg)) !important}
+.col-lg-3 .card-header{background-color:var(--ym-bg-soft) !important; color:var(--ym-dark) !important; border-bottom:1px solid var(--ym-pink-dark) !important}
+
+/* Product price and highlights */
+#producto-precio{color:var(--ym-pink) !important}
+#producto-nombre{color:var(--ym-dark) !important}
+
+/* Cart */
+.cart-sidebar{background-color:var(--ym-bg-soft) !important; border:2px solid var(--ym-pink) !important}
+.cart-item{border:1px solid rgba(255,42,166,0.05) !important}
+.cart-item .remove-from-cart{color:var(--ym-pink-dark) !important}
+.cart-item .remove-from-cart:hover{color:var(--ym-pink) !important}
+.cart-footer #cart-total{color:var(--ym-pink) !important}
+.cart-footer .btn-primary{background-color:var(--ym-pink) !important; border-color:var(--ym-pink) !important}
+.cart-footer .btn-primary:hover{background-color:var(--ym-pink-dark) !important}
+
+/* Modal opiniones */
+#opinionesModal .modal-content{background-color:var(--ym-bg) !important}
+#opinionesModal .modal-header{background-color:var(--ym-pink) !important; color:var(--ym-yellow) !important}
+#opinionesModal .modal-body{color:var(--ym-dark) !important}
+
+/* Small helpers */
+a{color:var(--ym-pink) !important}
+button, input[type=submit]{background-color:var(--ym-pink) !important; color:var(--ym-yellow) !important}
+
+/* Ensure logos placed in header look good */
+header .navbar .logo{box-shadow:0 6px 18px rgba(43,0,48,0.18) !important}
+
+/* Adjust hero CTA */
+.hero h2{color:var(--ym-yellow) !important}
+.hero{background:linear-gradient(rgba(43,0,48,0.55),rgba(43,0,48,0.55)) !important}
+
+/* end of theme overrides */

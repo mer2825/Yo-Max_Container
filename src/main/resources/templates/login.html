@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="Mercedes Hoyos">
+    <!-- Título dinámico con el nombre de la empresa -->
+    <title th:text="'Iniciar Sesión | ' + ${empresa != null ? empresa.nombre : 'Inventario App'}"></title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/login.css}">
+    <link rel="stylesheet" th:href="@{/css/yomax-theme.css}">
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+</head>
+<body>
+
+<div class="form-container">
+    <!-- Logo dinámico de la empresa -->
+    <img th:if="${empresa != null && empresa.logoUrl != null}"
+         th:src="@{${empresa.logoUrl}}"
+         alt="Logo de la Empresa"
+         class="logo-login">
+    <!-- Fallback si no hay logo -->
+    <h1 th:if="${empresa == null || empresa.logoUrl == null}"
+        th:text="${empresa != null ? empresa.nombre : 'Bienvenido'}"
+        class="mb-4"></h1>
+
+    <h1>Iniciar Sesión</h1>
+
+    <div th:if="${error}" class="alert alert-danger" role="alert" th:text="${error}"></div>
+
+    <!-- Alerta dinámica de cuenta regresiva -->
+    <div th:if="${bloqueoSegundos != null}" class="alert alert-danger" role="alert" id="bloqueo-alert">
+        Demasiados intentos fallidos. Por favor, espera <span id="contador-bloqueo" th:text="${bloqueoSegundos}"></span> antes de intentar nuevamente.
+    </div>
+
+    <div th:if="${logout}" class="alert alert-success" role="alert" th:text="${logout}"></div>
+
+    <form id="formIniciarSesion" method="post" th:action="@{/login}">
+        <label for="nombreUsuario">Usuario:</label>
+        <input type="text" id="nombreUsuario" name="usuario" required>
+
+        <label for="contrasena">Contraseña:</label>
+        <input type="password" id="contrasena" name="clave" required>
+
+        <!-- reCAPTCHA deshabilitado temporalmente -->
+        <!-- <div class="g-recaptcha" th:attr="data-sitekey=${recaptchaSiteKey}"></div> -->
+        <!-- <div id="recaptcha-error" class="alert alert-danger" style="display: none; margin-top: 5px; padding: 5px; font-size: 0.9em; text-align: center;">Debes completar el reCAPTCHA para continuar.</div> -->
+        <br/>
+
+        <input type="submit" value="Ingresar" id="btnIngresar">
+    </form>
+
+</div>
+
+<script th:src="@{/js/login.js}"></script>
+</body>
+</html>

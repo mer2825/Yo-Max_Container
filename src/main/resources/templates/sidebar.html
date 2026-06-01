@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Se cambia la clase bg-dark por la nueva clase sidebar-bakery -->
+<div th:fragment="sidebar(activeUri)">
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+    <nav id="sidebar" class="sidebar d-flex flex-column flex-shrink-0 p-3 sidebar-bakery">
+        <div class="text-center mb-3">
+            <a th:href="@{/}" class="d-inline-block text-white text-decoration-none">
+                <img th:if="${empresaGlobal != null && empresaGlobal.logoUrl != null}"
+                     id="sidebar-empresa-logo"
+                     th:src="@{${empresaGlobal.logoUrl}}"
+                     alt="Logo"
+                     style="max-height: 80px; border-radius: 8px; margin-bottom: 10px;">
+                <div th:if="${empresaGlobal != null}"
+                      id="sidebar-empresa-nombre"
+                      th:text="${empresaGlobal.nombre}"
+                      class="fs-5 fw-bold">
+                </div>
+                <div th:if="${empresaGlobal == null}" class="fs-4 fw-bold">
+                    Inventario App
+                </div>
+            </a>
+        </div>
+        <hr>
+        <ul class="nav nav-pills flex-column mb-auto">
+            <!-- Se añade un icono a cada opción del menú -->
+            <li th:each="opcion : ${session.menuOpciones}">
+                <a th:href="@{${opcion.ruta}}"
+                   class="nav-link"
+                   th:classappend="${opcion.ruta == activeUri} ? 'active' : ''">
+                    <i class="bi" th:classappend="${opcion.icono != null ? opcion.icono : 'bi-record-circle'}"></i>
+                    <span th:text="${opcion.nombre}"></span>
+                </a>
+            </li>
+        </ul>
+        <hr>
+    </nav>
+</div>
+
+</body>
+</html>

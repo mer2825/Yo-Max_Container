@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueva Venta</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        .product-list {
+            list-style: none; padding-left: 0; margin-bottom: 0;
+        }
+        .product-list-item {
+            display: flex; align-items: center; padding: 0.5rem; border: 1px solid #eee; border-radius: 0.3rem; margin-bottom: 0.5rem; cursor: pointer; transition: background-color 0.2s, box-shadow 0.2s;
+        }
+        .product-list-item:hover {
+            background-color: #f8f9fa; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .product-list-item img {
+            width: 50px; height: 50px; object-fit: cover; border-radius: 0.3rem; margin-right: 1rem;
+        }
+        .product-list-item .product-info { flex-grow: 1; }
+        .product-list-item .product-name { font-weight: 500; }
+        .product-list-item .product-stock { font-size: 0.85rem; color: #6c757d; }
+        .product-list-item .product-price { font-weight: bold; color: #28a745; }
+        .category-header {
+            background-color: var(--color-rosa-pastel); color: var(--color-chocolate); padding: 0.75rem 1rem; margin-bottom: 0.5rem; border-radius: 0.5rem; cursor: pointer; transition: background-color 0.2s ease; display: flex; justify-content: space-between; align-items: center; font-weight: bold;
+        }
+        .category-header:hover { background-color: var(--color-acento); color: #fff; }
+        .category-header[aria-expanded="true"] .bi-chevron-down { transform: rotate(180deg); }
+        #product-selection-area { max-height: 500px; overflow-y: auto; padding-right: 5px; }
+        .low-stock-warning {
+            background-color: rgba(255, 0, 0, 0.1);
+        }
+        .step-progress {
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background-color: #fff;
+            border-radius: 1rem;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 1px 10px rgba(0,0,0,0.04);
+        }
+        .step-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.9rem;
+            min-width: 180px;
+            background-color: #f8f9fa;
+            color: #6c757d;
+        }
+        .step-item.step-active {
+            background-color: #fff3cd;
+            border: 1px solid #ffecb5;
+            color: #856404;
+        }
+        .step-item.step-completed {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .step-item.step-completed .step-number {
+            display: none;
+        }
+        .step-item.step-completed .bi-check-lg {
+            display: inline-block;
+        }
+        .step-item .step-icon {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #ced4da;
+            color: #495057;
+            background-color: #fff;
+            font-weight: 700;
+        }
+        .step-item.step-active .step-icon {
+            border-color: #ffc107;
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .step-item.step-completed .step-icon {
+            border-color: #28a745;
+            background-color: #28a745;
+            color: #fff;
+        }
+        .step-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        .step-separator {
+            height: 2px;
+            background: linear-gradient(90deg, rgba(0,0,0,0.08), rgba(0,0,0,0));
+        }
+        #category-filters .category-pill.active {
+            background-color: #0d6efd;
+            color: #fff;
+            border-color: #0d6efd;
+        }
+        .product-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .product-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 18px rgba(0,0,0,0.08);
+        }
+        .product-image {
+            height: 180px;
+            object-fit: cover;
+        }
+        .product-action .quantity-controls {
+            gap: 0.25rem;
+        }
+        .fixed-panel-bottom {
+            position: sticky;
+            bottom: 0;
+            background-color: #fff;
+            z-index: 2;
+        }
+        .flash-added {
+            animation: flashAdded 0.35s ease-out;
+        }
+        @keyframes flashAdded {
+            0% { background-color: rgba(40, 167, 69, 0.16); }
+            100% { background-color: transparent; }
+        }
+    </style>
+</head>
+<body>
+
+<div th:replace="~{topbar :: topbar(activeUri='/ventas')}"></div>
+
+<main class="container-fluid" style="padding-top: 2rem;">
+
+        <!-- Contenedor para notificaciones -->
+        <div id="notification-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1100"></div>
+
+        <div class="container-fluid p-4">
+            <div class="step-progress-container mb-4">
+                <div class="step-progress d-flex align-items-center justify-content-between gap-2">
+                    <div class="step-item step-active" data-step="1">
+                        <div class="step-icon">
+                            <span class="step-number">1</span>
+                            <i class="bi bi-check-lg d-none"></i>
+                        </div>
+                        <div>
+                            <div class="step-label">Comprobante y Cliente</div>
+                        </div>
+                    </div>
+                    <div class="step-separator flex-grow-1"></div>
+                    <div class="step-item step-pending" data-step="2">
+                        <div class="step-icon">
+                            <span class="step-number">2</span>
+                            <i class="bi bi-check-lg d-none"></i>
+                        </div>
+                        <div>
+                            <div class="step-label">Productos</div>
+                        </div>
+                    </div>
+                    <div class="step-separator flex-grow-1"></div>
+                    <div class="step-item step-pending" data-step="3">
+                        <div class="step-icon">
+                            <span class="step-number">3</span>
+                            <i class="bi bi-check-lg d-none"></i>
+                        </div>
+                        <div>
+                            <div class="step-label">Resumen</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row g-4">
+                <div class="col-lg-7">
+                    <!-- Comprobante y Cliente -->
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Comprobante y Cliente</h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="tipoComprobanteVenta" class="form-label">Tipo de Comprobante</label>
+                                    <select id="tipoComprobanteVenta" class="form-select">
+                                        <option value="Nota de Venta">Nota de Venta</option>
+                                        <option value="Boleta">Boleta</option>
+                                    </select>
+                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección de Búsqueda de Cliente -->
+                    <div class="card shadow-sm mb-4" id="seccionCliente" style="display: none;">
+                        <div class="card-body">
+                            <h5 class="card-title">Buscar Cliente</h5>
+                            <div class="row g-2">
+                                <div class="col-md-3">
+                                    <label for="tipoDocumento" class="form-label">Tipo Doc.</label>
+                                    <select id="tipoDocumento" class="form-select">
+                                        <option value="dni">DNI</option>
+                                        <option value="ruc">RUC</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="numeroDocumento" class="form-label">Nro. Documento</label>
+                                    <div class="input-group">
+                                        <input type="text" id="numeroDocumento" class="form-control" placeholder="Número de documento...">
+                                        <button class="btn btn-outline-secondary" type="button" id="btnBuscarCliente">Buscar</button>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button class="btn btn-secondary w-100" type="button" id="btnLimpiarCliente">Limpiar</button>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <p class="mb-1"><strong>Cliente:</strong> <span id="nombreCliente">Consumidor Final</span></p>
+                                <input type="hidden" id="clienteId">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección de Selección de Productos -->
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start justify-content-between mb-3">
+                                <div>
+                                    <h5 class="card-title mb-1">Selecciona Productos</h5>
+                                    <div class="text-muted small">Filtra rápido por categoría y agrega desde la tarjeta</div>
+                                </div>
+                                <span class="badge bg-secondary">Paso 2</span>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-sm-6">
+                                    <input type="text" id="filtroNombre" class="form-control" placeholder="Buscar por nombre...">
+                                </div>
+                                <div class="col-sm-3">
+                                    <input type="number" id="filtroPrecioMin" class="form-control" placeholder="Min S/.">
+                                </div>
+                                <div class="col-sm-3">
+                                    <input type="number" id="filtroPrecioMax" class="form-control" placeholder="Max S/.">
+                                </div>
+                            </div>
+                            <div id="category-filters" class="d-flex flex-wrap gap-2 mb-3">
+                                <button type="button" class="btn btn-sm btn-primary active category-pill" data-category="Todos">Todos</button>
+                                <th:block th:each="entry : ${productosPorCategoria}">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary category-pill" th:data-category="${entry.key.nombre}" th:text="${entry.key.nombre}"></button>
+                                </th:block>
+                            </div>
+                            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3" id="product-grid">
+                                <th:block th:each="entry : ${productosPorCategoria}">
+                                    <div th:each="producto : ${entry.value}" class="col">
+                                        <div class="card product-card h-100" th:classappend="${producto.stock <= producto.stockMinimo} ? 'border-danger' : ''"
+                                             th:data-product-id="${producto.id}"
+                                             th:data-product-nombre="${producto.nombre}"
+                                             th:data-product-precio="${producto.precio}"
+                                             th:data-product-foto="${!#lists.isEmpty(producto.imagenes) ? producto.imagenes[0].url : '/images/placeholder.png'}"
+                                             th:data-product-stock="${producto.stock}"
+                                             th:data-product-stock-minimo="${producto.stockMinimo}"
+                                             th:data-product-category="${entry.key.nombre}">
+                                            <img th:src="${!#lists.isEmpty(producto.imagenes) ? producto.imagenes[0].url : '/images/placeholder.png'}" class="card-img-top product-image" alt="Producto">
+                                            <div class="card-body d-flex flex-column">
+                                                <div class="mb-2">
+                                                    <h6 class="card-title mb-1 product-name" th:text="${producto.nombre}"></h6>
+                                                    <p class="text-muted mb-1 product-stock" th:text="'Stock: ' + ${producto.stock}"></p>
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span class="product-price fs-5 fw-bold text-success" th:text="'S/ ' + ${#numbers.formatDecimal(producto.precio, 1, 2)}"></span>
+                                                        <span class="badge bg-warning text-dark" th:if="${producto.stock <= producto.stockMinimo}">Bajo stock</span>
+                                                    </div>
+                                                </div>
+                                                <div class="mt-auto product-action">
+                                                    <button type="button" class="btn btn-primary btn-sm w-100 btn-agregar" th:data-product-id="${producto.id}">+ Agregar</button>
+                                                    <div class="input-group input-group-sm quantity-controls mt-2 d-none">
+                                                        <button type="button" class="btn btn-outline-secondary btn-decrease" th:data-product-id="${producto.id}">−</button>
+                                                        <input type="text" class="form-control text-center product-qty" value="1" readonly>
+                                                        <button type="button" class="btn btn-outline-secondary btn-increase" th:data-product-id="${producto.id}">+</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </th:block>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Columna Derecha: Carrito y Pago -->
+                <div class="col-lg-5">
+                    <div class="card shadow-sm sticky-top" style="top: 20px;">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex align-items-start justify-content-between mb-3">
+                                <div>
+                                    <h5 class="card-title mb-1">Detalle de Venta</h5>
+                                    <div class="text-muted small">Revisa el carrito antes de cobrar</div>
+                                </div>
+                                <span class="badge bg-secondary">Paso 3</span>
+                            </div>
+                            <div id="cart-empty-message" class="text-center text-muted py-5 d-none">
+                                <i class="bi bi-cart-plus fs-1 mb-3"></i>
+                                <p class="mb-0">Agrega productos desde la izquierda para iniciar la venta</p>
+                            </div>
+                            <div class="table-responsive" id="cart-table-container">
+                                <table class="table mb-0">
+                                    <thead><tr><th>Producto</th><th style="width: 90px;">Cant.</th><th>Subtotal</th><th></th></tr></thead>
+                                    <tbody id="carrito-items"></tbody>
+                                </table>
+                            </div>
+                            <div id="venta-summary" class="mt-3 d-none">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="fw-bold">Subtotal:</span>
+                                    <span id="venta-subtotal">S/ 0.00</span>
+                                </div>
+                                <div class="input-group mb-3">
+                                    <select class="form-select" id="tipoDescuento" style="max-width: 130px;">
+                                        <option value="monto">Descuento (S/)</option>
+                                        <option value="porcentaje">Descuento (%)</option>
+                                    </select>
+                                    <input type="number" id="descuentoVenta" class="form-control text-end" value="0" min="0" step="0.10">
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <div class="mb-3">
+                                    <label for="tipoComprobante" class="form-label fw-bold">Tipo de Comprobante</label>
+                                    <input type="text" id="tipoComprobante" class="form-control" placeholder="Automático según selección..." readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="metodoPago" class="form-label">Método de Pago</label>
+                                    <select id="metodoPago" class="form-select"><option>Efectivo</option><option>Yape</option><option>Tarjeta</option></select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="notaVenta" class="form-label">Nota de Venta (Opcional)</label>
+                                    <textarea id="notaVenta" class="form-control" rows="2"></textarea>
+                                </div>
+                            </div>
+                            <div class="mt-auto pt-3 border-top fixed-panel-bottom">
+                                <div id="venta-total-wrapper" class="d-none mb-3">
+                                    <div class="d-flex justify-content-between align-items-center fw-bold fs-5">
+                                        <span>TOTAL</span>
+                                        <span id="venta-total" class="text-success">S/ 0.00</span>
+                                    </div>
+                                </div>
+                                <div id="cart-empty-footer" class="text-center text-muted small d-none mb-3">Selecciona productos para ver el total</div>
+                                <button id="btnFinalizarVenta" class="btn btn-primary btn-lg w-100" disabled>Finalizar y Cobrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- WebSocket -->
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+    <!-- Scripts globales y específicos -->
+    <script th:src="@{/js/main.js}"></script>
+    <script th:src="@{/js/nueva-venta.js}"></script>
+
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Usuarios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Se enlaza la hoja de estilos principal -->
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<div th:replace="~{topbar :: topbar(activeUri='/usuarios')}"></div>
+
+<main class="container-fluid" style="padding-top: 2rem;">
+
+        <div class="container-fluid p-4">
+            <div class="text-end mb-3">
+                <button id="btnNuevoRegistro" class="btn btn-primary">
+                    Nuevo Registro
+                </button>
+            </div>
+            <div class="card shadow-sm rounded-lg">
+                <div class="card-body">
+                    <h2 class="card-title h5 mb-4 fw-bold">Lista de Usuarios</h2>
+                    <table id="tablaUsuarios" class="table table-hover responsive" style="width:100%">
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Usuario</th>
+                            <th>Perfil</th>
+                            <th>Correo</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Modal Formulario -->
+<div class="modal fade" id="usuarioModal" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Agregar Usuario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formUsuario" novalidate>
+                    <input type="hidden" id="id" name="id">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="nombre" class="form-label">Nombre:</label>
+                            <input type="text" id="nombre" name="nombre" class="form-control">
+                            <div id="nombre-error" class="invalid-feedback d-block"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="usuario" class="form-label">Usuario:</label>
+                            <input type="text" id="usuario" name="usuario" class="form-control">
+                            <div id="usuario-error" class="invalid-feedback d-block"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="clave" class="form-label">Clave:</label>
+                            <input type="password" id="clave" name="clave" class="form-control">
+                            <div id="clave-error" class="invalid-feedback d-block"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="correo" class="form-label">Correo Electrónico:</label>
+                            <input type="email" id="correo" name="correo" class="form-control" autocomplete="email">
+                            <div id="correo-error" class="invalid-feedback d-block"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="id_perfil" class="form-label">Perfil:</label>
+                            <select id="id_perfil" name="id_perfil" class="form-select">
+                                <option value="">Cargando perfiles...</option>
+                            </select>
+                            <div id="id_perfil-error" class="invalid-feedback d-block"></div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" form="formUsuario" class="btn btn-primary">Guardar Usuario</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Detalles de Auditoría -->
+<div class="modal fade" id="auditModal" tabindex="-1" aria-labelledby="auditModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="auditModalLabel">Detalles de Auditoría</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Creado por:</strong> <span id="creadoPor"></span></p>
+                <p><strong>Fecha de Creación:</strong> <span id="fechaCreacion"></span></p>
+                <hr>
+                <p><strong>Última Modificación por:</strong> <span id="modificadoPor"></span></p>
+                <p><strong>Fecha de Modificación:</strong> <span id="fechaModificacion"></span></p>
+                <p><strong>Última Acción:</strong> <span id="ultimaAccion"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="notification-container" class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+<!-- Fragmento de scripts comunes -->
+<div th:replace="~{fragments/scripts :: common-scripts}"></div>
+
+<!-- Scripts específicos de la página de usuarios -->
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+<script th:src="@{/js/usuarios.js}"></script>
+
+<script>
+    $(document).ready(function() {
+        // Delegación de eventos para el botón de detalles
+        $('#tablaUsuarios tbody').on('click', '.btn-detalles', function() {
+            var userId = $(this).data('id');
+
+            // Mostrar spinner o texto de carga en el modal
+            $('#creadoPor').text('Cargando...');
+            $('#fechaCreacion').text('Cargando...');
+            $('#modificadoPor').text('Cargando...');
+            $('#fechaModificacion').text('Cargando...');
+            $('#ultimaAccion').text('Cargando...'); // Añadido
+
+            // Llamada AJAX para obtener los detalles de auditoría
+            $.ajax({
+                url: '/usuarios/api/audit-details/' + userId,
+                type: 'GET',
+                success: function(data) {
+                    // Rellenar el modal con los datos recibidos
+                    $('#creadoPor').text(data.creadoPorNombre);
+                    $('#fechaCreacion').text(data.fechaCreacion);
+                    $('#modificadoPor').text(data.modificadoPorNombre);
+                    $('#fechaModificacion').text(data.fechaModificacion);
+                    $('#ultimaAccion').text(data.ultimaAccion); // Añadido
+                },
+                error: function(error) {
+                    // Manejar errores (por ejemplo, mostrar un mensaje en el modal)
+                    $('#creadoPor').text('Error al cargar');
+                    $('#fechaCreacion').text('-');
+                    $('#modificadoPor').text('Error al cargar');
+                    $('#fechaModificacion').text('-');
+                    $('#ultimaAccion').text('Error al cargar'); // Añadido
+                    console.error("Error al obtener detalles de auditoría:", error);
+                }
+            });
+        });
+    });
+</script>
+
+</body>
+</html>

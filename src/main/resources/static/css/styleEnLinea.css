@@ -1,0 +1,13 @@
+body {
+    font-family: 'Montserrat', sans-serif;
+    background-color: #fdf6f0;
+    color: #4a2c2a;
+}
+
+header {
+    background-color: #f8d7c4;
+}
+
+.card {
+    border-radius: 15px;
+

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Inventario</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+    <link rel="stylesheet" th:href="@{/css/main.css}"> <!-- Asegúrate de incluir main.css si es necesario para el diseño general -->
+</head>
+<body>
+
+<div th:replace="~{topbar :: topbar(activeUri='/inventario')}"></div>
+
+<main class="container-fluid" style="padding-top: 2rem;">
+
+        <div class="container-fluid p-4">
+            <div class="card shadow-sm rounded-lg">
+                <div class="card-body">
+                    <h2 class="card-title h5 mb-2 fw-bold">Inventario de Productos</h2>
+                    <p class="text-muted mb-4">Revisa el stock disponible, detecta productos con alerta de reposición y ajusta las existencias directamente desde aquí.</p>
+
+                    <div th:unless="${productos.isEmpty()}" class="row align-items-center g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="input-group shadow-sm rounded-4 overflow-hidden border border-1 border-light">
+                                <span class="input-group-text bg-white border-0"><i class="bi bi-search"></i></span>
+                                <input id="inputFiltroInventario" type="search" class="form-control form-control-lg border-0" placeholder="Buscar producto, categoría o código">
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <div class="btn-group" role="group" aria-label="Filtros rápidos">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="filterAll">Todos</button>
+                                <button type="button" class="btn btn-outline-warning btn-sm" id="filterLowStock"><i class="bi bi-exclamation-circle"></i> Bajo stock</button>
+                                <button type="button" class="btn btn-outline-danger btn-sm" id="filterOutOfStock"><i class="bi bi-slash-circle"></i> Sin stock</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div th:unless="${productos.isEmpty()}" class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="card rounded-4 shadow-sm border-0 bg-white p-3">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <p class="text-uppercase small text-muted mb-1">Total de productos</p>
+                                        <h3 id="summaryTotalProductos" class="mb-0">0</h3>
+                                    </div>
+                                    <i class="bi bi-box-seam fs-2 text-primary"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card rounded-4 shadow-sm border-0 bg-white p-3">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <p class="text-uppercase small text-muted mb-1">Stock bajo</p>
+                                        <h3 id="summaryLowStock" class="mb-0">0</h3>
+                                    </div>
+                                    <i class="bi bi-exclamation-triangle-fill fs-2 text-warning"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card rounded-4 shadow-sm border-0 bg-white p-3">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <p class="text-uppercase small text-muted mb-1">Productos sin stock</p>
+                                        <h3 id="summarySinStock" class="mb-0">0</h3>
+                                    </div>
+                                    <i class="bi bi-slash-circle fs-2 text-danger"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div th:if="${productos.isEmpty()}" class="alert alert-info" role="alert">
+                        No hay productos registrados en el inventario.
+                    </div>
+
+                    <div th:unless="${productos.isEmpty()}">
+                        <table id="tablaInventario" class="table table-hover responsive" style="width:100%">
+                            <thead class="table-dark">
+                                    <tr>
+                                        <th>Imagen</th>
+                                        <th>Producto</th>
+                                        <th>Categoría</th>
+                                        <th>Stock Disponible</th>
+                                        <th>Stock Mínimo</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="producto : ${productos}" th:id="${'producto-' + producto.id}">
+                                    <td>
+                                        <img th:src="@{${!producto.imagenes.isEmpty() ? producto.imagenes[0].url : '/images/default-product.png'}}" 
+                                             alt="Imagen del Producto" 
+                                             style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;">
+                                    </td>
+                                    <td th:text="${producto.nombre}">Nombre del Producto</td>
+                                    <td th:text="${producto.categoria.nombre}">Categoría del Producto</td>
+                                    <td th:text="${producto.stock}">100</td>
+                                    <td th:text="${producto.stockMinimo}">10</td>
+                                    <td>
+                                        <button type="button" class="btn btn-outline-primary btn-sm btn-movimientos" 
+                                                th:data-id="${producto.id}" th:data-nombre="${producto.nombre}"
+                                                th:data-stock="${producto.stock}" th:data-stock-minimo="${producto.stockMinimo}">
+                                            <i class="bi bi-box-arrow-in-up-right"></i> Historial y ajuste
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Modal de Movimientos del Producto -->
+<div class="modal fade" id="movimientosModal" tabindex="-1" aria-labelledby="movimientosModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="movimientosModalLabel">Movimientos de Inventario para: <span id="modalProductoNombre"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-4 d-flex flex-wrap gap-2 align-items-center">
+                    <span class="badge bg-secondary py-2">Stock actual: <strong id="modalStockActual">0</strong></span>
+                    <span class="badge bg-warning text-dark py-2">Stock mínimo: <strong id="modalStockMinimo">0</strong></span>
+                    <span class="badge bg-info text-dark py-2">Revisa el historial y guarda ajustes con seguridad</span>
+                </div>
+                <div class="d-flex flex-wrap align-items-start">
+                    <div class="inventory-side me-4">
+                        <div class="card border rounded-4 mb-4 inventory-side-card">
+                            <div class="card-body inventory-modal-card">
+                                <h6 class="mb-3">Ajuste rápido de stock</h6>
+                                <p class="small text-muted">Ingresa la cantidad real disponible y el mínimo recomendado para este producto.</p>
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Stock Actual</label>
+                                    <input type="number" class="form-control form-control-lg" id="inputStock" min="0" placeholder="Ej: 50">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Stock Mínimo</label>
+                                    <input type="number" class="form-control form-control-lg" id="inputStockMinimo" min="0" placeholder="Ej: 5">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Comentario</label>
+                                    <textarea class="form-control" id="inputStockComentario" rows="3" placeholder="Ej: Ajuste manual por inventario físico"></textarea>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-primary btn-lg w-100" id="btnAjustarStock">Guardar ajuste</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-lg w-100" id="btnIncrementarStock">+10</button>
+                                    <button type="button" class="btn btn-outline-danger btn-lg w-100" id="btnDecrementarStock">-10</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="movements-side flex-fill">
+                        <div class="table-responsive movements-table">
+                            <table id="tablaMovimientos" class="table table-striped table-hover" style="width:100%">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>N° Venta</th>
+                                        <th>Fecha Venta</th>
+                                        <th>Precio Venta</th>
+                                        <th>Cantidad</th>
+                                        <th>Subtotal</th>
+                                        <th>Comentario</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Los movimientos se cargarán aquí vía AJAX -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer align-items-center">
+                <div class="me-auto d-flex gap-2">
+                    <button type="button" class="btn btn-outline-danger btn-lg" id="btnExportarPdf"><i class="bi bi-file-earmark-pdf-fill"></i> PDF</button>
+                    <button type="button" class="btn btn-outline-success btn-lg" id="btnExportarExcel"><i class="bi bi-file-earmark-excel-fill"></i> EXCEL</button>
+                </div>
+                <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="notification-container" class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+<!-- Fragmento de scripts comunes -->
+<div th:replace="~{fragments/scripts :: common-scripts}"></div>
+
+<!-- Modal de confirmación para guardar ajustes -->
+<div class="modal fade" id="confirmSaveModal" tabindex="-1" aria-labelledby="confirmSaveModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmSaveModalLabel">Confirmar ajuste</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmSaveMessage">¿Deseas guardar los cambios de stock para este producto?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmSaveBtn">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts específicos de la página de inventario -->
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script th:src="@{/js/inventario.js}"></script>
+
+</body>
+</html>

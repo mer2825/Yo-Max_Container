@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modificación de Venta</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        .product-list {
+            list-style: none; padding-left: 0; margin-bottom: 0;
+        }
+        .product-list-item {
+            display: flex; align-items: center; padding: 0.5rem; border: 1px solid #eee; border-radius: 0.3rem; margin-bottom: 0.5rem; cursor: pointer; transition: background-color 0.2s, box-shadow 0.2s;
+        }
+        .product-list-item:hover {
+            background-color: #f8f9fa; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .product-list-item img {
+            width: 50px; height: 50px; object-fit: cover; border-radius: 0.3rem; margin-right: 1rem;
+        }
+        .product-list-item .product-info { flex-grow: 1; }
+        .product-list-item .product-name { font-weight: 500; }
+        .product-list-item .product-stock { font-size: 0.85rem; color: #6c757d; }
+        .product-list-item .product-price { font-weight: bold; color: #28a745; }
+        .category-header {
+            background-color: var(--color-rosa-pastel); color: var(--color-chocolate); padding: 0.75rem 1rem; margin-bottom: 0.5rem; border-radius: 0.5rem; cursor: pointer; transition: background-color 0.2s ease; display: flex; justify-content: space-between; align-items: center; font-weight: bold;
+        }
+        .category-header:hover { background-color: var(--color-acento); color: #fff; }
+        .category-header .bi { transition: transform 0.2s ease; }
+        .category-header[aria-expanded="true"] .bi-chevron-down { transform: rotate(180deg); }
+        #product-selection-area { max-height: 500px; overflow-y: auto; padding-right: 5px; }
+        .low-stock-warning {
+            background-color: rgba(255, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid p-4">
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <!-- 1. Comprobante y Cliente -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">1. Comprobante y Cliente</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="tipoComprobanteVenta" class="form-label">Tipo de Comprobante</label>
+                            <select id="tipoComprobanteVenta" class="form-select">
+                                <option value="nota_venta">Nota de Venta</option>
+                                <option value="boleta">Boleta</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección de Búsqueda de Cliente -->
+            <div class="card shadow-sm mb-4" id="seccionCliente" style="display: none;">
+                <div class="card-body">
+                    <h5 class="card-title">Buscar Cliente</h5>
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label for="tipoDocumento" class="form-label">Tipo Doc.</label>
+                            <select id="tipoDocumento" class="form-select">
+                                <option value="dni">DNI</option>
+                                <option value="ruc">RUC</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="numeroDocumento" class="form-label">Nro. Documento</label>
+                            <div class="input-group">
+                                <input type="text" id="numeroDocumento" class="form-control" placeholder="Número de documento...">
+                                <button class="btn btn-outline-secondary" type="button" id="btnBuscarCliente">Buscar</button>
+                            </div>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button class="btn btn-secondary w-100" type="button" id="btnLimpiarCliente">Limpiar</button>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <p class="mb-1"><strong>Cliente:</strong> <span id="nombreCliente">Consumidor Final</span></p>
+                        <p class="mb-0"><strong>Dirección:</strong> <span id="direccionCliente">-</span></p>
+                        <input type="hidden" id="clienteId">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección de Selección de Productos -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">2. Seleccionar Productos</h5>
+                    <div class="row g-2 mb-3">
+                        <div class="col-sm-6">
+                            <input type="text" id="filtroNombre" class="form-control" placeholder="Buscar por nombre...">
+                        </div>
+                        <div class="col-sm-3">
+                            <input type="number" id="filtroPrecioMin" class="form-control" placeholder="Min S/.">
+                        </div>
+                        <div class="col-sm-3">
+                            <input type="number" id="filtroPrecioMax" class="form-control" placeholder="Max S/.">
+                        </div>
+                    </div>
+                    <div id="product-selection-area">
+                        <div th:each="entry : ${productosPorCategoria}" class="mb-3 category-group">
+                            <div class="category-header" th:id="'heading-' + ${entry.key.id}" data-bs-toggle="collapse" th:data-bs-target="'#collapse-' + ${entry.key.id}" aria-expanded="false">
+                                <span><i class="bi bi-tags-fill me-2"></i><span th:text="${entry.key.nombre}"></span></span>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div th:id="'collapse-' + ${entry.key.id}" class="collapse" th:aria-labelledby="'heading-' + ${entry.key.id}">
+                                <ul class="product-list">
+                                    <li th:each="producto : ${entry.value}"
+                                        class="product-list-item"
+                                        th:classappend="${producto.stock <= producto.stockMinimo} ? 'low-stock-warning' : ''"
+                                        th:data-product-id="${producto.id}"
+                                        th:data-product-nombre="${producto.nombre}"
+                                        th:data-product-precio="${producto.precio}"
+                                        th:data-product-foto="${!#lists.isEmpty(producto.imagenes) ? producto.imagenes[0].url : '/images/placeholder.png'}"
+                                        th:data-product-stock="${producto.stock}"
+                                        th:data-product-stock-minimo="${producto.stockMinimo}">
+                                        <img th:src="${!#lists.isEmpty(producto.imagenes) ? producto.imagenes[0].url : '/images/placeholder.png'}" alt="Imagen de producto">
+                                        <div class="product-info">
+                                            <span class="product-name" th:text="${producto.nombre}"></span>
+                                            <div class="product-stock" th:text="'Stock: ' + ${producto.stock}"></div>
+                                        </div>
+                                        <span class="product-price" th:text="'S/ ' + ${#numbers.formatDecimal(producto.precio, 1, 2)}"></span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: Carrito y Pago -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm sticky-top" style="top: 20px;">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">3. Detalle de Venta</h5>
+                    <table class="table">
+                        <thead><tr><th>Producto</th><th style="width: 80px;">Cant.</th><th>Subtotal</th><th></th></tr></thead>
+                        <tbody id="carrito-items"></tbody>
+                    </table>
+                    <hr>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="fw-bold">Subtotal:</span>
+                        <span id="venta-subtotal">S/ 0.00</span>
+                    </div>
+
+                    <!-- Campo de Descuento con Selector -->
+                    <div class="input-group mb-3">
+                        <select class="form-select" id="tipoDescuento" style="max-width: 130px;">
+                            <option value="monto">Descuento (S/)</option>
+                            <option value="porcentaje">Descuento (%)</option>
+                        </select>
+                        <input type="number" id="descuentoVenta" class="form-control text-end" value="0" min="0" step="0.10">
+                    </div>
+
+                    <div class="d-flex justify-content-between fw-bold fs-4 text-success">
+                        <span>TOTAL:</span>
+                        <span id="venta-total">S/ 0.00</span>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label for="tipoComprobante" class="form-label fw-bold">Tipo de Comprobante</label>
+                        <input type="text" id="tipoComprobante" class="form-control" placeholder="Automático según selección..." readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="metodoPago" class="form-label">Método de Pago</label>
+                        <select id="metodoPago" class="form-select">
+                            <option value="Efectivo">Efectivo</option>
+                            <option value="Yape">Yape</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notaVenta" class="form-label">Nota de Venta (Opcional)</label>
+                        <textarea id="notaVenta" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="d-grid">
+                        <button id="btnFinalizarVenta" class="btn btn-primary btn-lg">Modificar Venta</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="notification-container" class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script th:src="@{/js/main.js}"></script>
+<script th:src="@{/js/modificar-venta-web.js}"></script>
+
+</body>
+</html>

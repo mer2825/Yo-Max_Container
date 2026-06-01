@@ -1,0 +1,51 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="Mercedes Hoyos">
+    <!-- Título dinámico con el nombre de la empresa -->
+    <title>Iniciar Sesión | Yo&#39;Max</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/login.css;jsessionid=1F1C1C9130C2AD5C687ABADC71FC1CF8">
+    <link rel="stylesheet" href="/css/yomax-theme.css;jsessionid=1F1C1C9130C2AD5C687ABADC71FC1CF8">
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+</head>
+<body>
+
+<div class="form-container">
+    <!-- Logo dinámico de la empresa -->
+    <img src="/images/logo_06b5f94c-3956-4d01-8305-761347ccca94.png;jsessionid=1F1C1C9130C2AD5C687ABADC71FC1CF8"
+         alt="Logo de la Empresa"
+         class="logo-login">
+    <!-- Fallback si no hay logo -->
+    
+
+    <h1>Iniciar Sesión</h1>
+
+    
+
+    <!-- Alerta dinámica de cuenta regresiva -->
+    
+
+    
+
+    <form id="formIniciarSesion" method="post" action="/login;jsessionid=1F1C1C9130C2AD5C687ABADC71FC1CF8">
+        <label for="nombreUsuario">Usuario:</label>
+        <input type="text" id="nombreUsuario" name="usuario" required>
+
+        <label for="contrasena">Contraseña:</label>
+        <input type="password" id="contrasena" name="clave" required>
+
+        <div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"></div>
+        <div id="recaptcha-error" class="alert alert-danger" style="display: none; margin-top: 5px; padding: 5px; font-size: 0.9em; text-align: center;">Debes completar el reCAPTCHA para continuar.</div>
+        <br/>
+
+        <input type="submit" value="Ingresar" id="btnIngresar">
+    </form>
+
+</div>
+
+<script src="/js/login.js;jsessionid=1F1C1C9130C2AD5C687ABADC71FC1CF8"></script>
+</body>
+</html>

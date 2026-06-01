@@ -1,0 +1,169 @@
+/*
+ * Hoja de estilos principal para la aplicación Acceso.
+ * Archivo: src/main/resources/static/css/main.css
+ */
+
+:root {
+    --ym-pink: #ff2aa6;        /* color principal (texto/ botones) */
+    --ym-pink-dark: #cc007f;   /* variante oscura */
+    --ym-yellow: #ffd400;      /* color secundario (acento) */
+    --ym-dark: #2b0030;        /* texto principal oscuro */
+    --ym-bg: #fff4fb;          /* fondo general claro */
+    --ym-bg-soft: #fff0f7;     /* card / panel background */
+    --navbar-height: 70px;     /* Altura estimada del navbar para spacing */
+}
+
+body {
+    background: radial-gradient(circle at top left, rgba(255, 42, 166, 0.12), transparent 24%),
+                radial-gradient(circle at bottom right, rgba(255, 212, 0, 0.12), transparent 22%),
+                #f8f9fa;
+    font-family: 'Inter', sans-serif;
+    padding-top: var(--navbar-height); /* Desplaza todo el contenido hacia abajo para que el navbar no lo tape */
+}
+
+/* Ajuste para los modales: asegurar que aparezcan sobre el navbar */
+.modal {
+    z-index: 10050 !important;
+}
+.modal-backdrop {
+    z-index: 10040 !important;
+}
+
+.main-content {
+    min-height: 100vh;
+    background: transparent;
+}
+
+.card {
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+    border: none;
+}
+
+.toast-container {
+    z-index: 1080;
+}
+
+/* --- Estilos para el Loading Overlay --- */
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 11000; /* Por encima de modales y navbar */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.5s ease-in-out, visibility 0.5s ease-in-out;
+}
+
+#loading-overlay.loading-overlay-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* --- Navbar Styles --- */
+.navbar {
+    padding: 0.5rem 0.9rem;
+    min-height: 54px;
+    z-index: 10000 !important; /* Alto, pero menor que los modales */
+    position: fixed; /* Cambiado a fixed para asegurar que siempre esté arriba */
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.navbar-brand {
+    display: flex;
+    align-items: center;
+    color: var(--ym-dark) !important;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.navbar .nav-link {
+    color: var(--ym-dark) !important;
+    font-weight: 500;
+    font-size: 0.9rem;
+    margin: 0 0.15rem;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.navbar .nav-link:hover {
+    background-color: rgba(255, 42, 166, 0.08);
+}
+
+.navbar .nav-link.active {
+    background-color: rgba(255, 42, 166, 0.15);
+    color: var(--ym-pink) !important;
+}
+
+/* --- Dashboard Layout --- */
+.dashboard-page {
+    background: transparent;
+    min-height: calc(100vh - var(--navbar-height));
+    padding-top: 1rem;
+}
+
+.dashboard-action-card, .dashboard-alerts-card, .dashboard-metric-card, 
+.dashboard-recent-sales-card, .dashboard-top-products-card, .dashboard-summary-card-new {
+    border: 1px solid rgba(255, 42, 166, 0.12);
+    box-shadow: 0 4px 12px rgba(43, 0, 48, 0.08);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+}
+
+/* --- Modales --- */
+.modal-content {
+    border-radius: 14px;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.modal-header {
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding: 1.25rem 1.5rem;
+}
+
+/* --- Responsive --- */
+@media (max-width: 991.98px) {
+    :root {
+        --navbar-height: 60px;
+    }
+    
+    .navbar-collapse {
+        background: #ffffff;
+        border-top: 1px solid rgba(255, 42, 166, 0.12);
+        margin-top: 0.5rem;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+}
+
+/* Estilos de botones y utilidades generales */
+.btn-primary {
+    background: linear-gradient(90deg, var(--ym-pink), var(--ym-pink-dark));
+    border: none;
+    box-shadow: 0 4px 12px rgba(255, 42, 166, 0.2);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(90deg, var(--ym-pink-dark), var(--ym-pink));
+    transform: translateY(-1px);
+}
+
+.last-border-none:last-child {
+    border-bottom: none !important;
+}
+
+.hover-bg-light:hover {
+    background-color: #f8f9fa !important;
+}

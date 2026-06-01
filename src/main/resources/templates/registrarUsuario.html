@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="Mercedes Hoyos">
+  <title>Registrar | Postrería Mixturas Dulces</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styleRegistrarUsuario.css">
+</head>
+<body>
+
+<div class="form-container animated">
+  <img src="/imagenes/logo_mixturas.jpg" alt="Logo Mixturas Dulces" class="logo-login">
+  <h1>Crear Cuenta</h1>
+  <form id="formRegistrarUsuario" method="post">
+
+    <label for="nombreUsuario">Nombre Completo</label>
+    <input type="text" id="nombreUsuario" name="nombreUsuario" required placeholder="Ej. Mercedes Hoyos Vega">
+
+    <label for="correoElectronico">Correo Electrónico</label>
+    <input type="email" id="correoElectronico" name="correoElectronico" required>
+
+    <label for="numeroTelefonico">Teléfono</label>
+    <input type="tel" id="numeroTelefonico" name="numeroTelefonico" pattern="[0-9]{9}" maxlength="9" required>
+
+    <label for="contrasena">Crear Contraseña</label>
+    <input type="password" id="contrasena" name="contrasena" required>
+    <small id="ayudaContrasena" class="ayuda">La contraseña debe tener al menos 8 caracteres, una mayúscula y un carácter especial.</small>
+
+    <label for="confirmacion">Confirmar Contraseña</label>
+    <input type="password" id="confirmacion" name="confirmacion" required>
+
+    <input type="submit" value="Registrarse">
+  </form>
+  <p>¿Ya tienes cuenta? <a href="login.html">Inicia Sesión</a></p>
+</div>
+
+<div id="modalExito" class="modal">
+  <div class="modal-contenido">
+    <h2>¡Registro Exitoso!</h2>
+    <p>Tu cuenta ha sido creada correctamente.</p>
+    <button id="cerrarModal">Ir a Iniciar Sesión</button>
+  </div>
+</div>
+
+<script src="/static/jsk/registrarUsuario.js"></script>
+</body>
+</html>

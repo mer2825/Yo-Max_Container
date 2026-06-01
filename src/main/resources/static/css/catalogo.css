@@ -1,0 +1,938 @@
+body {
+    font-family: 'Montserrat', sans-serif;
+    background-color: var(--ym-bg);
+    color: var(--ym-dark);
+}
+
+/* --- Estilos del Header Original --- */
+.navbar .logo {
+    width: 100px; height: 100px; object-fit: cover; border-radius: 50%;
+    border: 2px solid var(--ym-pink-dark); margin-right: 10px;
+}
+header .navbar { background-color: var(--ym-bg-soft); padding: 0.7rem 1rem; }
+header .navbar .nav-link {
+  margin: 0 0.4rem;
+  background-color: transparent;
+  color: var(--ym-dark) !important;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-weight: 600;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+header .navbar .nav-link:hover {
+  background-color: rgba(255, 151, 190, 0.18);
+  color: var(--ym-pink-dark) !important;
+}
+
+/* --- Hero (Eslogan) --- */
+.catalog-hero {
+  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.88));
+}
+.hero-banner {
+  background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(253, 239, 246, 0.92));
+  border: 1px solid rgba(255, 163, 205, 0.3);
+  box-shadow: 0 20px 60px rgba(32, 12, 40, 0.08);
+}
+.hero-copy {
+  max-width: 560px;
+}
+.hero-eyebrow {
+  color: var(--ym-pink-dark);
+  letter-spacing: .22em;
+  font-size: .85rem;
+  font-weight: 700;
+}
+.hero-title {
+  font-size: clamp(2.4rem, 3vw, 4rem);
+  line-height: 1.05;
+  color: var(--ym-dark);
+}
+.hero-btn {
+  background-color: var(--ym-pink);
+  border-color: var(--ym-pink);
+  color: var(--ym-yellow);
+}
+.hero-btn:hover,
+.hero-btn:focus {
+  background-color: var(--ym-pink-dark);
+  border-color: var(--ym-pink-dark);
+}
+.hero-image-card {
+  width: min(340px, 100%);
+  padding: 1.75rem;
+  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(245, 236, 245, 0.8));
+}
+.hero-logo {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+.hero-logo-fallback {
+  min-height: 210px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--ym-pink), var(--ym-pink-dark));
+  border-radius: 18px;
+}
+.hero-logo-fallback span {
+  font-size: 2.5rem;
+  letter-spacing: .04em;
+}
+.hero-actions .btn {
+  min-width: 160px;
+}
+
+.catalog-filters {
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(233, 234, 239, 0.9);
+}
+.filter-input .form-control,
+.filter-input .input-group-text {
+  border-radius: 999px;
+  border-color: rgba(255, 155, 196, 0.45);
+}
+.filter-input .input-group-text {
+  background-color: #fff;
+}
+
+.product-card {
+  border: 1px solid rgba(226, 190, 215, 0.55);
+  border-radius: 24px;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.product-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 28px 50px rgba(43, 0, 48, 0.12);
+}
+.product-image-wrapper {
+  min-height: 240px;
+  overflow: hidden;
+}
+.product-image-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+.product-card:hover .product-image-wrapper img {
+  transform: scale(1.04);
+}
+.product-image-fallback {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, rgba(253, 243, 249, 1), rgba(248, 226, 241, 0.95));
+  color: var(--ym-pink-dark);
+}
+.product-image-fallback i {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+}
+.card-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.card-price .price {
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: var(--ym-pink-dark);
+}
+.card-actions {
+  gap: 0.75rem;
+}
+.card-actions .btn {
+  border-radius: 16px;
+  padding: 0.85rem 1rem;
+}
+.btn-cart {
+  border: 1px solid rgba(255, 151, 190, 0.7);
+  background-color: rgba(255, 255, 255, 0.95);
+  color: var(--ym-dark);
+}
+.btn-cart:hover {
+  background-color: rgba(255, 229, 243, 1);
+}
+.btn-outline-yomax {
+  color: var(--ym-pink-dark);
+  border-color: rgba(255, 151, 190, 0.75);
+}
+.btn-outline-yomax:hover {
+  background-color: rgba(255, 229, 243, 1);
+}
+
+@media (max-width: 991px) {
+  .hero-banner {
+    padding: 2rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .navbar-brand {
+    padding-left: 0;
+  }
+  .navbar .navbar-nav {
+    text-align: center;
+  }
+  .catalog-filters {
+    padding: 1.25rem;
+  }
+}
+
+/* --- Carrusel con Imágenes Más Grandes --- */
+ .carousel-background-wrapper { padding: 2rem 0; background-color: var(--ym-bg); width: 100%; overflow: hidden; }
+ .carousel-background-wrapper h3 { color: var(--ym-dark); }
+.cover-flow-carousel-wrapper { position: relative; width: 100%; height: 450px; display: flex; justify-content: center; align-items: center; }
+.cover-flow-carousel-track { position: relative; width: 100%; height: 100%; }
+.cover-flow-item { position: absolute; top: 0; left: 0; right: 0; bottom: 0; margin: auto; width: 400px; aspect-ratio: 1 / 1; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); transform: scale(0) translateX(0); opacity: 0; }
+.cover-flow-item.active { transform: scale(1.15); opacity: 1; z-index: 10; box-shadow: 0 20px 40px rgba(0,0,0,0.35); }
+.cover-flow-item.prev { transform: scale(0.75) translateX(-85%); opacity: 0.5; z-index: 5; filter: blur(4px); }
+.cover-flow-item.next { transform: scale(0.75) translateX(85%); opacity: 0.5; z-index: 5; filter: blur(4px); }
+.cover-flow-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 20px; border: 5px solid #fff; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+ .carousel-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background-color: rgba(255, 255, 255, 0.85); color: var(--ym-dark); border: 2px solid rgba(43,0,48,0.15); border-radius: 50%; width: 55px; height: 55px; font-size: 28px; cursor: pointer; z-index: 20; display: flex; justify-content: center; align-items: center; transition: all 0.3s ease; }
+ .carousel-nav-btn:hover { background-color: var(--ym-pink); color: var(--ym-yellow); border-color: var(--ym-pink); }
+.carousel-nav-btn.next { right: 10%; }
+
+/* --- NUEVOS ESTILOS PARA HEADER --- */
+header .navbar {
+  min-height: 80px; /* Altura mínima para el header */
+  padding-top: 0.5rem; /* Padding reducido */
+  padding-bottom: 0.5rem;
+  position: relative;
+  z-index: 100;
+}
+
+.navbar-brand {
+  padding-left: 130px; /* Espacio a la izquierda para el logo */
+}
+
+header .navbar .logo {
+  position: absolute;
+  top: 20px; /* Distancia desde arriba para que 'cuelgue' */
+  left: 20px;
+  width: 100px;
+  height: 100px;
+  border: 4px solid white;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.25);
+  z-index: 101; /* Por encima del header */
+}
+
+/* --- Estilos para los nuevos botones de categoría --- */
+#categoryFilterButtons .btn {
+  border-radius: 20px;
+  padding: 8px 15px;
+  margin: 5px;
+  transition: all 0.3s ease;
+}
+
+#categoryFilterButtons .btn-outline-primary {
+  color: var(--ym-pink-dark);
+  border-color: var(--ym-pink-dark);
+}
+
+#categoryFilterButtons .btn-outline-primary:hover,
+#categoryFilterButtons .btn-outline-primary.active {
+  background-color: var(--ym-pink);
+  color: var(--ym-yellow);
+  border-color: var(--ym-pink);
+}
+
+/* Asegurar que los productos se muestren correctamente */
+.product-item {
+  display: flex;
+  justify-content: center;
+}
+
+/* --- Estilos para el contenedor de filtros (card) --- */
+.col-lg-3 .card {
+  background-color: var(--ym-bg-soft); /* Un color de fondo más claro y cálido */
+  border: 1px solid rgba(255,42,166,0.06); /* Borde suave */
+  border-radius: 15px; /* Bordes redondeados */
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08); /* Sombra sutil */
+}
+
+.col-lg-3 .card-header {
+  background-color: var(--ym-bg-soft); /* Color de fondo del header */
+  color: var(--ym-dark); /* Color de texto oscuro */
+  font-weight: bold;
+  font-size: 1.1rem;
+  border-bottom: 1px solid var(--ym-pink-dark); /* Borde inferior para separar del body */
+  border-top-left-radius: 15px;
+  border-top-right-radius: 15px;
+}
+
+.col-lg-3 .card-body {
+  padding: 20px;
+}
+
+.col-lg-3 .form-label {
+  color: #4a2c2a;
+  font-weight: 500;
+}
+
+.col-lg-3 .form-control {
+  border-color: var(--ym-pink); /* Borde de los inputs */
+}
+
+.col-lg-3 #applyFilters {
+  background-color: var(--ym-pink); /* Color del botón principal */
+  border-color: var(--ym-pink);
+  color: var(--ym-yellow);
+  font-weight: bold;
+  border-radius: 20px;
+  transition: background-color 0.3s ease;
+}
+
+.col-lg-3 #applyFilters:hover {
+  background-color: var(--ym-pink-dark); /* Color al pasar el ratón */
+  border-color: var(--ym-pink-dark);
+}
+
+/* --- Estilos para el contenedor de información del producto destacado --- */
+.product-info-container {
+  background: linear-gradient(145deg, var(--ym-bg-soft), var(--ym-bg));
+  border: none;
+  border-radius: 20px;
+  box-shadow: 0 8px 25px rgba(43, 0, 48, 0.12);
+  padding: 40px !important;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+
+#producto-nombre {
+  color: var(--ym-dark);
+  font-weight: 700;
+  font-size: 2.5rem;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.08);
+}
+
+#producto-descripcion {
+  color: rgba(43,0,48,0.6);
+  font-size: 1.1rem;
+  line-height: 1.6;
+  min-height: 70px; /* Espacio reservado para la descripción */
+}
+
+#producto-precio {
+  color: var(--ym-pink);
+  font-weight: 800;
+  font-size: 3.2rem;
+  margin-top: 1rem;
+  text-shadow: 2px 2px 5px rgba(209, 122, 75, 0.3);
+}
+
+
+/* --- Estilos para el Carrito de Compras --- */
+.main-container {
+    display: flex;
+    transition: margin-right 0.4s ease-in-out;
+}
+
+.content-wrap {
+    flex-grow: 1;
+    transition: width 0.4s ease-in-out;
+}
+
+.cart-sidebar {
+    width: 360px; /* Ancho ajustado */
+    background-color: var(--ym-bg-soft);
+    border: 2px solid var(--ym-pink);
+    padding: 25px; /* <<< LA CORRECCIÓN PRINCIPAL: Padding general */
+    position: fixed;
+    right: -400px; /* Oculto (ancho + margen) */
+    top: 20px;     /* Margen superior */
+    bottom: 20px;  /* Margen inferior */
+    height: auto;  /* Altura automática */
+    max-height: calc(100vh - 40px); /* Altura máxima con márgenes */
+    transition: right 0.4s ease-in-out;
+    z-index: 1030;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 25px rgba(43, 0, 48, 0.12);
+    border-radius: 15px; /* Bordes redondeados */
+}
+
+.cart-sidebar.open {
+    right: 20px; /* Posición visible con margen */
+}
+
+.main-container.cart-open .content-wrap {
+    margin-right: 400px; /* Espacio para el carrito flotante */
+}
+
+/* --- Secciones del Carrito --- */
+.cart-header, .cart-footer {
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.cart-header {
+    padding-bottom: 20px; /* Espacio entre título y lista de productos */
+    border-bottom: 1px solid #f8d7c4;
+}
+
+.cart-header h3 {
+    color: #4a2c2a;
+}
+
+#cart-items {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 20px 0; /* Espacio vertical entre header/footer y la lista */
+    margin: 0; 
+}
+
+.cart-footer {
+    padding-top: 20px; /* Espacio entre lista de productos y footer */
+    border-top: 1px solid #f8d7c4;
+    background-color: transparent; /* El footer comparte el fondo del sidebar */
+}
+
+/* --- Estilos de los Items del Carrito --- */
+.cart-item {
+    background-color: #fff;
+    border: 1px solid rgba(255,42,166,0.05);
+    border-radius: 8px;
+    padding: 20px;
+    transition: box-shadow 0.2s;
+}
+
+.cart-item + .cart-item {
+    margin-top: 15px; /* Espacio entre los items del carrito */
+}
+
+.cart-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.cart-item .remove-from-cart {
+    color: #d17a4b;
+    font-size: 1.2rem;
+    line-height: 1;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.cart-item .remove-from-cart:hover {
+    opacity: 1;
+    color: #c0602c;
+}
+
+.cart-item .change-quantity, .cart-item .quantity-input {
+    border-color: #f8d7c4;
+}
+
+.cart-item .change-quantity:hover {
+    background-color: #f8d7c4;
+    color: #4a2c2a;
+}
+
+.cart-item .quantity-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(209, 122, 75, 0.25);
+    border-color: #d17a4b;
+}
+
+/* --- Estilos del Footer del Carrito (Total y Botón) --- */
+.cart-footer .fw-bold {
+    color: #4a2c2a;
+}
+
+.cart-footer #cart-total {
+    color: var(--ym-pink);
+    font-size: 1.2rem;
+}
+
+.cart-footer .btn-primary {
+    background-color: var(--ym-pink);
+    border-color: var(--ym-pink);
+    font-weight: bold;
+    padding: 12px 20px;
+    border-radius: 25px;
+    transition: background-color 0.3s;
+    width: 100%;
+    display: block;
+    text-align: center;
+}
+
+.cart-footer .btn-primary:hover {
+    background-color: var(--ym-pink-dark);
+    border-color: var(--ym-pink-dark);
+}
+
+/* --- Ajustes para el input de cantidad --- */
+.cart-item .quantity-input {
+    -moz-appearance: textfield;
+}
+
+.cart-item .quantity-input::-webkit-outer-spin-button,
+.cart-item .quantity-item .quantity-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* ===================================================== */
+/* --- ESTILOS PARA EL MODAL DE OPINIONES (DISEÑO FINAL) --- */
+/* ===================================================== */
+
+#opinionesModal .modal-content {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+    background-color: var(--ym-bg);
+}
+
+#opinionesModal .modal-header {
+    background-color: var(--ym-pink);
+    color: var(--ym-yellow);
+    border-bottom: none;
+    padding: 1.5rem;
+}
+
+#opinionesModal .modal-header .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+#opinionesModal .modal-title {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+#opinionesModal .modal-body {
+    padding: 1.5rem;
+    color: var(--ym-dark);
+}
+
+#opinionesModal .modal-body h5 {
+    color: var(--ym-pink);
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
+/* --- Sección de Nueva Opinión --- */
+#new-opinion-section {
+    background-color: #fff7f0;
+    border: 1px solid #f8d7c4;
+    border-radius: 10px;
+    padding: 1.5rem;
+}
+
+.google-login-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    padding: 10px 25px;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #444;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.google-login-btn:hover {
+    border-color: #aaa;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.google-login-btn img {
+    width: 20px;
+    height: 20px;
+}
+
+#opinion-form-loggedin .user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1rem;
+}
+
+.user-photo-form {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #d17a4b;
+}
+
+.user-photo-form-placeholder {
+    width: 40px;
+    height: 40px;
+    font-size: 40px; /* Hacer el ícono grande */
+    color: #d17a4b;
+    line-height: 1;
+}
+
+#opinion-form-loggedin .user-name {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.logout-btn-styled {
+    background-color: #f8d7c4;
+    color: #c0602c !important;
+    border: 1px solid #f8d7c4;
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.logout-btn-styled:hover {
+    background-color: #fff;
+    border-color: #c0602c;
+}
+
+
+/* --- Lista de Opiniones Publicadas (Contenedor Celeste) --- */
+#opiniones-list {
+    background-color: #eef7ff;
+    border: 1px solid #d1e7fd;
+    border-radius: 10px;
+    padding: 10px;
+    margin-top: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+#opiniones-list .opinion-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    border-bottom: 1px solid #d1e7fd;
+}
+
+#opiniones-list .opinion-card:last-child {
+    border-bottom: none;
+}
+
+.opinion-author-photo {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.opinion-author-placeholder {
+    width: 40px;
+    height: 40px;
+    font-size: 40px; /* Hacer el ícono grande */
+    color: #0d6efd; /* Azul para que combine con el fondo */
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.opinion-card .opinion-content {
+    flex-grow: 1;
+}
+
+.opinion-card .opinion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+}
+
+.opinion-card .opinion-author-name {
+    font-weight: bold;
+    color: #0d6efd;
+    font-size: 0.95rem;
+}
+
+.opinion-card .opinion-date {
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+.opinion-card .opinion-text {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #212529;
+    margin: 0;
+}
+
+#opinionesModal hr {
+    border-top: 1px solid #f8d7c4;
+    margin: 1.5rem 0;
+}
+
+/* ===================================================== */
+/* --- NUEVOS ESTILOS PARA LAS TARJETAS DE PRODUCTO --- */
+/* ===================================================== */
+.product-item .card {
+    border: 1px solid #f8d7c4;
+    border-radius: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08); /* Sombra más suave */
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background-color: #fff7f0;
+    height: 420px; /* Altura fija para la tarjeta completa */
+    min-height: 420px; /* Asegura que no sea más pequeña */
+    max-height: 420px; /* Asegura que no sea más grande */
+    display: flex;
+    flex-direction: column;
+    position: relative; /* Necesario para el overlay */
+    overflow: hidden; /* Para contener el overlay */
+}
+
+.product-item .card:hover {
+    transform: translateY(-3px); /* Efecto hover más sutil */
+    box-shadow: 0 6px 15px rgba(0,0,0,0.12); /* Sombra de hover más suave */
+}
+
+.product-item .card-img-top {
+    height: 200px; /* Altura fija para todas las imágenes */
+    object-fit: cover; /* Recorta la imagen para cubrir el área sin distorsionar */
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+}
+
+.product-item .card-body {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Permite que el body ocupe el espacio restante */
+    justify-content: space-between; /* Distribuye el espacio entre los elementos internos */
+}
+
+.product-item .card-title {
+    color: #4a2c2a;
+    font-weight: bold;
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+    white-space: nowrap; /* Evita que el título se rompa en varias líneas */
+    overflow: hidden; /* Oculta el texto que se desborda */
+    text-overflow: ellipsis; /* Añade puntos suspensivos al texto desbordado */
+    flex-shrink: 0; /* Evita que el título se encoja */
+}
+
+.product-item .card-text {
+    color: #6f4e37;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    height: 64px; /* Altura fija para la descripción (aprox. 3 líneas) */
+    overflow: hidden; /* Oculta el texto que se desborda */
+    display: -webkit-box;
+    -webkit-line-clamp: 3; /* Limita la descripción a 3 líneas */
+    -webkit-box-orient: vertical;
+    margin-bottom: 1rem;
+    flex-shrink: 0; /* Evita que la descripción se encoja */
+}
+
+.product-item .view-product-btn {
+    background-color: #d17a4b;
+    border-color: #d17a4b;
+    color: #fff;
+    font-weight: 600;
+    border-radius: 25px;
+    padding: 10px 15px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+    width: 100%; /* Asegura que el botón ocupe todo el ancho disponible */
+    margin-top: auto; /* Empuja el botón a la parte inferior de la tarjeta */
+    flex-shrink: 0; /* Evita que el botón se encoja */
+}
+
+.product-item .view-product-btn:hover {
+    background-color: #c0602c;
+    border-color: #c0602c;
+}
+
+/* --- Estilos para las insignias de stock --- */
+.stock-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 200px; /* Misma altura que la imagen */
+    background-color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2;
+    pointer-events: none; /* Para que no interfiera con el click */
+}
+
+.out-of-stock-badge {
+    color: #dc3545;
+    background-color: rgba(220, 53, 69, 0.1);
+    border: 2px solid #dc3545;
+    font-size: 1.8rem;
+    font-weight: bold;
+    padding: 10px 20px;
+    border-radius: 10px;
+    transform: rotate(-10deg);
+}
+
+.low-stock-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: #ffc107;
+    color: #333;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    z-index: 3;
+}
+
+
+/* ===================================================== */
+/* --- NUEVOS ESTILOS PARA EL MODAL DE DETALLES DEL PRODUCTO --- */
+/* ===================================================== */
+#productDetailModal .modal-content {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    background-color: #fdf6f0;
+}
+
+#productDetailModal .modal-header {
+    background-color: #d17a4b;
+    color: #fff;
+    border-bottom: none;
+    padding: 1.5rem;
+}
+
+#productDetailModal .modal-header .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+#productDetailModal .modal-title {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+#productDetailModal .modal-body {
+    padding: 1.5rem;
+    color: #4a2c2a;
+}
+
+#productDetailModal #modalProductName {
+    color: #4a2c2a;
+    font-weight: bold;
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+}
+
+#productDetailModal #modalProductDescription {
+    color: #6f4e37;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+#productDetailModal #modalProductPrice {
+    color: #d17a4b;
+    font-weight: bolder;
+    font-size: 2.2rem;
+}
+
+#productDetailModal #modalProductStock {
+    color: #4a2c2a;
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+}
+
+#productDetailModal .carousel-item img {
+    max-height: 350px; /* Altura máxima para las imágenes del carrusel */
+    object-fit: contain; /* Asegura que la imagen se ajuste sin recortarse */
+    background-color: #fdf6f0; /* Fondo para imágenes con transparencia */
+    border-radius: 10px;
+}
+
+#productDetailModal .carousel-control-prev-icon,
+#productDetailModal .carousel-control-next-icon {
+    background-color: rgba(74, 44, 42, 0.5); /* Color de fondo para los iconos de navegación */
+    border-radius: 50%;
+    padding: 10px;
+}
+
+#productDetailModal #modalAddToCartBtn {
+    background-color: #d17a4b;
+    border-color: #d17a4b;
+    color: #fff;
+    font-weight: bold;
+    border-radius: 25px;
+    padding: 12px 20px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+#productDetailModal #modalAddToCartBtn:hover {
+    background-color: #c0602c;
+    border-color: #c0602c;
+}
+
+/* ===================================================== */
+/* --- ESTILOS PARA EL JUEGO DE MEMORIA --- */
+/* ===================================================== */
+#memoryGameModal .modal-content {
+    background-color: #fdf6f0;
+    border: 2px solid #d17a4b;
+    border-radius: 15px;
+}
+
+#memoryGameModal .modal-header {
+    background-color: #d17a4b;
+    color: #fff;
+    border-bottom: none;
+}
+
+.memory-game-board {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    padding: 15px;
+    perspective: 1000px; /* Para el efecto 3D de volteo */
+}
+
+.memory-card {
+    width: 100%;
+    aspect-ratio: 1 / 1; /* Tarjetas cuadradas */
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.6s;
+    cursor: pointer;
+}
+
+.memory-card.flipped {
+    transform: rotateY(180deg);
+}
+
+.memory-card .front-face,
+.memory-card .back-face {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden; /* Oculta la cara trasera del elemento */
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #d17a4b;
+}
+
+.memory-card .front-face {
+    background-color: #f8d7c4;
+    border: 3px solid #fff;
+    font-size: 3rem;
+}
+
+.memory-card .back-face {
+    background-color: #fff;
+    transform: rotateY(180deg);
+    font-size: 2.5rem; /* Tamaño del ícono de postre */
+}
