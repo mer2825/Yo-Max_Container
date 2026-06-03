@@ -3,11 +3,13 @@ package com.example.acceso.controller;
 import com.example.acceso.model.Categoria;
 import com.example.acceso.model.PedidoWeb;
 import com.example.acceso.model.Producto;
+import com.example.acceso.model.Usuario;
 import com.example.acceso.model.VentaWeb;
 import com.example.acceso.service.CategoriaService;
 import com.example.acceso.service.PedidoWebService;
 import com.example.acceso.service.ProductoService;
 import com.example.acceso.service.VentaWebService;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -33,6 +35,16 @@ public class VentaWebController {
         this.productoService = productoService;
         this.categoriaService = categoriaService;
         this.pedidoWebService = pedidoWebService;
+    }
+
+    private boolean tienePermisoParaGestionar(HttpSession session) {
+        Usuario usuario = (Usuario) session.getAttribute("usuario");
+        if (usuario == null || usuario.getPerfil() == null) {
+            return false;
+        }
+        return usuario.getPerfil().getOpciones().stream()
+                .anyMatch(opcion -> "/pedidos_web/listar".equals(opcion.getRuta()) ||
+                                     "/ventas_web/listar".equals(opcion.getRuta()));
     }
 
     @GetMapping("")
@@ -96,9 +108,11 @@ public class VentaWebController {
 
     @PutMapping("/api/aprobar/{id}")
     @ResponseBody
-    public ResponseEntity<?> aprobarPedido(@PathVariable Long id) {
+    public ResponseEntity<?> aprobarPedido(@PathVariable Long id, HttpSession session) {
         try {
-            pedidoWebService.aprobarPedido(id, null);
+            Usuario usuario = (Usuario) session.getAttribute("usuario");
+            Long verificadoPorId = usuario != null ? usuario.getId() : null;
+            pedidoWebService.aprobarPedido(id, verificadoPorId);
             return ResponseEntity.ok(Map.of("success", true, "message", "Pedido aprobado con éxito"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
@@ -107,7 +121,10 @@ public class VentaWebController {
 
     @PutMapping("/api/rechazar/{id}")
     @ResponseBody
-    public ResponseEntity<?> rechazarPedido(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
+    public ResponseEntity<?> rechazarPedido(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body, HttpSession session) {
+        if (!tienePermisoParaGestionar(session)) {
+            return ResponseEntity.status(403).body(Map.of("success", false, "message", "No tienes permiso para realizar esta acción."));
+        }
         try {
             String motivo = body != null ? body.get("motivo") : null;
             pedidoWebService.rechazarPedido(id, null, motivo);
@@ -119,7 +136,10 @@ public class VentaWebController {
 
     @PostMapping("/api/procesar/{id}")
     @ResponseBody
-    public ResponseEntity<?> procesarVentaWeb(@PathVariable Long id) {
+    public ResponseEntity<?> procesarVentaWeb(@PathVariable Long id, HttpSession session) {
+        if (!tienePermisoParaGestionar(session)) {
+            return ResponseEntity.status(403).body(Map.of("success", false, "message", "No tienes permiso para realizar esta acción."));
+        }
         try {
             ventaWebService.procesarVentaWeb(id);
             return ResponseEntity.ok(Map.of("success", true, "message", "Venta procesada con éxito."));
@@ -130,12 +150,16 @@ public class VentaWebController {
 
     @DeleteMapping("/api/eliminar/{id}")
     @ResponseBody
-    public ResponseEntity<?> eliminarVentaWeb(@PathVariable Long id) {
+    public ResponseEntity<?> eliminarVentaWeb(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body, HttpSession session) {
+        if (!tienePermisoParaGestionar(session)) {
+            return ResponseEntity.status(403).body(Map.of("success", false, "message", "No tienes permiso para realizar esta acción."));
+        }
         try {
-            ventaWebService.eliminarVentaWeb(id);
-            return ResponseEntity.ok(Map.of("success", true, "message", "Venta web eliminada con éxito."));
+            String motivo = body != null ? body.get("motivo") : null;
+            pedidoWebService.eliminarPedido(id, motivo);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Pedido web anulado con éxito."));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Error al eliminar la venta web: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Error al anular el pedido web: " + e.getMessage()));
         }
     }
 

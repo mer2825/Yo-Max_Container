@@ -39,6 +39,16 @@ public class PedidoWebController {
         this.empresaService = empresaService;
     }
 
+    private boolean tienePermisoParaGestionar(HttpSession session) {
+        Usuario usuario = (Usuario) session.getAttribute("usuario");
+        if (usuario == null || usuario.getPerfil() == null) {
+            return false;
+        }
+        return usuario.getPerfil().getOpciones().stream()
+                .anyMatch(opcion -> "/pedidos_web/listar".equals(opcion.getRuta()) ||
+                                     "/ventas_web/listar".equals(opcion.getRuta()));
+    }
+
     @GetMapping("")
     public String listarPedidosWeb() {
         return "pedidos-web";
@@ -47,7 +57,10 @@ public class PedidoWebController {
 
     @PostMapping("/api/upload")
     @ResponseBody
-    public ResponseEntity<?> uploadVoucher(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<?> uploadVoucher(@RequestParam("file") MultipartFile file, HttpSession session) {
+        if (!tienePermisoParaGestionar(session)) {
+            return ResponseEntity.status(403).body(Map.of("success", false, "message", "No tienes permiso para realizar esta acción."));
+        }
         Map<String, Object> response = new HashMap<>();
         
         if (file.isEmpty()) {
@@ -183,7 +196,10 @@ public class PedidoWebController {
 
     @PostMapping("/api/aprobar/{id}")
     @ResponseBody
-    public ResponseEntity<?> aprobarPedido(@PathVariable Long id, @RequestParam Long verificadoPorId) {
+    public ResponseEntity<?> aprobarPedido(@PathVariable Long id, @RequestParam Long verificadoPorId, HttpSession session) {
+        if (!tienePermisoParaGestionar(session)) {
+            return ResponseEntity.status(403).body(Map.of("success", false, "message", "No tienes permiso para realizar esta acción."));
+        }
         try {
             PedidoWeb pedido = pedidoWebService.aprobarPedido(id, verificadoPorId);
             return ResponseEntity.ok(Map.of("success", true, "message", "Pedido aprobado con éxito", "data", pedido));
@@ -194,7 +210,10 @@ public class PedidoWebController {
 
     @PostMapping("/api/rechazar/{id}")
     @ResponseBody
-    public ResponseEntity<?> rechazarPedido(@PathVariable Long id, @RequestParam Long verificadoPorId, @RequestParam(required = false) String motivoRechazo) {
+    public ResponseEntity<?> rechazarPedido(@PathVariable Long id, @RequestParam Long verificadoPorId, @RequestParam(required = false) String motivoRechazo, HttpSession session) {
+        if (!tienePermisoParaGestionar(session)) {
+            return ResponseEntity.status(403).body(Map.of("success", false, "message", "No tienes permiso para realizar esta acción."));
+        }
         try {
             PedidoWeb pedido = pedidoWebService.rechazarPedido(id, verificadoPorId, motivoRechazo);
             return ResponseEntity.ok(Map.of("success", true, "message", "Pedido rechazado con éxito", "data", pedido));
@@ -205,7 +224,10 @@ public class PedidoWebController {
 
     @PostMapping("/api/procesar/{id}")
     @ResponseBody
-    public ResponseEntity<?> marcarComoProcesado(@PathVariable Long id) {
+    public ResponseEntity<?> marcarComoProcesado(@PathVariable Long id, HttpSession session) {
+        if (!tienePermisoParaGestionar(session)) {
+            return ResponseEntity.status(403).body(Map.of("success", false, "message", "No tienes permiso para realizar esta acción."));
+        }
         try {
             PedidoWeb pedido = pedidoWebService.marcarComoProcesado(id);
             return ResponseEntity.ok(Map.of("success", true, "message", "Pedido marcado como procesado con éxito", "data", pedido));
@@ -216,9 +238,12 @@ public class PedidoWebController {
 
     @DeleteMapping("/api/eliminar/{id}")
     @ResponseBody
-    public ResponseEntity<?> eliminarPedido(@PathVariable Long id) {
+    public ResponseEntity<?> eliminarPedido(@PathVariable Long id, HttpSession session) {
+        if (!tienePermisoParaGestionar(session)) {
+            return ResponseEntity.status(403).body(Map.of("success", false, "message", "No tienes permiso para realizar esta acción."));
+        }
         try {
-            pedidoWebService.eliminarPedido(id);
+            pedidoWebService.eliminarPedido(id, null);
             return ResponseEntity.ok(Map.of("success", true, "message", "Pedido eliminado con éxito"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));

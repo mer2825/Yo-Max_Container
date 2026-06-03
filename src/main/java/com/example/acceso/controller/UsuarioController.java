@@ -166,7 +166,10 @@ public class UsuarioController {
 
     @GetMapping("/api/{id}")
     @ResponseBody
-    public ResponseEntity<?> obtenerUsuario(@PathVariable Long id) {
+    public ResponseEntity<?> obtenerUsuario(@PathVariable Long id, HttpSession session) {
+        if (!tienePermisoParaGestionar(session)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success", false, "message", "No tienes permiso para realizar esta acción."));
+        }
         return usuarioService.obtenerUsuarioPorId(id)
                 .map(usuario -> ResponseEntity.ok(Map.of("success", true, "data", usuario)))
                 .orElse(ResponseEntity.notFound().build());

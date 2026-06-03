@@ -111,6 +111,7 @@ function cargarPedidos() {
     $.ajax({
         url: url,
         method: 'GET',
+        xhrFields: { withCredentials: true },
         success: function(response) {
             alert('Response recibida: ' + JSON.stringify(response));
             let pedidos = response.data;
@@ -150,6 +151,7 @@ function verDetalle(pedidoId) {
     $.ajax({
         url: `/pedidos_web/api/detalle/${pedidoId}`,
         method: 'GET',
+        xhrFields: { withCredentials: true },
         success: function(response) {
             if (response.success) {
                 pedidoSeleccionado = response.data;
@@ -252,12 +254,14 @@ function confirmarRechazo() {
     $.ajax({
         url: '/api/usuario-actual',
         method: 'GET',
+        xhrFields: { withCredentials: true },
         success: function(usuarioResponse) {
             const verificadoPorId = usuarioResponse.id;
-            
+
             $.ajax({
                 url: `/pedidos_web/api/rechazar/${pedidoSeleccionado.id}`,
                 method: 'POST',
+                xhrFields: { withCredentials: true },
                 data: {
                     verificadoPorId: verificadoPorId,
                     motivoRechazo: motivo
@@ -281,6 +285,7 @@ function confirmarRechazo() {
             $.ajax({
                 url: `/pedidos_web/api/rechazar/${pedidoSeleccionado.id}`,
                 method: 'POST',
+                xhrFields: { withCredentials: true },
                 data: {
                     verificadoPorId: 1,
                     motivoRechazo: motivo
@@ -311,12 +316,14 @@ function aprobarPedido() {
     $.ajax({
         url: '/api/usuario-actual',
         method: 'GET',
+        xhrFields: { withCredentials: true },
         success: function(usuarioResponse) {
             const verificadoPorId = usuarioResponse.id;
-            
+
             $.ajax({
                 url: `/pedidos_web/api/aprobar/${pedidoSeleccionado.id}`,
                 method: 'POST',
+                xhrFields: { withCredentials: true },
                 data: { verificadoPorId: verificadoPorId },
                 success: function(response) {
                     if (response.success) {
@@ -337,6 +344,7 @@ function aprobarPedido() {
             $.ajax({
                 url: `/pedidos_web/api/aprobar/${pedidoSeleccionado.id}`,
                 method: 'POST',
+                xhrFields: { withCredentials: true },
                 data: { verificadoPorId: 1 },
                 success: function(response) {
                     if (response.success) {

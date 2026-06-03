@@ -26,6 +26,7 @@ $(document).ready(function() {
                     console.log('Cantidad de datos:', data.data ? data.data.length : 0);
                     return data.data;
                 },
+                xhrFields: { withCredentials: true },
                 error: function(xhr, status, error) {
                     console.error('Error en AJAX:', error);
                     console.error('Status:', xhr.status);
@@ -44,7 +45,7 @@ $(document).ready(function() {
                         <button class="btn btn-sm btn-info action-view-voucher" data-id="${row.id}" data-voucher="${row.voucherImagen}" title="Ver Voucher"><i class="bi bi-eye"></i></button>
                         <button class="btn btn-sm btn-primary action-view-detail" data-id="${row.id}" title="Ver Detalle"><i class="bi bi-list-ul"></i></button>
                         <button class="btn btn-sm btn-success action-approve" data-id="${row.id}" title="Aprobar"><i class="bi bi-check-lg"></i></button>
-                        <button class="btn btn-sm btn-danger action-reject" data-id="${row.id}" title="Rechazar"><i class="bi bi-x-lg"></i></button>
+                        <button class="btn btn-sm btn-dark action-delete" data-id="${row.id}" title="Anular"><i class="bi bi-trash"></i></button>
                     `
                 }
             ],
@@ -57,7 +58,7 @@ $(document).ready(function() {
         $('#tablaPedidosWeb tbody').on('click', '.action-view-voucher', handleViewVoucher);
         $('#tablaPedidosWeb tbody').on('click', '.action-view-detail', handleViewDetail);
         $('#tablaPedidosWeb tbody').on('click', '.action-approve', handleApprove);
-        $('#tablaPedidosWeb tbody').on('click', '.action-reject', handleReject);
+        $('#tablaPedidosWeb tbody').on('click', '.action-delete', handleDelete);
 
         // Escuchar mensajes desde el iframe de edición para recargar la tabla
         window.addEventListener('message', function(event) {
@@ -80,36 +81,18 @@ $(document).ready(function() {
 
     function handleViewDetail() {
         const pedidoId = $(this).data('id');
-        
+
         $.ajax({
             url: `/ventas_web/api/detalle/${pedidoId}`,
             method: 'GET',
+            xhrFields: { withCredentials: true },
             success: function(response) {
                 if (response.success) {
                     const pedido = response.data;
-                    let detalleHtml = `
-                        <h5>Detalle del Pedido #${pedido.numeroPedido}</h5>
-                        <p><strong>Cliente:</strong> ${pedido.nombreCliente}</p>
-                        <p><strong>DNI:</strong> ${pedido.dniCliente}</p>
-                        <p><strong>Teléfono:</strong> ${pedido.telefonoCliente}</p>
-                        <p><strong>Fecha:</strong> ${new Date(pedido.fechaPedido).toLocaleString('es-PE')}</p>
-                        <p><strong>Método de Pago:</strong> ${pedido.metodoPago}</p>
-                        <p><strong>Total:</strong> S/ ${parseFloat(pedido.total).toFixed(2)}</p>
-                        <h6 class="mt-3">Items:</h6>
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Producto</th>
-                                    <th>Cantidad</th>
-                                    <th>Precio Unitario</th>
-                                    <th>Subtotal</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                    `;
+                    let itemsHtml = '';
                     
                     pedido.items.forEach(item => {
-                        detalleHtml += `
+                        itemsHtml += `
                             <tr>
                                 <td>${item.producto.nombre}</td>
                                 <td>${item.cantidad}</td>
@@ -118,58 +101,94 @@ $(document).ready(function() {
                             </tr>
                         `;
                     });
-                    
-                    detalleHtml += `
-                            </tbody>
-                        </table>
-                    `;
-                    
-                    alert(detalleHtml.replace(/<[^>]*>/g, '\n').replace(/\n+/g, '\n'));
+
+                    Swal.fire({
+                        title: `Detalle del Pedido #${pedido.numeroPedido}`,
+                        html: `
+                            <div style="text-align: left;">
+                                <p><strong>Cliente:</strong> ${pedido.nombreCliente}</p>
+                                <p><strong>DNI:</strong> ${pedido.dniCliente}</p>
+                                <p><strong>Teléfono:</strong> ${pedido.telefonoCliente}</p>
+                                <p><strong>Fecha:</strong> ${new Date(pedido.fechaPedido).toLocaleString('es-PE')}</p>
+                                <p><strong>Método de Pago:</strong> ${pedido.metodoPago}</p>
+                                <p><strong>Total:</strong> <span style="color: #28a745; font-weight: bold;">S/ ${parseFloat(pedido.total).toFixed(2)}</span></p>
+                                <h6 class="mt-3 mb-2">Items:</h6>
+                                <table class="table table-sm table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Producto</th>
+                                            <th>Cantidad</th>
+                                            <th>Precio Unitario</th>
+                                            <th>Subtotal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${itemsHtml}
+                                    </tbody>
+                                </table>
+                            </div>
+                        `,
+                        width: '600px',
+                        confirmButtonText: 'Cerrar',
+                        confirmButtonColor: '#0d6efd'
+                    });
                 } else {
-                    alert('Error al cargar el detalle: ' + response.message);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error al cargar el detalle: ' + response.message,
+                        confirmButtonColor: '#0d6efd'
+                    });
                 }
             },
             error: function(xhr, status, error) {
-                alert('Error al cargar el detalle: ' + error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al cargar el detalle: ' + error,
+                    confirmButtonColor: '#0d6efd'
+                });
             }
         });
     }
 
     function handleApprove() {
         const pedidoId = $(this).data('id');
-        if (confirm('¿Está seguro de aprobar este pedido?')) {
-            $.ajax({
-                url: `/ventas_web/api/aprobar/${pedidoId}`,
-                method: 'PUT',
-                success: function(response) {
-                    dataTable.ajax.reload();
-                    alert('Pedido aprobado con éxito');
-                },
-                error: function(xhr, status, error) {
-                    alert('Error al aprobar el pedido: ' + error);
-                }
-            });
-        }
-    }
-
-    function handleReject() {
-        const pedidoId = $(this).data('id');
-        const motivo = prompt('Por favor, ingrese el motivo de rechazo:');
-        if (motivo) {
-            $.ajax({
-                url: `/ventas_web/api/rechazar/${pedidoId}`,
-                method: 'PUT',
-                contentType: 'application/json',
-                data: JSON.stringify({ motivo: motivo }),
-                success: function(response) {
-                    dataTable.ajax.reload();
-                    alert('Pedido rechazado con éxito');
-                },
-                error: function(xhr, status, error) {
-                    alert('Error al rechazar el pedido: ' + error);
-                }
-            });
-        }
+        Swal.fire({
+            title: '¿Está seguro de aprobar este pedido?',
+            text: 'El pedido será marcado como aprobado y podrá ser procesado.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, aprobar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: `/ventas_web/api/aprobar/${pedidoId}`,
+                    method: 'PUT',
+                    xhrFields: { withCredentials: true },
+                    success: function(response) {
+                        dataTable.ajax.reload();
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Aprobado!',
+                            text: 'Pedido aprobado con éxito',
+                            confirmButtonColor: '#0d6efd'
+                        });
+                    },
+                    error: function(xhr, status, error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Error al aprobar el pedido: ' + error,
+                            confirmButtonColor: '#0d6efd'
+                        });
+                    }
+                });
+            }
+        });
     }
 
     function handleEdit() {
@@ -191,6 +210,7 @@ $(document).ready(function() {
             if (result.isConfirmed) {
                 $.ajax({
                     url: ENDPOINTS.process(ventaId), type: 'POST',
+                    xhrFields: { withCredentials: true },
                     success: function(response) {
                         showNotification(response.message, response.success ? 'success' : 'error');
                         if (response.success) dataTable.ajax.reload();
@@ -204,26 +224,47 @@ $(document).ready(function() {
     function handleDelete() {
         const ventaId = $(this).data('id');
         Swal.fire({
-            title: '¿Estás seguro de eliminar esta venta web?',
-            text: "Esta acción eliminará el registro permanentemente de la base de datos. No se podrá recuperar.",
+            title: '¿Estás seguro de anular esta venta web?',
+            text: "Esta acción anulará el pedido permanentemente de la base de datos. No se podrá recuperar.",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Sí, eliminarla',
-            cancelButtonText: 'Cancelar'
+            confirmButtonText: 'Sí, anularla',
+            cancelButtonText: 'Cancelar',
+            input: 'text',
+            inputPlaceholder: 'Motivo de anulación (opcional)',
+            inputValidator: (value) => {
+                // El motivo es opcional, así que siempre retornamos válido
+                return null;
+            }
         }).then(result => {
+            console.log('Resultado SweetAlert:', result);
             if (result.isConfirmed) {
+                const motivo = result.value || '';
+                console.log('Venta ID:', ventaId);
+                console.log('Motivo:', motivo);
+                console.log('URL:', ENDPOINTS.delete(ventaId));
                 $.ajax({
                     url: ENDPOINTS.delete(ventaId),
                     type: 'DELETE',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ motivo: motivo }),
+                    xhrFields: { withCredentials: true },
                     success: function(response) {
+                        console.log('Respuesta exitosa:', response);
                         showNotification(response.message, response.success ? 'success' : 'error');
                         if (response.success) {
                             dataTable.ajax.reload();
                         }
                     },
-                    error: (xhr) => showNotification(xhr.responseJSON?.message || 'Error al eliminar la venta web.', 'error')
+                    error: function(xhr, status, error) {
+                        console.error('Error en AJAX:', xhr);
+                        console.error('Status:', status);
+                        console.error('Error:', error);
+                        console.error('Response:', xhr.responseText);
+                        showNotification(xhr.responseJSON?.message || 'Error al anular la venta web.', 'error');
+                    }
                 });
             }
         });

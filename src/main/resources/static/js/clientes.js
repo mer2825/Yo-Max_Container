@@ -56,6 +56,7 @@ $(document).ready(function() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                credentials: 'include',
             };
             if (data) {
                 options.body = JSON.stringify(data);
@@ -101,7 +102,11 @@ $(document).ready(function() {
         dataTable = $('#tablaClientes').DataTable({
             responsive: true,
             processing: true,
-            ajax: { url: ajaxUrl, dataSrc: 'data' },
+            ajax: {
+                url: ajaxUrl,
+                dataSrc: 'data',
+                xhrFields: { withCredentials: true }
+            },
             columns: [
                 { data: 'id' },
                 { data: 'nombre' },

@@ -5,11 +5,9 @@ import com.example.acceso.model.Opcion;
 import com.example.acceso.model.Usuario;
 import com.example.acceso.service.EmpresaService;
 import com.example.acceso.service.LoginAttemptService;
-import com.example.acceso.service.RecaptchaService;
 import com.example.acceso.service.UsuarioService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,17 +23,12 @@ import java.util.Optional;
 @Controller
 public class LoginController {
     private final UsuarioService usuarioService;
-    private final EmpresaService empresaService; // Inyectar EmpresaService
-    private final RecaptchaService recaptchaService;
+    private final EmpresaService empresaService;
     private final LoginAttemptService loginAttemptService;
 
-    @Value("${google.recaptcha.key.site}")
-    private String recaptchaSiteKey;
-
-    public LoginController(UsuarioService usuarioService, EmpresaService empresaService, RecaptchaService recaptchaService, LoginAttemptService loginAttemptService) {
+    public LoginController(UsuarioService usuarioService, EmpresaService empresaService, LoginAttemptService loginAttemptService) {
         this.usuarioService = usuarioService;
-        this.empresaService = empresaService; // Añadir al constructor
-        this.recaptchaService = recaptchaService;
+        this.empresaService = empresaService;
         this.loginAttemptService = loginAttemptService;
     }
 
@@ -73,17 +66,27 @@ public class LoginController {
         // Cargar la información de la empresa y añadirla al modelo
         Empresa empresa = empresaService.getEmpresaInfo();
         model.addAttribute("empresa", empresa);
-        model.addAttribute("recaptchaSiteKey", recaptchaSiteKey);
 
         return "login";
     }
 
     @PostMapping("/login")
-    public String procesarLogin(@RequestParam String usuario, @RequestParam String clave, 
-            @RequestParam(name="g-recaptcha-response", required = false) String recaptchaResponse,
+    public String procesarLogin(@RequestParam String usuario, @RequestParam String clave,
             HttpSession session,
             HttpServletRequest request,
             RedirectAttributes redirectAttributes) {
+
+        // Validación de longitud de usuario
+        if (usuario == null || usuario.trim().isEmpty() || usuario.length() < 3 || usuario.length() > 50) {
+            redirectAttributes.addFlashAttribute("error", "El usuario debe tener entre 3 y 50 caracteres.");
+            return "redirect:/login";
+        }
+
+        // Validación de longitud de clave
+        if (clave == null || clave.trim().isEmpty() || clave.length() < 6) {
+            redirectAttributes.addFlashAttribute("error", "La contraseña debe tener como mínimo 6 caracteres.");
+            return "redirect:/login";
+        }
 
         String ip = getClientIP(request);
         String loginKey = ip + "-" + usuario; // Bloquear por IP y nombre de usuario
@@ -94,13 +97,6 @@ public class LoginController {
             session.setAttribute("lastLoginKey", loginKey);
             redirectAttributes.addFlashAttribute("bloqueoSegundos", remainingTime);
             return "redirect:/login";
-        }
-            
-        boolean isRecaptchaValid = recaptchaService.verificarRecaptcha(recaptchaResponse);
-        if(!isRecaptchaValid){
-            // TODO: Habilitar validación de reCAPTCHA cuando se resuelva el problema
-            // redirectAttributes.addFlashAttribute("error", "Por favor, completa el captcha.");
-            // return "redirect:/login";
         }
 
         Optional<Usuario> usuarioOpt = usuarioService.findByUsuario(usuario);

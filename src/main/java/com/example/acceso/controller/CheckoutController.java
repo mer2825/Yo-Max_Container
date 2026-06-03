@@ -41,6 +41,17 @@ public class CheckoutController {
         Empresa empresa = empresaService.getEmpresaInfo();
         model.addAttribute("usuarioLogueado", usuarioLogueado);
         model.addAttribute("empresaGlobal", empresa);
+
+        // Verificar si el usuario es administrador
+        boolean isAdmin = false;
+        if (usuarioLogueado != null && usuarioLogueado.getPerfil() != null) {
+            isAdmin = usuarioLogueado.getPerfil().getOpciones().stream()
+                    .anyMatch(opcion -> "/empresa".equals(opcion.getRuta()) ||
+                                         "/productos".equals(opcion.getRuta()) ||
+                                         "/ventas".equals(opcion.getRuta()));
+        }
+        model.addAttribute("isAdmin", isAdmin);
+
         return "checkout";
     }
 
