@@ -1,6 +1,10 @@
 package com.example.acceso.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 @Entity
 @Table(name = "clientes")
@@ -10,21 +14,31 @@ public class Cliente {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "El tipo de documento es obligatorio")
+    @Pattern(regexp = "DNI|RUC", message = "El tipo de documento debe ser DNI o RUC")
     @Column(nullable = false, length = 20)
     private String tipoDocumento; // DNI o RUC
 
+    @NotBlank(message = "El número de documento es obligatorio")
+    @Size(min = 8, max = 20, message = "El número de documento debe tener entre 8 y 20 caracteres")
     @Column(nullable = false, unique = true, length = 20)
     private String numeroDocumento;
 
+    @NotBlank(message = "El nombre es obligatorio")
+    @Size(min = 2, max = 255, message = "El nombre debe tener entre 2 y 255 caracteres")
     @Column(nullable = false, length = 255)
     private String nombre;
 
+    @Size(max = 255, message = "La dirección no puede exceder 255 caracteres")
     @Column(length = 255)
     private String direccion;
 
+    @Pattern(regexp = "^[0-9]{7,15}$", message = "El teléfono debe tener entre 7 y 15 dígitos")
     @Column(length = 50)
     private String telefono;
 
+    @Email(message = "El email debe tener un formato válido")
+    @Size(max = 100, message = "El email no puede exceder 100 caracteres")
     @Column(length = 100)
     private String email;
 

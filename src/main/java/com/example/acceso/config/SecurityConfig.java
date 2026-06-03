@@ -1,23 +1,118 @@
 package com.example.acceso.config;
 
+
+
 import org.springframework.context.annotation.Bean;
+
 import org.springframework.context.annotation.Configuration;
+
 import org.springframework.data.domain.AuditorAware;
+
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import org.springframework.security.web.SecurityFilterChain;
+
+import org.springframework.web.cors.CorsConfiguration;
+
+import org.springframework.web.cors.CorsConfigurationSource;
+
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+
+
+import java.util.Arrays;
+
+import java.util.List;
+
+
+
 @Configuration
+
 @EnableJpaAuditing(auditorAwareRef = "auditorAwareImpl")
+
+@EnableWebSecurity
+
 public class SecurityConfig {
 
-    @Bean
-    public AuditorAware<Long> auditorAware() {
-        return new AuditorAwareImpl();
-    }
+
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+
+    public AuditorAware<Long> auditorAware() {
+
+        return new AuditorAwareImpl();
+
     }
+
+
+
+    @Bean
+
+    public PasswordEncoder passwordEncoder() {
+
+        return new BCryptPasswordEncoder();
+
+    }
+
+
+
+    @Bean
+
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
+        http
+
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
+            .csrf(csrf -> csrf.disable())
+
+            .authorizeHttpRequests(auth -> auth
+
+                .requestMatchers("/", "/login", "/logout", "/css/**", "/js/**", "/images/**", "/uploads/**", "/favicon.ico", "/ws/**", "/inventario/**", "/inventario/**", "/inventario/api/**", "/ventas/**", "/ventas/api/**", "/ventas_web/**", "/ventas_web/api/**", "/ventas_web/api/**", "/ventas_web/api/guardar", "/ventas_web/api/listar", "/ventas_web/api/detalle/**", "/ventas_web/api/procesar/**", "/ventas_web/modificar/**", "/pedidos_web/**", "/pedidos_web/api/**", "/mis-pedidos", "/mis-pedidos/**", "/usuarios/**", "/usuarios/api/**", "/productos/**", "/productos/api/**", "/clientes/**", "/clientes/api/**", "/categorias/**", "/categorias/api/**", "/perfiles/**", "/perfiles/api/**", "/empresa/**", "/empresa/api/**", "/catalogo/**", "/catalogo/api/**", "/checkout/**", "/checkout/api/**", "/api/**", "/proveedores/**", "/proveedores/api/**").permitAll()
+
+                .anyRequest().authenticated()
+
+            );
+
+        return http.build();
+
+    }
+
+
+
+    @Bean
+
+    public CorsConfigurationSource corsConfigurationSource() {
+
+        CorsConfiguration configuration = new CorsConfiguration();
+
+        configuration.setAllowedOrigins(List.of("http://localhost:8080"));
+
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+
+        configuration.setAllowCredentials(true);
+
+        configuration.setMaxAge(3600L);
+
+
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration("/**", configuration);
+
+        return source;
+
+    }
+
 }
+

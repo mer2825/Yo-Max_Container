@@ -237,25 +237,11 @@
                 <i class="bi bi-arrow-right"></i>
             </button>
         </div>
-        <div class="customer-details mb-3">
-            <h5>Datos del Cliente</h5>
-            <div class="mb-2">
-                <label for="customer-name" class="form-label">Nombres</label>
-                <input type="text" class="form-control" id="customer-name" placeholder="Nombres completos">
-            </div>
-            <div class="mb-2">
-                <label for="customer-dni" class="form-label">DNI</label>
-                <input type="text" class="form-control" id="customer-dni" placeholder="Número de DNI" maxlength="8" pattern="[0-9]*">
-                <div id="dni-validation-message" class="text-danger mt-1" style="display: none; font-size: 0.875em;">
-                    El DNI debe tener 8 dígitos numéricos.
-                </div>
-            </div>
-            <p class="text-danger mt-2">Ingrese sus datos básicos</p>
-        </div>
         <div id="cart-items" class="mt-4"></div>
         <div class="mt-4">
             <p class="fw-bold">Total: S/ <span id="cart-total">0.00</span></p>
             <button id="btn-finalizar-compra" class="btn btn-primary w-100">Ir al Checkout</button>
+            <p class="text-muted small text-center mt-2">Ingresarás tus datos en el siguiente paso.</p>
         </div>
     </div>
 </div>

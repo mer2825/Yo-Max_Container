@@ -9,7 +9,7 @@ public interface VentaWebService {
     VentaWeb guardarVentaWeb(VentaWeb ventaWeb);
     List<VentaWeb> listarTodasLasVentasWeb();
     void procesarVentaWeb(Long idVentaWeb);
-    void eliminarVentaWeb(Long idVentaWeb);
+    void eliminarVentaWeb(Long idVentaWeb, String motivo);
     Optional<VentaWeb> obtenerVentaWebPorId(Long idVentaWeb);
     VentaWeb actualizarVentaWeb(Long id, VentaWeb ventaWebActualizada);
 }

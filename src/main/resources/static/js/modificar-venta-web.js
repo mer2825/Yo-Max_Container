@@ -188,7 +188,7 @@ $(document).ready(function() {
         }
 
         try {
-            const response = await fetch(`/clientes/api/buscar-o-crear?tipo=${tipoDocumento}&numero=${numeroDocumento}`);
+            const response = await fetch(`/clientes/api/buscar-o-crear?tipo=${tipoDocumento}&numero=${numeroDocumento}`, { credentials: 'include' });
             const result = await response.json();
 
             if (result.success) {

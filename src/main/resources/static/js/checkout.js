@@ -13,13 +13,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const fileError = document.getElementById('fileError');
     const checkoutForm = document.getElementById('checkoutForm');
     const confirmBtn = document.getElementById('confirmBtn');
+    const continueToPaymentBtn = document.getElementById('continueToPaymentBtn');
+    const backToStep1Btn = document.getElementById('backToStep1Btn');
     const cartItems = document.getElementById('cartItems');
     const subtotalAmount = document.getElementById('subtotalAmount');
     const totalAmount = document.getElementById('totalAmount');
     const paymentAmount = document.getElementById('paymentAmount');
+    const ultraCompactSummary = document.getElementById('ultraCompactSummary');
 
     let uploadedFile = null;
     let cartData = [];
+    let currentStep = 1;
 
     // Cargar carrito desde localStorage
     function loadCart() {
@@ -33,29 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Si no hay carrito, redirigir al catálogo
             console.log('No cart found, redirecting to /');
             window.location.href = '/';
-        }
-        
-        // Cargar datos del cliente del localStorage (si vienen del catálogo)
-        loadClienteData();
-    }
-    
-    // Cargar datos del cliente del localStorage
-    function loadClienteData() {
-        const clienteData = localStorage.getItem('clienteData');
-        if (clienteData) {
-            const data = JSON.parse(clienteData);
-            const nombreCliente = document.getElementById('nombreCliente');
-            const dniCliente = document.getElementById('dniCliente');
-            
-            if (nombreCliente && data.nombre) {
-                nombreCliente.value = data.nombre;
-            }
-            if (dniCliente && data.dni) {
-                dniCliente.value = data.dni;
-            }
-            
-            // Limpiar localStorage después de usar los datos
-            localStorage.removeItem('clienteData');
         }
     }
 
@@ -96,7 +77,121 @@ document.addEventListener('DOMContentLoaded', function() {
         subtotalAmount.textContent = `S/ ${subtotal.toFixed(2)}`;
         totalAmount.textContent = `S/ ${total.toFixed(2)}`;
         paymentAmount.textContent = `S/ ${total.toFixed(2)}`;
+
+        // Generar resumen ultra-compacto
+        generateUltraCompactSummary(total);
     }
+
+    // Generar resumen ultra-compacto
+    function generateUltraCompactSummary(total) {
+        if (cartData.length === 0) return;
+
+        let summaryText = '';
+        if (cartData.length === 1) {
+            const item = cartData[0];
+            const nombre = item.nombre || item.name;
+            const cantidad = item.cantidad || item.quantity;
+            summaryText = `${nombre} x${cantidad}`;
+        } else {
+            const firstItem = cartData[0];
+            const nombre = firstItem.nombre || firstItem.name;
+            const cantidad = firstItem.cantidad || firstItem.quantity;
+            const remainingCount = cartData.length - 1;
+            summaryText = `${nombre} x${cantidad} + ${remainingCount} producto${remainingCount > 1 ? 's' : ''} más`;
+        }
+
+        summaryText += ` · Total: S/ ${total.toFixed(2)}`;
+        ultraCompactSummary.textContent = summaryText;
+    }
+
+    // Navegar entre pantallas
+    function goToStep(step) {
+        currentStep = step;
+
+        // Ocultar todas las pantallas
+        document.querySelectorAll('.checkout-screen').forEach(screen => {
+            screen.classList.remove('active');
+        });
+
+        // Mostrar la pantalla correspondiente
+        if (step === 1) {
+            document.getElementById('screen1').classList.add('active');
+            updateProgressBar(2);
+        } else if (step === 2) {
+            document.getElementById('screen2').classList.add('active');
+            updateProgressBar(3);
+        } else if (step === 3) {
+            document.getElementById('screen3').classList.add('active');
+            updateProgressBar(4);
+        }
+    }
+
+    // Actualizar barra de progreso
+    function updateProgressBar(activeStep) {
+        document.querySelectorAll('.step').forEach((stepEl, index) => {
+            const stepNumber = index + 1;
+            stepEl.classList.remove('completed', 'active');
+
+            if (stepNumber < activeStep) {
+                stepEl.classList.add('completed');
+            } else if (stepNumber === activeStep) {
+                stepEl.classList.add('active');
+            }
+        });
+    }
+
+    // Validar paso 1
+    function validateStep1() {
+        const nombreCliente = document.getElementById('nombreCliente').value.trim();
+        const dniCliente = document.getElementById('dniCliente').value.trim();
+        const telefonoCliente = document.getElementById('telefonoCliente').value.trim();
+        const dniError = document.getElementById('dni-error');
+
+        const dniRegex = /^[0-9]{8}$/;
+        const telefonoRegex = /^[0-9]{9}$/;
+
+        // Ocultar mensaje de error DNI
+        if (dniError) {
+            dniError.style.display = 'none';
+        }
+
+        if (!nombreCliente) {
+            alert('Por favor, ingresa tu nombre completo.');
+            return false;
+        }
+
+        if (!dniCliente || !dniRegex.test(dniCliente)) {
+            if (dniError) {
+                dniError.style.display = 'block';
+            }
+            return false;
+        }
+
+        if (!telefonoCliente || !telefonoRegex.test(telefonoCliente)) {
+            alert('Por favor, ingresa un teléfono válido de 9 dígitos.');
+            return false;
+        }
+
+        return true;
+    }
+
+    // Validar DNI en tiempo real
+    document.getElementById('dniCliente').addEventListener('input', function() {
+        const dniCliente = this.value.trim();
+        const dniError = document.getElementById('dni-error');
+        const dniRegex = /^[0-9]{8}$/;
+
+        // Solo permitir números
+        this.value = this.value.replace(/[^0-9]/g, '');
+
+        if (dniError) {
+            if (dniCliente.length > 0 && !dniRegex.test(dniCliente)) {
+                dniError.style.display = 'block';
+            } else {
+                dniError.style.display = 'none';
+            }
+        }
+    });
 
     // Validar archivo
     function validateFile(file) {
@@ -135,17 +230,9 @@ document.addEventListener('DOMContentLoaded', function() {
         validateForm();
     }
 
-    // Validar formulario
+    // Validar formulario paso 2 (solo archivo)
     function validateForm() {
-        const nombreCliente = document.getElementById('nombreCliente').value.trim();
-        const dniCliente = document.getElementById('dniCliente').value.trim();
-        const telefonoCliente = document.getElementById('telefonoCliente').value.trim();
-
-        const isFormValid = nombreCliente && 
-                           dniCliente && 
-                           telefonoCliente && 
-                           uploadedFile;
-
+        const isFormValid = uploadedFile;
         confirmBtn.disabled = !isFormValid;
     }
 
@@ -198,15 +285,20 @@ document.addEventListener('DOMContentLoaded', function() {
         validateForm();
     }
 
-    // Event listeners para validación de formulario
-    document.getElementById('nombreCliente').addEventListener('input', validateForm);
-    document.getElementById('dniCliente').addEventListener('input', validateForm);
-    document.getElementById('telefonoCliente').addEventListener('input', validateForm);
+    // Event listener para botón "Continuar al pago"
+    continueToPaymentBtn.addEventListener('click', () => {
+        if (validateStep1()) {
+            goToStep(2);
+        }
+    });
 
-    // Enviar formulario
-    checkoutForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    // Event listener para botón "Volver"
+    backToStep1Btn.addEventListener('click', () => {
+        goToStep(1);
+    });
 
+    // Enviar pedido
+    confirmBtn.addEventListener('click', async () => {
         if (!uploadedFile) {
             fileError.textContent = 'Debes subir el comprobante de pago';
             fileError.style.display = 'block';
@@ -274,10 +366,10 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.removeItem('cart');
             updateCartCount();
 
-            // Mostrar modal de confirmación
-            document.getElementById('orderNumber').textContent = pedidoResult.pedidoId;
-            const modal = new bootstrap.Modal(document.getElementById('confirmationModal'));
-            modal.show();
+            // Mostrar pantalla de confirmación
+            document.getElementById('confirmationOrderNumber').textContent = pedidoResult.pedidoId;
+            document.getElementById('confirmationPhone').textContent = telefonoCliente;
+            goToStep(3);
 
         } catch (error) {
             console.error('Error:', error);
@@ -297,7 +389,34 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Verificar configuración Yape y mostrar alerta para admin si está vacía
+    function checkYapeConfig() {
+        const yapeConfigAlert = document.getElementById('yapeConfigAlert');
+        if (!yapeConfigAlert) return;
+
+        // Verificar si el usuario es administrador
+        const mainElement = document.querySelector('.checkout-container');
+        const isAdmin = mainElement && mainElement.getAttribute('data-is-admin') === 'true';
+
+        if (!isAdmin) return; // Solo mostrar alerta para administradores
+
+        // Verificar si los campos Yape están vacíos en el HTML
+        const yapeNumberElement = document.querySelector('.yape-number');
+        const yapeTitularElement = document.querySelector('.payment-section .fs-4');
+
+        if (yapeNumberElement && yapeTitularElement) {
+            const yapeNumber = yapeNumberElement.textContent.trim();
+            const yapeTitular = yapeTitularElement.textContent.trim();
+
+            // Si están vacíos o son "---", mostrar alerta
+            if ((yapeNumber === '---' || yapeNumber === '') && (yapeTitular === '---' || yapeTitular === '')) {
+                yapeConfigAlert.classList.remove('d-none');
+            }
+        }
+    }
+
     // Inicializar
     loadCart();
-    validateForm();
+    updateProgressBar(2); // Inicializar barra de progreso en paso 2 (Mis datos)
+    checkYapeConfig(); // Verificar configuración Yape
 });

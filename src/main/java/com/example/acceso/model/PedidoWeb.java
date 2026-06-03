@@ -2,6 +2,7 @@ package com.example.acceso.model;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,6 +15,8 @@ public class PedidoWeb extends Auditable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "El número de pedido es obligatorio")
+    @Size(min = 5, max = 20, message = "El número de pedido debe tener entre 5 y 20 caracteres")
     @Column(nullable = false, unique = true, length = 20)
     private String numeroPedido;
 
@@ -21,12 +24,18 @@ public class PedidoWeb extends Auditable {
     @JoinColumn(name = "cliente_id", nullable = true)
     private Usuario cliente;
 
+    @NotBlank(message = "El nombre del cliente es obligatorio")
+    @Size(min = 2, max = 100, message = "El nombre del cliente debe tener entre 2 y 100 caracteres")
     @Column(nullable = false, length = 100)
     private String nombreCliente;
 
+    @NotBlank(message = "El DNI del cliente es obligatorio")
+    @Size(min = 8, max = 20, message = "El DNI del cliente debe tener entre 8 y 20 caracteres")
     @Column(nullable = false, length = 20)
     private String dniCliente;
 
+    @NotBlank(message = "El teléfono del cliente es obligatorio")
+    @Pattern(regexp = "^[0-9]{7,15}$", message = "El teléfono debe tener entre 7 y 15 dígitos")
     @Column(nullable = false, length = 20)
     private String telefonoCliente;
 
@@ -34,18 +43,26 @@ public class PedidoWeb extends Auditable {
     @JsonManagedReference
     private List<DetallePedidoWeb> items;
 
+    @NotNull(message = "El subtotal es obligatorio")
+    @DecimalMin(value = "0.00", message = "El subtotal debe ser mayor o igual a 0")
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
 
+    @DecimalMin(value = "0.00", message = "El descuento debe ser mayor o igual a 0")
     @Column(precision = 10, scale = 2)
     private BigDecimal descuento;
 
+    @NotNull(message = "El total es obligatorio")
+    @DecimalMin(value = "0.01", message = "El total debe ser mayor a 0")
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal total;
 
+    @NotBlank(message = "El método de pago es obligatorio")
+    @Size(min = 3, max = 50, message = "El método de pago debe tener entre 3 y 50 caracteres")
     @Column(nullable = false, length = 50)
     private String metodoPago;
 
+    @Size(max = 500, message = "La imagen del voucher no puede exceder 500 caracteres")
     @Column(length = 500)
     private String voucherImagen;
 
@@ -53,9 +70,11 @@ public class PedidoWeb extends Auditable {
     @Column(nullable = false, length = 20)
     private EstadoPedidoWeb estado = EstadoPedidoWeb.PENDIENTE;
 
+    @Size(max = 500, message = "El motivo de rechazo no puede exceder 500 caracteres")
     @Column(length = 500)
     private String motivoRechazo;
 
+    @NotNull(message = "La fecha del pedido es obligatoria")
     @Column(nullable = false)
     private LocalDateTime fechaPedido;
 
@@ -66,7 +85,7 @@ public class PedidoWeb extends Auditable {
     @JoinColumn(name = "verificado_por")
     private Usuario verificadoPor;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "venta_id")
     private Venta venta;
 

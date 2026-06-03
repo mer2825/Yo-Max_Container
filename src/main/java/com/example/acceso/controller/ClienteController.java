@@ -3,6 +3,7 @@ package com.example.acceso.controller;
 import com.example.acceso.model.Cliente;
 import com.example.acceso.service.ClienteService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.*;
 import org.springframework.stereotype.Controller;
@@ -23,7 +24,8 @@ public class ClienteController {
     private final ClienteService clienteService;
     private final RestTemplate restTemplate;
 
-    private final String API_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozNDYsImV4cCI6MTc2MDM3Njc5NH0.Ow-U3j-J2A2cIV5Z_X9lKs-kHGasITmsD9aDhGPm37Q";
+    @Value("${api.external.token}")
+    private String apiToken;
 
     @Autowired
     public ClienteController(ClienteService clienteService, RestTemplate restTemplate) {
@@ -83,7 +85,7 @@ public class ClienteController {
         String tipoForUrl = tipo.toLowerCase(); // Asegurarse de que 'tipo' sea minúscula para la URL
         String url = "https://miapi.cloud/v1/" + tipoForUrl + "/" + numero;
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + API_TOKEN);
+        headers.set("Authorization", "Bearer " + apiToken);
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
         try {
