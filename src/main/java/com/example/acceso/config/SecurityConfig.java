@@ -76,9 +76,7 @@ public class SecurityConfig {
 
             .authorizeHttpRequests(auth -> auth
 
-                .requestMatchers("/", "/login", "/logout", "/css/**", "/js/**", "/images/**", "/uploads/**", "/favicon.ico", "/ws/**", "/inventario/**", "/inventario/**", "/inventario/api/**", "/ventas/**", "/ventas/api/**", "/ventas_web/**", "/ventas_web/api/**", "/ventas_web/api/**", "/ventas_web/api/guardar", "/ventas_web/api/listar", "/ventas_web/api/detalle/**", "/ventas_web/api/procesar/**", "/ventas_web/modificar/**", "/pedidos_web/**", "/pedidos_web/api/**", "/mis-pedidos", "/mis-pedidos/**", "/usuarios/**", "/usuarios/api/**", "/productos/**", "/productos/api/**", "/clientes/**", "/clientes/api/**", "/categorias/**", "/categorias/api/**", "/perfiles/**", "/perfiles/api/**", "/empresa/**", "/empresa/api/**", "/catalogo/**", "/catalogo/api/**", "/checkout/**", "/checkout/api/**", "/api/**", "/proveedores/**", "/proveedores/api/**").permitAll()
-
-                .anyRequest().authenticated()
+                .requestMatchers("/**").permitAll()
 
             );
 

@@ -99,6 +99,8 @@ $(document).ready(function() {
             telefono: $('#telefono').val(),
             email: $('#email').val(),
             nosotros: $('#nosotros').val(),
+            numeroYape: $('#numeroYape').val(),
+            titularYape: $('#titularYape').val(),
             logoUrl: logoUrl, // Usar la URL del logo (antigua o nueva)
             productosDestacados: productosDestacados
         };

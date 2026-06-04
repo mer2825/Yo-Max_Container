@@ -348,7 +348,44 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btnFinalizarCompra) {
         btnFinalizarCompra.addEventListener('click', () => {
             if (cart.length === 0) {
-                alert('Tu carrito está vacío. Agrega productos antes de continuar.');
+                // Mostrar modal estilizado en lugar de alert básica
+                const modalHTML = `
+                    <div class="modal fade" id="emptyCartModal" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-0 shadow-lg">
+                                <div class="modal-header border-bottom-0 bg-danger text-white">
+                                    <h5 class="modal-title"><i class="bi bi-cart-x"></i> Carrito Vacío</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body text-center py-4">
+                                    <div class="mb-3">
+                                        <i class="bi bi-cart-x" style="font-size: 4rem; color: #dc3545;"></i>
+                                    </div>
+                                    <h4 class="mb-3">Tu carrito está vacío</h4>
+                                    <p class="text-muted">Agrega productos antes de continuar con el checkout.</p>
+                                </div>
+                                <div class="modal-footer border-top-0">
+                                    <button type="button" class="btn btn-primary w-100" data-bs-dismiss="modal">
+                                        <i class="bi bi-cart-plus me-2"></i>Agregar Productos
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Eliminar modal existente si hay uno
+                const existingModal = document.getElementById('emptyCartModal');
+                if (existingModal) {
+                    existingModal.remove();
+                }
+                
+                // Agregar nuevo modal
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+                // Mostrar el modal
+                const modal = new bootstrap.Modal(document.getElementById('emptyCartModal'));
+                modal.show();
                 return;
             }
 

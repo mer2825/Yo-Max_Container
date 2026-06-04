@@ -182,7 +182,36 @@ $(document).ready(function() {
     }
 
     function filtrarProductos() {
-        // ... (código sin cambios)
+        const filtroNombre = $('#filtroNombre').val().toLowerCase();
+        const filtroPrecioMin = parseFloat($('#filtroPrecioMin').val()) || 0;
+        const filtroPrecioMax = parseFloat($('#filtroPrecioMax').val()) || Infinity;
+
+        $('.product-list-item').each(function() {
+            const item = $(this);
+            const nombre = item.data('product-nombre').toLowerCase();
+            const precio = parseFloat(item.data('product-precio'));
+
+            const cumpleNombre = nombre.includes(filtroNombre);
+            const cumplePrecioMin = precio >= filtroPrecioMin;
+            const cumplePrecioMax = precio <= filtroPrecioMax;
+
+            if (cumpleNombre && cumplePrecioMin && cumplePrecioMax) {
+                item.show();
+            } else {
+                item.hide();
+            }
+        });
+
+        // Ocultar categorías que no tengan productos visibles
+        $('.category-group').each(function() {
+            const group = $(this);
+            const productosVisibles = group.find('.product-list-item:visible').length;
+            if (productosVisibles === 0) {
+                group.hide();
+            } else {
+                group.show();
+            }
+        });
     }
 
     function agregarAlCarrito(e) {

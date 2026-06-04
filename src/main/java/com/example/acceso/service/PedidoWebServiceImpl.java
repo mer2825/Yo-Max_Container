@@ -176,11 +176,24 @@ public class PedidoWebServiceImpl implements PedidoWebService {
 
         venta.setCliente(cliente);
 
-        // Crear detalles de venta
+        // Crear detalles de venta y actualizar stock
         List<DetalleVenta> detallesVenta = new ArrayList<>();
         for (DetallePedidoWeb detalleWeb : pedido.getItems()) {
+            Producto producto = productoRepository.findById(detalleWeb.getProducto().getId())
+                    .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + detalleWeb.getProducto().getId()));
+
+            // Validar stock suficiente
+            if (producto.getStock() < detalleWeb.getCantidad()) {
+                throw new RuntimeException("Stock insuficiente para el producto: " + producto.getNombre() +
+                        ". Stock disponible: " + producto.getStock() + ", Cantidad solicitada: " + detalleWeb.getCantidad());
+            }
+
+            // Restar stock
+            producto.setStock(producto.getStock() - detalleWeb.getCantidad());
+            productoRepository.save(producto);
+
             DetalleVenta detalleVenta = new DetalleVenta();
-            detalleVenta.setProducto(detalleWeb.getProducto());
+            detalleVenta.setProducto(producto);
             detalleVenta.setCantidad(detalleWeb.getCantidad());
             detalleVenta.setPrecioUnitario(detalleWeb.getPrecioUnitario());
             detalleVenta.setSubtotal(detalleWeb.getSubtotal());
