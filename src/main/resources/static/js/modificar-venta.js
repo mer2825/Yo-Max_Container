@@ -131,6 +131,12 @@ $(document).ready(function() {
         }
     }
 
+    function mapTipoComprobante(value) {
+        if (value === 'factura') return 'Factura';
+        if (value === 'boleta') return 'Boleta';
+        return 'Nota de Venta';
+    }
+
     function updateFormularioUI() {
         const tipoComprobante = $('#tipoComprobanteVenta').val();
         const seccionCliente = $('#seccionCliente');
@@ -140,16 +146,16 @@ $(document).ready(function() {
         seccionCliente.hide();
         tipoDocumentoSelect.prop('disabled', false);
 
+        const comprobanteFinal = mapTipoComprobante(tipoComprobante);
+        inputComprobanteFinal.val(comprobanteFinal);
+
         if (tipoComprobante === 'factura') {
-            inputComprobanteFinal.val('Factura');
             tipoDocumentoSelect.val('ruc').prop('disabled', true);
             seccionCliente.show();
         } else if (tipoComprobante === 'boleta') {
-            inputComprobanteFinal.val('Boleta');
             tipoDocumentoSelect.val('dni').prop('disabled', true);
             seccionCliente.show();
         } else {
-            inputComprobanteFinal.val('Nota de Venta');
             limpiarCliente(false);
         }
         
@@ -338,7 +344,7 @@ $(document).ready(function() {
         }
 
         const ventaData = {
-            tipoComprobante: $('#tipoComprobante').val() || $('#tipoComprobanteVenta').val(),
+            tipoComprobante: mapTipoComprobante($('#tipoComprobanteVenta').val()),
             cliente: { id: clienteId },
             metodoPago: $('#metodoPago').val(),
             nota: $('#notaVenta').val(),

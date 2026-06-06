@@ -214,7 +214,11 @@ public class VentaServiceImpl implements VentaService {
         }
 
         // Actualizar datos maestros de la venta
-        ventaExistente.setCliente(ventaActualizada.getCliente());
+        if (ventaActualizada.getCliente() != null && ventaActualizada.getCliente().getId() != null) {
+            Cliente cliente = clienteRepository.findById(ventaActualizada.getCliente().getId())
+                    .orElseThrow(() -> new RuntimeException("Cliente no encontrado con id: " + ventaActualizada.getCliente().getId()));
+            ventaExistente.setCliente(cliente);
+        }
         ventaExistente.setMetodoPago(ventaActualizada.getMetodoPago());
         ventaExistente.setTipoComprobante(ventaActualizada.getTipoComprobante());
         
