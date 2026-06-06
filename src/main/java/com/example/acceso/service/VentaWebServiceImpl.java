@@ -89,10 +89,16 @@ public class VentaWebServiceImpl implements VentaWebService {
 
     @Override
     @Transactional
-    public void eliminarVentaWeb(Long idVentaWeb) {
-        if (!ventaWebRepository.existsById(idVentaWeb)) {
-            throw new RuntimeException("No se encontró la venta web con id: " + idVentaWeb);
+    public void eliminarVentaWeb(Long idVentaWeb, String motivo) {
+        VentaWeb ventaWeb = ventaWebRepository.findById(idVentaWeb)
+                .orElseThrow(() -> new RuntimeException("No se encontró la venta web con id: " + idVentaWeb));
+        
+        // Guardar el motivo de anulación en el campo nota
+        if (motivo != null && !motivo.trim().isEmpty()) {
+            ventaWeb.setNota("ANULADO: " + motivo);
+            ventaWebRepository.save(ventaWeb);
         }
+        
         ventaWebRepository.deleteById(idVentaWeb);
     }
 

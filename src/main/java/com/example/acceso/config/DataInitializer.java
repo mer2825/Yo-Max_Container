@@ -46,7 +46,7 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         crearOpcionesDeMenu();
         crearPerfilAdminConTodasLasOpciones();
-        crearClienteSiNoExiste("Consumidor Final", "-", "-", "-");
+        crearClienteSiNoExiste("Consumidor Final", "DNI", "00000000", "Sin dirección");
         garantizarUsuarioAdmin();
     }
 

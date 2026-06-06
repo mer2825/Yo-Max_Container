@@ -195,8 +195,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const cartCount = document.getElementById('cart-count');
     const cartTotal = document.getElementById('cart-total');
     const btnFinalizarCompra = document.getElementById('btn-finalizar-compra');
-    const customerDniInput = document.getElementById('customer-dni');
-    const dniValidationMessage = document.getElementById('dni-validation-message');
 
     let cart = [];
     let discountApplied = false;
@@ -347,55 +345,49 @@ document.addEventListener('DOMContentLoaded', function() {
         updateQuantity(productId, target.value);
     });
 
-    const validateDni = () => {
-        const dni = customerDniInput.value;
-        const dniRegex = /^[0-9]{8}$/;
-        if (dniRegex.test(dni)) {
-            customerDniInput.classList.remove('is-invalid');
-            dniValidationMessage.style.display = 'none';
-            return true;
-        } else {
-            customerDniInput.classList.add('is-invalid');
-            dniValidationMessage.style.display = 'block';
-            return false;
-        }
-    };
-
-    if (customerDniInput) {
-        customerDniInput.addEventListener('input', () => {
-            // Solo permite números
-            customerDniInput.value = customerDniInput.value.replace(/[^0-9]/g, '');
-            validateDni();
-        });
-    }
-
     if (btnFinalizarCompra) {
         btnFinalizarCompra.addEventListener('click', () => {
-            const customerName = document.getElementById('customer-name').value.trim();
-
-            if (!validateDni()) {
-                alert('Por favor, corrige los errores en el formulario.');
-                return;
-            }
-
-            const customerDni = customerDniInput.value;
-
             if (cart.length === 0) {
-                alert('Tu carrito está vacío. Agrega productos antes de continuar.');
+                // Mostrar modal estilizado en lugar de alert básica
+                const modalHTML = `
+                    <div class="modal fade" id="emptyCartModal" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-0 shadow-lg">
+                                <div class="modal-header border-bottom-0 bg-danger text-white">
+                                    <h5 class="modal-title"><i class="bi bi-cart-x"></i> Carrito Vacío</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body text-center py-4">
+                                    <div class="mb-3">
+                                        <i class="bi bi-cart-x" style="font-size: 4rem; color: #dc3545;"></i>
+                                    </div>
+                                    <h4 class="mb-3">Tu carrito está vacío</h4>
+                                    <p class="text-muted">Agrega productos antes de continuar con el checkout.</p>
+                                </div>
+                                <div class="modal-footer border-top-0">
+                                    <button type="button" class="btn btn-primary w-100" data-bs-dismiss="modal">
+                                        <i class="bi bi-cart-plus me-2"></i>Agregar Productos
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Eliminar modal existente si hay uno
+                const existingModal = document.getElementById('emptyCartModal');
+                if (existingModal) {
+                    existingModal.remove();
+                }
+                
+                // Agregar nuevo modal
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+                // Mostrar el modal
+                const modal = new bootstrap.Modal(document.getElementById('emptyCartModal'));
+                modal.show();
                 return;
             }
-
-            if (!customerName) {
-                alert('Por favor, ingresa tu nombre para continuar.');
-                return;
-            }
-
-            // Guardar datos del cliente en localStorage para el checkout
-            const clienteData = {
-                nombre: customerName,
-                dni: customerDni
-            };
-            localStorage.setItem('clienteData', JSON.stringify(clienteData));
 
             // Guardar el carrito en localStorage para el checkout
             localStorage.setItem('cart', JSON.stringify(cart));

@@ -3,8 +3,10 @@ package com.example.acceso.controller;
 import com.example.acceso.dto.AuditDetailsDto;
 import com.example.acceso.model.Producto;
 import com.example.acceso.model.ProductoImagen;
+import com.example.acceso.model.Usuario;
 import com.example.acceso.service.CategoriaService;
 import com.example.acceso.service.ProductoService;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +31,15 @@ public class ProductoController {
     public ProductoController(ProductoService productoService, CategoriaService categoriaService) {
         this.productoService = productoService;
         this.categoriaService = categoriaService;
+    }
+
+    private boolean tienePermisoParaGestionar(HttpSession session) {
+        Usuario usuario = (Usuario) session.getAttribute("usuario");
+        if (usuario == null || usuario.getPerfil() == null) {
+            return false;
+        }
+        return usuario.getPerfil().getOpciones().stream()
+                .anyMatch(opcion -> "/productos/listar".equals(opcion.getRuta()));
     }
 
     @GetMapping("/listar")
@@ -198,7 +209,10 @@ public class ProductoController {
 
     @DeleteMapping("/api/eliminar/{id}")
     @ResponseBody
-    public ResponseEntity<?> eliminarProductoAjax(@PathVariable Long id) {
+    public ResponseEntity<?> eliminarProductoAjax(@PathVariable Long id, HttpSession session) {
+        if (!tienePermisoParaGestionar(session)) {
+            return ResponseEntity.status(403).body(Map.of("success", false, "message", "No tienes permiso para realizar esta acción."));
+        }
         Map<String, Object> response = new HashMap<>();
         try {
             if (!productoService.obtenerProductoPorId(id).isPresent()) {
@@ -219,7 +233,10 @@ public class ProductoController {
 
     @PostMapping("/api/cambiar-estado/{id}")
     @ResponseBody
-    public ResponseEntity<?> cambiarEstadoProductoAjax(@PathVariable Long id) {
+    public ResponseEntity<?> cambiarEstadoProductoAjax(@PathVariable Long id, HttpSession session) {
+        if (!tienePermisoParaGestionar(session)) {
+            return ResponseEntity.status(403).body(Map.of("success", false, "message", "No tienes permiso para realizar esta acción."));
+        }
         Map<String, Object> response = new HashMap<>();
         try {
             return productoService.cambiarEstadoProducto(id)

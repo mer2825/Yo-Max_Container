@@ -143,7 +143,7 @@
 
         try {
             const url = `/clientes/api/buscar-o-crear?tipo=${tipo}&numero=${numero}&forceCreate=false`;
-            const response = await fetch(url);
+            const response = await fetch(url, { credentials: 'include' });
             const result = await response.json();
 
             if (response.ok && result.success) {
@@ -161,7 +161,7 @@
                     if (confirmCreate.isConfirmed) {
                         showLoading(true);
                         const forceCreateUrl = `/clientes/api/buscar-o-crear?tipo=${tipo}&numero=${numero}&forceCreate=true`;
-                        const createResponse = await fetch(forceCreateUrl);
+                        const createResponse = await fetch(forceCreateUrl, { credentials: 'include' });
                         const createResult = await createResponse.json();
                         if (createResponse.ok && createResult.success) {
                             const clienteGuardado = createResult.cliente;

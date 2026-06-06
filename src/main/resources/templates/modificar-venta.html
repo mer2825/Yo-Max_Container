@@ -10,104 +10,132 @@
     <style>
         .product-list {
             list-style: none; padding-left: 0; margin-bottom: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
         }
         .product-list-item {
-            display: flex; align-items: center; padding: 0.5rem; border: 1px solid #eee; border-radius: 0.3rem; margin-bottom: 0.5rem; cursor: pointer; transition: background-color 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem;
+            border: 2px solid #e9ecef;
+            border-radius: 1.25rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            position: relative;
+            overflow: hidden;
         }
         .product-list-item:hover {
-            background-color: #f8f9fa; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-color: #0d6efd;
+            transform: translateY(-8px);
+            box-shadow: 0 12px 32px rgba(13, 110, 253, 0.25);
+        }
+        .product-list-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #0d6efd, #0b5ed7);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .product-list-item:hover::before {
+            opacity: 1;
         }
         .product-list-item img {
-            width: 50px; height: 50px; object-fit: cover; border-radius: 0.3rem; margin-right: 1rem;
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            border: 3px solid white;
         }
         .product-list-item .product-info { flex-grow: 1; }
-        .product-list-item .product-name { font-weight: 500; }
-        .product-list-item .product-stock { font-size: 0.85rem; color: #6c757d; }
-        .product-list-item .product-price { font-weight: bold; color: #28a745; }
-        .category-header {
-            background-color: var(--color-rosa-pastel); color: var(--color-chocolate); padding: 0.75rem 1rem; margin-bottom: 0.5rem; border-radius: 0.5rem; cursor: pointer; transition: background-color 0.2s ease; display: flex; justify-content: space-between; align-items: center; font-weight: bold;
+        .product-list-item .product-name { font-weight: 700; margin-bottom: 0.5rem; color: #212529; font-size: 1.15rem; line-height: 1.4; }
+        .product-list-item .product-stock { font-size: 0.9rem; color: #6c757d; font-weight: 500; margin-bottom: 0.75rem; }
+        .product-list-item .product-action { display: flex; flex-direction: column; gap: 0.75rem; margin-top: auto; }
+        .product-list-item .product-price { font-weight: 800; color: #0d6efd; font-size: 1.5rem; text-shadow: 0 2px 4px rgba(13, 110, 253, 0.1); text-align: center; }
+        .product-list-item .add-to-cart-btn {
+            width: 100%;
+            padding: 0.875rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 0.875rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+            border: 2px solid #0d6efd;
+            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
         }
-        .category-header:hover { background-color: var(--color-acento); color: #fff; }
-        .category-header .bi { transition: transform 0.2s ease; }
+        .product-list-item .add-to-cart-btn:hover {
+            background: linear-gradient(135deg, #0b5ed7 0%, #0a58ca 100%);
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(13, 110, 253, 0.5);
+        }
+        .product-list-item .add-to-cart-btn:active {
+            transform: scale(0.98);
+        }
+        .category-header {
+            background-color: #6c757d; color: white; padding: 0.875rem 1rem; margin-bottom: 0.5rem; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; font-weight: 600; border: none;
+        }
+        .category-header:hover { background-color: #5a6268; transform: translateY(-1px); }
+        .category-header .bi { transition: transform 0.3s; }
         .category-header[aria-expanded="true"] .bi-chevron-down { transform: rotate(180deg); }
+        .category-header[aria-expanded="true"] { background-color: #0d6efd; }
         #product-selection-area { max-height: 500px; overflow-y: auto; padding-right: 5px; }
         .low-stock-warning {
-            background-color: rgba(255, 0, 0, 0.1);
+            background-color: #fff3cd;
+            border-color: #ffc107;
+        }
+        .card {
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+        }
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
 
 <div class="container-fluid p-4">
+    <div class="row">
+        <div class="col-12 mb-4">
+            <h4 class="mb-0">Modificar Venta</h4>
+            <p class="text-muted mb-0">Edita los productos y detalles de la venta</p>
+        </div>
+    </div>
+    
     <div class="row g-4">
         <div class="col-lg-7">
-            <!-- 1. Comprobante y Cliente -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <h5 class="card-title">1. Comprobante y Cliente</h5>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="tipoComprobanteVenta" class="form-label">Tipo de Comprobante</label>
-                            <select id="tipoComprobanteVenta" class="form-select">
-                                <option value="nota_venta">Nota de Venta</option>
-                                <option value="boleta">Boleta</option>
-                                <option value="factura">Factura</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sección de Búsqueda de Cliente -->
-            <div class="card shadow-sm mb-4" id="seccionCliente" style="display: none;">
-                <div class="card-body">
-                    <h5 class="card-title">Buscar Cliente</h5>
-                    <div class="row g-2">
-                        <div class="col-md-3">
-                            <label for="tipoDocumento" class="form-label">Tipo Doc.</label>
-                            <select id="tipoDocumento" class="form-select">
-                                <option value="dni">DNI</option>
-                                <option value="ruc">RUC</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="numeroDocumento" class="form-label">Nro. Documento</label>
-                            <div class="input-group">
-                                <input type="text" id="numeroDocumento" class="form-control" placeholder="Número de documento...">
-                                <button class="btn btn-outline-secondary" type="button" id="btnBuscarCliente">Buscar</button>
-                            </div>
-                        </div>
-                        <div class="col-md-3 d-flex align-items-end">
-                            <button class="btn btn-secondary w-100" type="button" id="btnLimpiarCliente">Limpiar</button>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <p class="mb-1"><strong>Cliente:</strong> <span id="nombreCliente">Consumidor Final</span></p>
-                        <p class="mb-0"><strong>Dirección:</strong> <span id="direccionCliente">-</span></p>
-                        <input type="hidden" id="clienteId">
-                    </div>
-                </div>
-            </div>
-
             <!-- Sección de Selección de Productos -->
-            <div class="card shadow-sm">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="bi bi-box-seam me-2"></i>Productos Disponibles
+                </div>
                 <div class="card-body">
-                    <h5 class="card-title">2. Seleccionar Productos</h5>
                     <div class="row g-2 mb-3">
                         <div class="col-sm-6">
-                            <input type="text" id="filtroNombre" class="form-control" placeholder="Buscar por nombre...">
+                            <input type="text" id="filtroNombre" class="form-control" placeholder="Buscar producto por nombre...">
                         </div>
                         <div class="col-sm-3">
-                            <input type="number" id="filtroPrecioMin" class="form-control" placeholder="Min S/.">
+                            <input type="number" id="filtroPrecioMin" class="form-control" placeholder="Precio mínimo">
                         </div>
                         <div class="col-sm-3">
-                            <input type="number" id="filtroPrecioMax" class="form-control" placeholder="Max S/.">
+                            <input type="number" id="filtroPrecioMax" class="form-control" placeholder="Precio máximo">
                         </div>
                     </div>
                     <div id="product-selection-area">
-                        <div th:each="entry : ${productosPorCategoria}" class="mb-3 category-group">
+                        <div th:each="entry : ${productosPorCategoria}" class="mb-3">
                             <div class="category-header" th:id="'heading-' + ${entry.key.id}" data-bs-toggle="collapse" th:data-bs-target="'#collapse-' + ${entry.key.id}" aria-expanded="false">
-                                <span><i class="bi bi-tags-fill me-2"></i><span th:text="${entry.key.nombre}"></span></span>
+                                <span th:text="${entry.key.nombre}"></span>
                                 <i class="bi bi-chevron-down"></i>
                             </div>
                             <div th:id="'collapse-' + ${entry.key.id}" class="collapse" th:aria-labelledby="'heading-' + ${entry.key.id}">
@@ -123,10 +151,15 @@
                                         th:data-product-stock-minimo="${producto.stockMinimo}">
                                         <img th:src="${!#lists.isEmpty(producto.imagenes) ? producto.imagenes[0].url : '/images/placeholder.png'}" alt="Imagen de producto">
                                         <div class="product-info">
-                                            <span class="product-name" th:text="${producto.nombre}"></span>
+                                            <div class="product-name" th:text="${producto.nombre}"></div>
                                             <div class="product-stock" th:text="'Stock: ' + ${producto.stock}"></div>
                                         </div>
-                                        <span class="product-price" th:text="'S/ ' + ${#numbers.formatDecimal(producto.precio, 1, 2)}"></span>
+                                        <div class="product-action">
+                                            <span class="product-price" th:text="'S/ ' + ${#numbers.formatDecimal(producto.precio, 1, 2)}"></span>
+                                            <button class="btn btn-sm btn-primary add-to-cart-btn">
+                                                <i class="bi bi-plus-circle"></i> Agregar
+                                            </button>
+                                        </div>
                                     </li>
                                 </ul>
                             </div>
@@ -134,41 +167,98 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Sección de Búsqueda de Cliente -->
+            <div class="card" id="seccionCliente" style="display: none;">
+                <div class="card-header">
+                    <i class="bi bi-person me-2"></i>Información del Cliente
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label for="tipoDocumento" class="form-label">Tipo Documento</label>
+                            <select id="tipoDocumento" class="form-select">
+                                <option value="dni">DNI</option>
+                                <option value="ruc">RUC</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="numeroDocumento" class="form-label">Número de Documento</label>
+                            <div class="input-group">
+                                <input type="text" id="numeroDocumento" class="form-control" placeholder="Ingrese número...">
+                                <button class="btn btn-outline-primary" type="button" id="btnBuscarCliente">Buscar</button>
+                            </div>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button class="btn btn-outline-secondary w-100" type="button" id="btnLimpiarCliente">Limpiar</button>
+                        </div>
+                    </div>
+                    <div class="mt-3 p-3 bg-light rounded">
+                        <p class="mb-1"><strong>Cliente:</strong> <span id="nombreCliente">Consumidor Final</span></p>
+                        <p class="mb-0"><strong>Dirección:</strong> <span id="direccionCliente">-</span></p>
+                        <input type="hidden" id="clienteId">
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Columna Derecha: Carrito y Pago -->
+        <!-- Columna Derecha: Carrito y Detalles -->
         <div class="col-lg-5">
-            <div class="card shadow-sm sticky-top" style="top: 20px;">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header">
+                    <i class="bi bi-cart me-2"></i>Detalle de la Venta
+                </div>
                 <div class="card-body">
-                    <h5 class="card-title mb-3">3. Detalle de Venta</h5>
-                    <table class="table">
-                        <thead><tr><th>Producto</th><th style="width: 80px;">Cant.</th><th>Subtotal</th><th></th></tr></thead>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th style="width: 70px;">Cant.</th>
+                                <th>Subtotal</th>
+                                <th style="width: 40px;"></th>
+                            </tr>
+                        </thead>
                         <tbody id="carrito-items"></tbody>
                     </table>
                     <hr>
                     <div class="d-flex justify-content-between mb-2">
-                        <span class="fw-bold">Subtotal:</span>
+                        <span>Subtotal:</span>
                         <span id="venta-subtotal">S/ 0.00</span>
                     </div>
                     
-                    <!-- Campo de Descuento con Selector -->
-                    <div class="input-group mb-3">
-                        <select class="form-select" id="tipoDescuento" style="max-width: 130px;">
-                            <option value="monto">Descuento (S/)</option>
-                            <option value="porcentaje">Descuento (%)</option>
-                        </select>
-                        <input type="number" id="descuentoVenta" class="form-control text-end" value="0" min="0" step="0.10">
+                    <!-- Descuento -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-5">
+                            <select class="form-select form-select-sm" id="tipoDescuento">
+                                <option value="monto">Monto (S/)</option>
+                                <option value="porcentaje">Porcentaje (%)</option>
+                            </select>
+                        </div>
+                        <div class="col-7">
+                            <input type="number" id="descuentoVenta" class="form-control form-control-sm text-end" value="0" min="0" step="0.10">
+                        </div>
                     </div>
 
-                    <div class="d-flex justify-content-between fw-bold fs-4 text-success">
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="fw-bold">Descuento:</span>
+                        <span id="venta-descuento">S/ 0.00</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-3 fs-5 fw-bold text-primary">
                         <span>TOTAL:</span>
                         <span id="venta-total">S/ 0.00</span>
                     </div>
                     <hr>
+                    
                     <div class="mb-3">
-                        <label for="tipoComprobante" class="form-label fw-bold">Tipo de Comprobante</label>
-                        <input type="text" id="tipoComprobante" class="form-control" placeholder="Automático según selección..." readonly>
+                        <label for="tipoComprobante" class="form-label">Tipo de Comprobante</label>
+                        <select id="tipoComprobanteVenta" class="form-select">
+                            <option value="nota_venta">Nota de Venta</option>
+                            <option value="boleta">Boleta</option>
+                            <option value="factura">Factura</option>
+                        </select>
                     </div>
+                    
                     <div class="mb-3">
                         <label for="metodoPago" class="form-label">Método de Pago</label>
                         <select id="metodoPago" class="form-select">
@@ -177,12 +267,19 @@
                             <option value="Tarjeta">Tarjeta</option>
                         </select>
                     </div>
+                    
                     <div class="mb-3">
-                        <label for="notaVenta" class="form-label">Nota de Venta (Opcional)</label>
-                        <textarea id="notaVenta" class="form-control" rows="2"></textarea>
+                        <label for="notaVenta" class="form-label">Nota (opcional)</label>
+                        <textarea id="notaVenta" class="form-control" rows="2" placeholder="Agregar nota..."></textarea>
                     </div>
-                    <div class="d-grid">
-                        <button id="btnFinalizarVenta" class="btn btn-primary btn-lg">Modificar Venta</button>
+                    
+                    <div class="d-grid gap-2">
+                        <button id="btnFinalizarVenta" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-2"></i>Guardar Cambios
+                        </button>
+                        <a href="/ventas/listar" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Volver al Listado
+                        </a>
                     </div>
                 </div>
             </div>

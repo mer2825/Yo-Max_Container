@@ -17,23 +17,20 @@ public class PedidoWebServiceImpl implements PedidoWebService {
 
     private final PedidoWebRepository pedidoWebRepository;
     private final UsuarioRepository usuarioRepository;
-    private final VentaService ventaService;
     private final ProductoRepository productoRepository;
     private final ClienteRepository clienteRepository;
-    private final EmailService emailService;
+    private final com.example.acceso.repository.VentaRepository ventaRepository;
 
     public PedidoWebServiceImpl(PedidoWebRepository pedidoWebRepository,
                                 UsuarioRepository usuarioRepository,
-                                VentaService ventaService,
                                 ProductoRepository productoRepository,
                                 ClienteRepository clienteRepository,
-                                EmailService emailService) {
+                                com.example.acceso.repository.VentaRepository ventaRepository) {
         this.pedidoWebRepository = pedidoWebRepository;
         this.usuarioRepository = usuarioRepository;
-        this.ventaService = ventaService;
         this.productoRepository = productoRepository;
         this.clienteRepository = clienteRepository;
-        this.emailService = emailService;
+        this.ventaRepository = ventaRepository;
     }
 
     @Override
@@ -139,14 +136,18 @@ public class PedidoWebServiceImpl implements PedidoWebService {
     public PedidoWeb aprobarPedido(Long id, Long verificadoPorId) {
         PedidoWeb pedido = pedidoWebRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado con id: " + id));
-        
+
         if (pedido.getEstado() != EstadoPedidoWeb.PENDIENTE && pedido.getEstado() != EstadoPedidoWeb.EN_REVISION) {
             throw new RuntimeException("Solo se pueden aprobar pedidos en estado PENDIENTE o EN_REVISION");
         }
-        
-        Usuario verificador = usuarioRepository.findById(verificadoPorId)
-                .orElseThrow(() -> new RuntimeException("Usuario verificador no encontrado con id: " + verificadoPorId));
-        
+
+        // Obtener verificador si se proporciona ID
+        Usuario verificador = null;
+        if (verificadoPorId != null) {
+            verificador = usuarioRepository.findById(verificadoPorId)
+                    .orElseThrow(() -> new RuntimeException("Usuario verificador no encontrado con id: " + verificadoPorId));
+        }
+
         // Crear venta a partir del pedido
         Venta venta = new Venta();
         venta.setTotal(pedido.getTotal());
@@ -156,7 +157,12 @@ public class PedidoWebServiceImpl implements PedidoWebService {
         venta.setTipoComprobante("Nota de Venta");
         venta.setOrigen("web");
         venta.setEstado(1); // Activa (ya procesada)
-        
+        venta.setFechaVenta(LocalDateTime.now());
+
+        // Generar número de venta
+        String numeroVenta = generarNumeroVenta();
+        venta.setNumeroVenta(numeroVenta);
+
         // Buscar o crear cliente
         Cliente cliente = clienteRepository.findByNumeroDocumento(pedido.getDniCliente())
                 .orElseGet(() -> {
@@ -167,38 +173,77 @@ public class PedidoWebServiceImpl implements PedidoWebService {
                     nuevoCliente.setEstado(1);
                     return clienteRepository.save(nuevoCliente);
                 });
-        
+
         venta.setCliente(cliente);
-        
-        // Crear detalles de venta
+
+        // Crear detalles de venta y actualizar stock
         List<DetalleVenta> detallesVenta = new ArrayList<>();
         for (DetallePedidoWeb detalleWeb : pedido.getItems()) {
+            Producto producto = productoRepository.findById(detalleWeb.getProducto().getId())
+                    .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + detalleWeb.getProducto().getId()));
+
+            // Validar stock suficiente
+            if (producto.getStock() < detalleWeb.getCantidad()) {
+                throw new RuntimeException("Stock insuficiente para el producto: " + producto.getNombre() +
+                        ". Stock disponible: " + producto.getStock() + ", Cantidad solicitada: " + detalleWeb.getCantidad());
+            }
+
+            // Restar stock
+            producto.setStock(producto.getStock() - detalleWeb.getCantidad());
+            productoRepository.save(producto);
+
             DetalleVenta detalleVenta = new DetalleVenta();
-            detalleVenta.setProducto(detalleWeb.getProducto());
+            detalleVenta.setProducto(producto);
             detalleVenta.setCantidad(detalleWeb.getCantidad());
             detalleVenta.setPrecioUnitario(detalleWeb.getPrecioUnitario());
+            detalleVenta.setSubtotal(detalleWeb.getSubtotal());
+            detalleVenta.setVenta(venta);
             detallesVenta.add(detalleVenta);
         }
         venta.setDetalles(detallesVenta);
-        
-        // Guardar la venta
-        Venta ventaGuardada = ventaService.crearVenta(venta);
-        
+
+        // Guardar la venta directamente en el repositorio
+        Venta ventaGuardada = ventaRepository.save(venta);
+
         // Actualizar el pedido a APROBADO primero
         pedido.setEstado(EstadoPedidoWeb.APROBADO);
         pedido.setFechaVerificacion(LocalDateTime.now());
-        pedido.setVerificadoPor(verificador);
+        if (verificador != null) {
+            pedido.setVerificadoPor(verificador);
+        }
         pedido.setVenta(ventaGuardada);
-        
+
         // Luego cambiar a PROCESADO
         pedido.setEstado(EstadoPedidoWeb.PROCESADO);
-        
+
         // Enviar email de notificación al cliente (COMENTADO - Requiere configuración de email)
         // if (pedido.getCliente() != null && pedido.getCliente().getCorreo() != null) {
         //     emailService.enviarEmailAprobacion(pedido.getCliente().getCorreo(), pedido.getNumeroPedido());
         // }
-        
+
         return pedidoWebRepository.save(pedido);
+    }
+
+    private String generarNumeroVenta() {
+        String prefijo = "N";
+        DateTimeFormatter mesFormatter = DateTimeFormatter.ofPattern("MM");
+        String mes = LocalDateTime.now().format(mesFormatter);
+        String prefijoBusqueda = prefijo + mes + "-";
+
+        Optional<Venta> ultimaVenta = ventaRepository.findTopByNumeroVentaStartingWithOrderByNumeroVentaDesc(prefijoBusqueda);
+
+        int correlativo = 1;
+        if (ultimaVenta.isPresent()) {
+            String ultimoNumero = ultimaVenta.get().getNumeroVenta();
+            try {
+                String correlativoStr = ultimoNumero.substring(ultimoNumero.lastIndexOf('-') + 1);
+                correlativo = Integer.parseInt(correlativoStr) + 1;
+            } catch (NumberFormatException | IndexOutOfBoundsException e) {
+                correlativo = 1;
+            }
+        }
+
+        return String.format("%s%s-%04d", prefijo, mes, correlativo);
     }
 
     @Override
@@ -243,10 +288,16 @@ public class PedidoWebServiceImpl implements PedidoWebService {
 
     @Override
     @Transactional
-    public void eliminarPedido(Long id) {
-        if (!pedidoWebRepository.existsById(id)) {
-            throw new RuntimeException("No se encontró el pedido con id: " + id);
+    public void eliminarPedido(Long id, String motivo) {
+        PedidoWeb pedido = pedidoWebRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("No se encontró el pedido con id: " + id));
+        
+        // Guardar el motivo de anulación en el campo motivoRechazo
+        if (motivo != null && !motivo.trim().isEmpty()) {
+            pedido.setMotivoRechazo("ANULADO: " + motivo);
+            pedidoWebRepository.save(pedido);
         }
+        
         pedidoWebRepository.deleteById(id);
     }
 

@@ -51,6 +51,12 @@
 			<artifactId>spring-security-crypto</artifactId>
 		</dependency>
 
+		<!-- Spring Security completo para autenticación y autorización -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+
 		<!-- Base de datos H2 para desarrollo -->
 		<dependency>
 			<groupId>com.h2database</groupId>

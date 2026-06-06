@@ -16,5 +16,5 @@ public interface PedidoWebService {
     PedidoWeb aprobarPedido(Long id, Long verificadoPorId);
     PedidoWeb rechazarPedido(Long id, Long verificadoPorId, String motivoRechazo);
     PedidoWeb marcarComoProcesado(Long id);
-    void eliminarPedido(Long id);
+    void eliminarPedido(Long id, String motivo);
 }
