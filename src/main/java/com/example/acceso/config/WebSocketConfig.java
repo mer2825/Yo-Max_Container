@@ -24,7 +24,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // Registra el endpoint "/ws" que los clientes usarán para conectarse al servidor WebSocket.
-        // SockJS se usa como una opción de fallback para navegadores que no soportan WebSockets nativamente.
-        registry.addEndpoint("/ws").withSockJS();
+        // Permite orígenes desde cualquier host para que funcione correctamente en despliegues proxy como Railway.
+        registry.addEndpoint("/ws")
+                .setAllowedOriginPatterns("*")
+                .withSockJS();
     }
 }
