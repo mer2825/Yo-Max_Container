@@ -338,7 +338,7 @@ $(document).ready(function() {
         }
 
         const ventaData = {
-            tipoComprobante: $('#tipoComprobante').val(),
+            tipoComprobante: $('#tipoComprobante').val() || $('#tipoComprobanteVenta').val(),
             cliente: { id: clienteId },
             metodoPago: $('#metodoPago').val(),
             nota: $('#notaVenta').val(),

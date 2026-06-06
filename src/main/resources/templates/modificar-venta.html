@@ -251,12 +251,16 @@
                     <hr>
                     
                     <div class="mb-3">
-                        <label for="tipoComprobante" class="form-label">Tipo de Comprobante</label>
+                        <label for="tipoComprobanteVenta" class="form-label">Tipo de Comprobante</label>
                         <select id="tipoComprobanteVenta" class="form-select">
                             <option value="nota_venta">Nota de Venta</option>
                             <option value="boleta">Boleta</option>
                             <option value="factura">Factura</option>
                         </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tipoComprobante" class="form-label">Comprobante Seleccionado</label>
+                        <input type="text" id="tipoComprobante" class="form-control" placeholder="Automático según selección..." readonly>
                     </div>
                     
                     <div class="mb-3">
