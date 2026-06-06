@@ -40,7 +40,7 @@ function initializeGlobalWebSocket() {
     let stompClient = null;
 
     function connect() {
-        const socket = new SockJS('/ws');
+        const socket = new SockJS(window.location.origin + '/ws');
         stompClient = Stomp.over(socket);
         stompClient.debug = null; // Desactivar logs de STOMP para una consola más limpia
 
