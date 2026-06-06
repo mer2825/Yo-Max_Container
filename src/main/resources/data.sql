@@ -4,7 +4,8 @@
 
 -- OPCIONES DE MENÚ
 INSERT INTO opciones (nombre, ruta, icono, estado)
-VALUES
+SELECT nombre, ruta, icono, estado
+FROM (VALUES
   ('Gestión de Usuarios', '/usuarios/listar', 'bi-people', true),
   ('Gestión de Perfiles', '/perfiles/listar', 'bi-person-check', true),
   ('Gestión de Categorías', '/categorias/listar', 'bi-tags', true),
@@ -16,11 +17,15 @@ VALUES
   ('Ventas Web', '/ventas_web', 'bi-globe', true),
   ('Gestión Inventario', '/inventario/listar', 'bi-boxes', true),
   ('Ir al Catálogo', '/catalogo', 'bi-shop', true)
-ON CONFLICT (ruta) DO NOTHING;
+) AS v(nombre, ruta, icono, estado)
+WHERE NOT EXISTS (
+  SELECT 1 FROM opciones o WHERE o.ruta = v.ruta
+);
 
 -- CATEGORÍAS
 INSERT INTO categorias (nombre, descripcion, estado)
-VALUES
+SELECT nombre, descripcion, estado
+FROM (VALUES
   ('Regalos', 'Detalles y regalos importados', 1),
   ('Accesorios', 'Artesanía y accesorios', 1),
   ('Decoración', 'Artículos de decoración para el hogar', 1),
@@ -29,7 +34,10 @@ VALUES
   ('Electrónica', 'Dispositivos electrónicos importados', 1),
   ('Ropa', 'Prendas de vestir importadas', 1),
   ('Hogar', 'Artículos para el hogar importados', 1)
-ON CONFLICT (nombre) DO NOTHING;
+) AS v(nombre, descripcion, estado)
+WHERE NOT EXISTS (
+  SELECT 1 FROM categorias c WHERE c.nombre = v.nombre
+);
 
 -- PRODUCTOS
 INSERT INTO productos (id_categoria, nombre, descripcion, precio, stock, stock_minimo, estado)
@@ -121,28 +129,35 @@ WHERE NOT EXISTS (
 
 -- CLIENTES
 INSERT INTO clientes (tipo_documento, numero_documento, nombre, direccion, telefono, email, estado)
-VALUES
+SELECT tipo_documento, numero_documento, nombre, direccion, telefono, email, estado
+FROM (VALUES
   ('DNI', '12345678', 'María González', 'Av. Principal 123, Lima', '999123456', 'maria.gonzalez@email.com', 1),
   ('RUC', '20123456789', 'Empresa Import S.A.C.', 'Calle Comercio 45, Miraflores', '011223344', 'ventas@empresaimport.pe', 1),
   ('DNI', '87654321', 'Carlos Rodríguez', 'Jr. Secundaria 45, Trujillo', '988776655', 'carlos.rodriguez@email.com', 1),
   ('DNI', '45678901', 'Ana Martínez', 'Av. Brasil 789, Arequipa', '977665544', 'ana.martinez@email.com', 1),
   ('RUC', '20567890123', 'Comercial Global S.A.', 'Av. Industrial 234, Lima', '011334455', 'contacto@comercialglobal.pe', 1),
   ('DNI', '32165498', 'Pedro Sánchez', 'Calle Los Olivos 567, Chiclayo', '944332211', 'pedro.sanchez@email.com', 1)
-ON CONFLICT (numero_documento) DO NOTHING;
+) AS v(tipo_documento, numero_documento, nombre, direccion, telefono, email, estado)
+WHERE NOT EXISTS (
+  SELECT 1 FROM clientes c WHERE c.numero_documento = v.numero_documento
+);
 
 -- EMPRESA
 INSERT INTO empresa (nombre, direccion, telefono, email, logo_url, nosotros, numero_yape, titular_yape)
-VALUES (
-  'Tienda de Importaciones Yo''Max',
+SELECT nombre, direccion, telefono, email, logo_url, nosotros, numero_yape, titular_yape
+FROM (VALUES
+  ('Tienda de Importaciones Yo''Max',
   '963 Monseñor Francisco Gonzales, Ferreñafe, Pueblo Nuevo',
   '+51 918 823 760 ',
   'info@yomax.pe',
   '/static/uploads/logo.png',
   'Yo''Max es tu tienda de importaciones favorita, ofreciendo productos de alta calidad traídos de las mejores marcas internacionales. Nos especializamos en juguetes, accesorios, regalos, electrónica, ropa y artículos para el hogar que transforman cualquier espacio en algo especial.',
   '918 823 760 ',
-  'YoMax Importaciones'
-)
-ON CONFLICT DO NOTHING;
+  'YoMax Importaciones')
+) AS v(nombre, direccion, telefono, email, logo_url, nosotros, numero_yape, titular_yape)
+WHERE NOT EXISTS (
+  SELECT 1 FROM empresa e WHERE e.nombre = v.nombre
+);
 
 -- VENTAS
 INSERT INTO ventas (numero_venta, cliente_id, fecha_venta, metodo_pago, subtotal, descuento, total, nota, tipo_comprobante, estado, origen)
