@@ -8,7 +8,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 public class CloudinaryService {
@@ -23,13 +22,15 @@ public class CloudinaryService {
     }
 
     public Map<String, String> uploadFile(MultipartFile file, String subFolder) throws IOException {
-        // Construir la ruta completa: ej: "desarrollo/logos" o "produccion/vouchers"
+        // Construir la ruta de la carpeta: ej: "desarrollo/logos" o "produccion/vouchers"
         String fullFolderPath = cloudinaryEnvFolder + "/" + subFolder;
-        
-        String publicId = fullFolderPath + "/" + UUID.randomUUID().toString();
 
         Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
-                "public_id", publicId,
+                // Usar el parámetro 'folder' para especificar el directorio
+                "folder", fullFolderPath,
+                // Pedir a Cloudinary que genere un nombre de archivo único
+                "use_filename", true,
+                "unique_filename", true,
                 "overwrite", true,
                 "resource_type", "auto"
         ));
