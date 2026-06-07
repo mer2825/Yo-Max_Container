@@ -2,9 +2,9 @@ package com.example.acceso.controller;
 
 import com.example.acceso.model.Usuario;
 import com.example.acceso.model.Empresa;
+import com.example.acceso.service.CloudinaryService;
 import com.example.acceso.service.EmpresaService;
 import jakarta.servlet.http.HttpSession;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -14,25 +14,19 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @Controller
 public class CheckoutController {
 
     private final EmpresaService empresaService;
+    private final CloudinaryService cloudinaryService;
 
-    @Value("${file.upload-dir}")
-    private String uploadDir;
-
-    public CheckoutController(EmpresaService empresaService) {
+    public CheckoutController(EmpresaService empresaService, CloudinaryService cloudinaryService) {
         this.empresaService = empresaService;
+        this.cloudinaryService = cloudinaryService;
     }
 
     @GetMapping("/checkout")
@@ -94,23 +88,12 @@ public class CheckoutController {
         }
 
         try {
-            // Crear directorio si no existe
-            File uploadDirectory = new File(uploadDir + "vouchers/");
-            if (!uploadDirectory.exists()) {
-                uploadDirectory.mkdirs();
-            }
-
-            // Generar nombre único
-            String originalFilename = file.getOriginalFilename();
-            String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            String filename = "voucher_" + UUID.randomUUID().toString() + extension;
-
-            Path path = Paths.get(uploadDir + "vouchers/" + filename);
-            Files.write(path, file.getBytes());
+            Map<String, String> uploadResult = cloudinaryService.uploadFile(file, "vouchers");
+            String fileUrl = uploadResult.get("secure_url");
 
             response.put("success", true);
             response.put("message", "Archivo subido correctamente");
-            response.put("filePath", "/uploads/vouchers/" + filename);
+            response.put("filePath", fileUrl);
             return ResponseEntity.ok(response);
 
         } catch (IOException e) {

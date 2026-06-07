@@ -17,13 +17,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -35,14 +32,15 @@ public class ProductoService {
     private final UsuarioRepository usuarioRepository;
     private final ProductoImagenRepository productoImagenRepository;
     private final com.example.acceso.repository.StockMovimientoRepository stockMovimientoRepository;
-    private final Path rootLocation = Paths.get("C:/acceso/Images/");
+    private final CloudinaryService cloudinaryService;
 
-    public ProductoService(ProductoRepository productoRepository, DetalleVentaRepository detalleVentaRepository, UsuarioRepository usuarioRepository, ProductoImagenRepository productoImagenRepository, com.example.acceso.repository.StockMovimientoRepository stockMovimientoRepository) {
+    public ProductoService(ProductoRepository productoRepository, DetalleVentaRepository detalleVentaRepository, UsuarioRepository usuarioRepository, ProductoImagenRepository productoImagenRepository, com.example.acceso.repository.StockMovimientoRepository stockMovimientoRepository, CloudinaryService cloudinaryService) {
         this.productoRepository = productoRepository;
         this.detalleVentaRepository = detalleVentaRepository;
         this.usuarioRepository = usuarioRepository;
         this.productoImagenRepository = productoImagenRepository;
         this.stockMovimientoRepository = stockMovimientoRepository;
+        this.cloudinaryService = cloudinaryService;
     }
 
     @Transactional(readOnly = true)
@@ -120,10 +118,8 @@ public class ProductoService {
             Producto productoExistente = productoRepository.findById(producto.getId())
                     .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado para actualizar"));
 
-            // Mantener la lista de imágenes existente
             producto.setImagenes(productoExistente.getImagenes());
             
-            // Actualizar solo los campos que vienen del formulario
             productoExistente.setNombre(producto.getNombre().trim());
             productoExistente.setDescripcion(producto.getDescripcion() != null ? producto.getDescripcion().trim() : null);
             productoExistente.setPrecio(producto.getPrecio());
@@ -132,7 +128,7 @@ public class ProductoService {
             productoExistente.setCategoria(producto.getCategoria());
             productoExistente.setUltimaAccion("Edición");
             
-            producto = productoExistente; // Trabajar con la entidad gestionada
+            producto = productoExistente;
         }
 
         try {
@@ -147,18 +143,10 @@ public class ProductoService {
         Producto producto = productoRepository.findById(productoId)
                 .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado con ID: " + productoId));
 
-        if (!Files.exists(rootLocation)) {
-            Files.createDirectories(rootLocation);
-        }
+        Map<String, String> uploadResult = cloudinaryService.uploadFile(file, "productos");
+        String imageUrl = uploadResult.get("secure_url");
+        String publicId = uploadResult.get("public_id");
 
-        String originalFilename = file.getOriginalFilename();
-        String uniqueFilename = UUID.randomUUID().toString() + "_" + originalFilename;
-        Path destinationFile = rootLocation.resolve(Paths.get(uniqueFilename)).normalize().toAbsolutePath();
-        Files.copy(file.getInputStream(), destinationFile);
-
-        String imageUrl = "/images/" + uniqueFilename;
-
-        // Calcular el siguiente número de orden
         int nextOrder = producto.getImagenes().stream()
                 .mapToInt(ProductoImagen::getOrden)
                 .max()
@@ -166,8 +154,9 @@ public class ProductoService {
 
         ProductoImagen productoImagen = new ProductoImagen();
         productoImagen.setUrl(imageUrl);
+        productoImagen.setPublicId(publicId);
         productoImagen.setProducto(producto);
-        productoImagen.setOrden(nextOrder); // Asignar el orden
+        productoImagen.setOrden(nextOrder);
 
         return productoImagenRepository.save(productoImagen);
     }
@@ -192,9 +181,9 @@ public class ProductoService {
         ProductoImagen imagen = productoImagenRepository.findById(idImagen)
                 .orElseThrow(() -> new IllegalArgumentException("Imagen no encontrada con ID: " + idImagen));
 
-        String filename = imagen.getUrl().substring(imagen.getUrl().lastIndexOf("/") + 1);
-        Path fileToDelete = rootLocation.resolve(filename);
-        Files.deleteIfExists(fileToDelete);
+        if (imagen.getPublicId() != null && !imagen.getPublicId().isEmpty()) {
+            cloudinaryService.deleteFile(imagen.getPublicId());
+        }
 
         productoImagenRepository.delete(imagen);
     }
@@ -207,11 +196,11 @@ public class ProductoService {
         List<ProductoImagen> imagenes = productoImagenRepository.findAllById(ids);
         for (ProductoImagen imagen : imagenes) {
             try {
-                String filename = imagen.getUrl().substring(imagen.getUrl().lastIndexOf("/") + 1);
-                Path fileToDelete = rootLocation.resolve(filename);
-                Files.deleteIfExists(fileToDelete);
+                if (imagen.getPublicId() != null && !imagen.getPublicId().isEmpty()) {
+                    cloudinaryService.deleteFile(imagen.getPublicId());
+                }
             } catch (IOException e) {
-                System.err.println("Error al eliminar archivo de imagen: " + e.getMessage());
+                System.err.println("Error al eliminar archivo de Cloudinary: " + e.getMessage());
             }
         }
         productoImagenRepository.deleteByIdIn(ids);
@@ -244,15 +233,13 @@ public class ProductoService {
         Producto producto = obtenerProductoPorId(id)
                 .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado"));
 
-        // Eliminar archivos de imagen asociados
         producto.getImagenes().forEach(imagen -> {
             try {
-                String filename = imagen.getUrl().substring(imagen.getUrl().lastIndexOf("/") + 1);
-                Path fileToDelete = rootLocation.resolve(filename);
-                Files.deleteIfExists(fileToDelete);
+                if (imagen.getPublicId() != null && !imagen.getPublicId().isEmpty()) {
+                    cloudinaryService.deleteFile(imagen.getPublicId());
+                }
             } catch (IOException e) {
-                // Log del error, pero no detener la transacción
-                System.err.println("Error al eliminar archivo de imagen: " + e.getMessage());
+                System.err.println("Error al eliminar archivo de Cloudinary: " + e.getMessage());
             }
         });
 
@@ -291,7 +278,6 @@ public class ProductoService {
                 ))
                 .collect(Collectors.toList());
 
-        // Agregar movimientos de ajuste de stock (persistidos en stock_movimientos)
         List<com.example.acceso.model.StockMovimiento> ajustes = stockMovimientoRepository.findByProductoIdOrderByFechaDesc(productId);
         List<MovimientoProductoDTO> ajustesDTO = ajustes.stream()
                 .map(a -> new MovimientoProductoDTO(
@@ -303,7 +289,6 @@ public class ProductoService {
                 ))
                 .collect(Collectors.toList());
 
-        // Combinar: ventas primero, luego ajustes recientes
         ventasMovs.addAll(ajustesDTO);
         return ventasMovs;
     }

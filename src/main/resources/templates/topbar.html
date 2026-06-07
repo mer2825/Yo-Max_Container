@@ -6,7 +6,7 @@
                 <a th:href="@{/}" class="navbar-brand d-flex align-items-center" style="text-decoration: none;">
                     <img th:if="${empresaGlobal != null && empresaGlobal.logoUrl != null}"
                          id="topbar-empresa-logo"
-                         th:src="@{${empresaGlobal.logoUrl}}"
+                         th:src="${empresaGlobal.logoUrl}"
                          alt="Logo"
                          style="max-height: 40px; border-radius: 4px; margin-right: 8px;">
                     <div class="d-none d-lg-block">
