@@ -4,6 +4,7 @@ import com.example.acceso.model.Empresa;
 import com.example.acceso.model.Producto;
 import com.example.acceso.service.EmpresaService;
 import com.example.acceso.service.ProductoService;
+import com.example.acceso.service.CloudinaryService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -13,13 +14,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @Controller
 @RequestMapping("/empresa")
@@ -28,17 +25,15 @@ public class EmpresaController {
     @Autowired
     private EmpresaService empresaService;
     @Autowired
-    private ProductoService productoService; // Inyectar ProductoService
-
-    private static final String UPLOAD_DIRECTORY = "C:/acceso/Images/";
+    private ProductoService productoService;
+    @Autowired
+    private CloudinaryService cloudinaryService;
 
     @GetMapping("/listar")
     public String gestionarEmpresa(Model model, HttpSession session) {
-        // Cargar la información de la empresa
         Empresa empresa = empresaService.getEmpresaInfo();
         model.addAttribute("empresa", empresa);
 
-        // Cargar todos los productos activos para el selector
         List<Producto> todosLosProductos = productoService.listarProductosActivos();
         model.addAttribute("todosLosProductos", todosLosProductos);
 
@@ -51,7 +46,6 @@ public class EmpresaController {
     public ResponseEntity<?> guardarEmpresaApi(@RequestBody Empresa empresa, HttpSession session) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // El objeto 'empresa' que llega de JS ya contiene la lista de productos destacados
             Empresa empresaGuardada = empresaService.saveEmpresa(empresa);
             session.setAttribute("empresa", empresaGuardada);
 
@@ -76,39 +70,20 @@ public class EmpresaController {
         }
 
         try {
-            // Obtener la información de la empresa para encontrar el logo antiguo
+            // 1. Subir la imagen a Cloudinary
+            Map<String, String> uploadResult = cloudinaryService.uploadFile(file, "logos");
+            String imageUrl = uploadResult.get("secure_url");
+
+            // 2. Obtener la empresa actual y actualizar su URL de logo
             Empresa empresa = empresaService.getEmpresaInfo();
-            String oldLogoUrl = empresa.getLogoUrl();
+            empresa.setLogoUrl(imageUrl);
 
-            // Si existe un logo antiguo, intentar eliminarlo
-            if (oldLogoUrl != null && !oldLogoUrl.isEmpty()) {
-                try {
-                    String filename = oldLogoUrl.substring(oldLogoUrl.lastIndexOf("/") + 1);
-                    Path oldFilePath = Paths.get(UPLOAD_DIRECTORY).resolve(filename);
-                    Files.deleteIfExists(oldFilePath);
-                } catch (IOException e) {
-                    System.err.println("No se pudo eliminar el logo antiguo: " + e.getMessage());
-                }
-            }
-
-            Path uploadPath = Paths.get(UPLOAD_DIRECTORY);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
-
-            String originalFilename = file.getOriginalFilename();
-            String fileExtension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
-            String uniqueFileName = "logo_" + UUID.randomUUID().toString() + fileExtension;
-            Path filePath = uploadPath.resolve(uniqueFileName);
-            Files.copy(file.getInputStream(), filePath);
-
-            String imageUrl = "/images/" + uniqueFileName;
-
+            // 3. Guardar los cambios en la base de datos
+            empresaService.saveEmpresa(empresa);
+            
+            // 4. Devolver la respuesta exitosa
             response.put("success", true);
-            response.put("message", "Logo subido correctamente.");
+            response.put("message", "Logo subido y guardado correctamente.");
             response.put("imageUrl", imageUrl);
             return ResponseEntity.ok(response);
 

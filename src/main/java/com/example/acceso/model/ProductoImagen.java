@@ -14,12 +14,15 @@ public class ProductoImagen {
     @Column(nullable = false)
     private String url;
 
+    @Column(name = "public_id")
+    private String publicId;
+
     @Column(nullable = false)
-    private Integer orden; // Nuevo campo para el orden de la imagen
+    private Integer orden;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "producto_id", nullable = false)
-    @JsonIgnore // Evita la serialización recursiva al devolver JSON
+    @JsonIgnore
     private Producto producto;
 
     // Getters y Setters
@@ -38,6 +41,14 @@ public class ProductoImagen {
 
     public void setUrl(String url) {
         this.url = url;
+    }
+
+    public String getPublicId() {
+        return publicId;
+    }
+
+    public void setPublicId(String publicId) {
+        this.publicId = publicId;
     }
 
     public Integer getOrden() {

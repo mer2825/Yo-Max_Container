@@ -1,4 +1,3 @@
-
 $(document).ready(function() {
 
     // Función para formatear los resultados del Select2 (con imagen)
@@ -121,6 +120,7 @@ $(document).ready(function() {
                     $('#logoUrl').val(logoUrl);
                     $('#currentLogoPreview').attr('src', logoUrl);
                     $('#sidebar-empresa-logo').attr('src', logoUrl);
+                    $('#topbar-empresa-logo').attr('src', logoUrl); // <-- LÍNEA AÑADIDA
                 }
                 // Actualizar el nombre de la empresa en la barra lateral
                 $('#sidebar-empresa-nombre').text(nombreEmpresa);
