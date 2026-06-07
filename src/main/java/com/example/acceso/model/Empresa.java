@@ -26,6 +26,9 @@ public class Empresa {
     @Column(length = 255)
     private String logoUrl;
 
+    @Column(length = 255)
+    private String logoPublicId;
+
     @Column(columnDefinition = "TEXT")
     private String nosotros;
 
@@ -94,6 +97,14 @@ public class Empresa {
 
     public void setLogoUrl(String logoUrl) {
         this.logoUrl = logoUrl;
+    }
+
+    public String getLogoPublicId() {
+        return logoPublicId;
+    }
+
+    public void setLogoPublicId(String logoPublicId) {
+        this.logoPublicId = logoPublicId;
     }
 
     public String getNosotros() {

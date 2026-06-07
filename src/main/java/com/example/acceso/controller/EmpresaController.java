@@ -46,6 +46,10 @@ public class EmpresaController {
     public ResponseEntity<?> guardarEmpresaApi(@RequestBody Empresa empresa, HttpSession session) {
         Map<String, Object> response = new HashMap<>();
         try {
+            // Antes de guardar, asegúrate de que el publicId no se pierda
+            Empresa empresaActual = empresaService.getEmpresaInfo();
+            empresa.setLogoPublicId(empresaActual.getLogoPublicId());
+
             Empresa empresaGuardada = empresaService.saveEmpresa(empresa);
             session.setAttribute("empresa", empresaGuardada);
 
@@ -69,22 +73,37 @@ public class EmpresaController {
             return ResponseEntity.badRequest().body(response);
         }
 
+        // 1. Obtener la empresa y el publicId del logo antiguo
+        Empresa empresa = empresaService.getEmpresaInfo();
+        String oldPublicId = empresa.getLogoPublicId();
+
         try {
-            // 1. Subir la imagen a Cloudinary
+            // 2. Subir la nueva imagen a Cloudinary
             Map<String, String> uploadResult = cloudinaryService.uploadFile(file, "logos");
-            String imageUrl = uploadResult.get("secure_url");
+            String newImageUrl = uploadResult.get("secure_url");
+            String newPublicId = uploadResult.get("public_id");
 
-            // 2. Obtener la empresa actual y actualizar su URL de logo
-            Empresa empresa = empresaService.getEmpresaInfo();
-            empresa.setLogoUrl(imageUrl);
+            // 3. Actualizar la entidad Empresa con los nuevos datos
+            empresa.setLogoUrl(newImageUrl);
+            empresa.setLogoPublicId(newPublicId);
 
-            // 3. Guardar los cambios en la base de datos
+            // 4. Guardar los cambios en la base de datos
             empresaService.saveEmpresa(empresa);
+
+            // 5. Si había un logo antiguo, borrarlo de Cloudinary
+            if (oldPublicId != null && !oldPublicId.isEmpty()) {
+                try {
+                    cloudinaryService.deleteFile(oldPublicId);
+                } catch (IOException e) {
+                    // Log del error, pero no fallar la operación principal
+                    System.err.println("Error al eliminar el logo antiguo de Cloudinary: " + e.getMessage());
+                }
+            }
             
-            // 4. Devolver la respuesta exitosa
+            // 6. Devolver la respuesta exitosa
             response.put("success", true);
             response.put("message", "Logo subido y guardado correctamente.");
-            response.put("imageUrl", imageUrl);
+            response.put("imageUrl", newImageUrl);
             return ResponseEntity.ok(response);
 
         } catch (IOException e) {
