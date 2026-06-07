@@ -16,7 +16,7 @@
 	<name>acceso</name>
 	<description>Sistema de gestión de usuarios</description>
 	<properties>
-		<java.version>21</java.version>
+		<java.version>17</java.version>
 	</properties>
 	<dependencies>
 		<!-- Spring Boot Starters -->
