@@ -89,6 +89,9 @@ public class PedidoWeb extends Auditable {
     @JoinColumn(name = "venta_id")
     private Venta venta;
 
+    @Column(length = 20)
+    private String pdfKey;
+
     // Getters y Setters
 
     public Long getId() {
@@ -233,5 +236,13 @@ public class PedidoWeb extends Auditable {
 
     public void setVenta(Venta venta) {
         this.venta = venta;
+    }
+
+    public String getPdfKey() {
+        return pdfKey;
+    }
+
+    public void setPdfKey(String pdfKey) {
+        this.pdfKey = pdfKey;
     }
 }

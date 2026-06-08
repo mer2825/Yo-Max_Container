@@ -2,15 +2,24 @@ package com.example.acceso.service;
 
 import com.example.acceso.model.*;
 import com.example.acceso.repository.*;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.security.SecureRandom;
 
 @Service
 public class PedidoWebServiceImpl implements PedidoWebService {
@@ -20,17 +29,29 @@ public class PedidoWebServiceImpl implements PedidoWebService {
     private final ProductoRepository productoRepository;
     private final ClienteRepository clienteRepository;
     private final com.example.acceso.repository.VentaRepository ventaRepository;
+    private final CloudinaryService cloudinaryService; // Inyectar CloudinaryService
 
     public PedidoWebServiceImpl(PedidoWebRepository pedidoWebRepository,
                                 UsuarioRepository usuarioRepository,
                                 ProductoRepository productoRepository,
                                 ClienteRepository clienteRepository,
-                                com.example.acceso.repository.VentaRepository ventaRepository) {
+                                com.example.acceso.repository.VentaRepository ventaRepository,
+                                CloudinaryService cloudinaryService) { // Añadir al constructor
         this.pedidoWebRepository = pedidoWebRepository;
         this.usuarioRepository = usuarioRepository;
         this.productoRepository = productoRepository;
         this.clienteRepository = clienteRepository;
         this.ventaRepository = ventaRepository;
+        this.cloudinaryService = cloudinaryService;
+    }
+
+    private String generarPdfKey() {
+        SecureRandom random = new SecureRandom();
+        StringBuilder key = new StringBuilder(10);
+        for (int i = 0; i < 10; i++) {
+            key.append(random.nextInt(10));
+        }
+        return key.toString();
     }
 
     @Override
@@ -46,6 +67,7 @@ public class PedidoWebServiceImpl implements PedidoWebService {
 
         pedido.setFechaPedido(LocalDateTime.now());
         pedido.setEstado(EstadoPedidoWeb.PENDIENTE);
+        pedido.setPdfKey(generarPdfKey());
 
         // Generar número de pedido único
         String numeroPedido = generarNumeroPedido();
@@ -109,6 +131,47 @@ public class PedidoWebServiceImpl implements PedidoWebService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<PedidoWeb> listarPedidosConFiltros(int page, int size, String sortBy, String sortDir, String estado, LocalDate fechaDesde, LocalDate fechaHasta, String busqueda) {
+        Sort sort = Sort.by(Sort.Direction.fromString(sortDir), sortBy);
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Specification<PedidoWeb> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (estado != null && !estado.isEmpty()) {
+                try {
+                    EstadoPedidoWeb estadoEnum = EstadoPedidoWeb.valueOf(estado.toUpperCase());
+                    predicates.add(cb.equal(root.get("estado"), estadoEnum));
+                } catch (IllegalArgumentException e) {
+                    // Si el estado no es válido, no se añade el filtro de estado
+                    System.err.println("Estado de pedido inválido: " + estado);
+                }
+            }
+
+            if (fechaDesde != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("fechaPedido"), LocalDateTime.of(fechaDesde, LocalTime.MIN)));
+            }
+            if (fechaHasta != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("fechaPedido"), LocalDateTime.of(fechaHasta, LocalTime.MAX)));
+            }
+
+            if (busqueda != null && !busqueda.isEmpty()) {
+                String likePattern = "%" + busqueda.toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("nombreCliente")), likePattern),
+                        cb.like(cb.lower(root.get("dniCliente")), likePattern),
+                        cb.like(cb.lower(root.get("numeroPedido")), likePattern)
+                ));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        return pedidoWebRepository.findAll(spec, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<PedidoWeb> listarPedidosPorCliente(Long clienteId) {
         return pedidoWebRepository.findByClienteId(clienteId);
     }
@@ -158,6 +221,7 @@ public class PedidoWebServiceImpl implements PedidoWebService {
         venta.setOrigen("web");
         venta.setEstado(1); // Activa (ya procesada)
         venta.setFechaVenta(LocalDateTime.now());
+        venta.setPdfKey(pedido.getPdfKey()); // Traspasar la key
 
         // Generar número de venta
         String numeroVenta = generarNumeroVenta();
@@ -252,14 +316,26 @@ public class PedidoWebServiceImpl implements PedidoWebService {
         PedidoWeb pedido = pedidoWebRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado con id: " + id));
         
-        if (pedido.getEstado() != EstadoPedidoWeb.PENDIENTE && pedido.getEstado() != EstadoPedidoWeb.EN_REVISION) {
-            throw new RuntimeException("Solo se pueden rechazar pedidos en estado PENDIENTE o EN_REVISION");
+        // Si el estado es PENDIENTE o EN_REVISION, se puede rechazar.
+        // Si el estado es APROBADO o PROCESADO, no se puede rechazar directamente, se anula.
+        // Si ya está RECHAZADO o ANULADO, no se hace nada.
+        if (pedido.getEstado() == EstadoPedidoWeb.APROBADO || pedido.getEstado() == EstadoPedidoWeb.PROCESADO) {
+            throw new RuntimeException("No se puede rechazar un pedido ya APROBADO o PROCESADO. Considere anularlo.");
         }
         
-        Usuario verificador = usuarioRepository.findById(verificadoPorId)
-                .orElseThrow(() -> new RuntimeException("Usuario verificador no encontrado con id: " + verificadoPorId));
+        // Si el pedido ya está RECHAZADO o ANULADO, no se permite cambiar el estado
+        if (pedido.getEstado() == EstadoPedidoWeb.RECHAZADO || pedido.getEstado() == EstadoPedidoWeb.ANULADO) {
+            throw new RuntimeException("El pedido ya se encuentra en estado " + pedido.getEstado() + ".");
+        }
+
+        // Si verificadoPorId es null, significa que la acción es "anular" desde el frontend
+        Usuario verificador = null;
+        if (verificadoPorId != null) {
+            verificador = usuarioRepository.findById(verificadoPorId)
+                    .orElseThrow(() -> new RuntimeException("Usuario verificador no encontrado con id: " + verificadoPorId));
+        }
         
-        pedido.setEstado(EstadoPedidoWeb.RECHAZADO);
+        pedido.setEstado(EstadoPedidoWeb.ANULADO); // Usamos ANULADO como estado final para ambos casos
         pedido.setFechaVerificacion(LocalDateTime.now());
         pedido.setVerificadoPor(verificador);
         pedido.setMotivoRechazo(motivoRechazo);
@@ -292,13 +368,25 @@ public class PedidoWebServiceImpl implements PedidoWebService {
         PedidoWeb pedido = pedidoWebRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("No se encontró el pedido con id: " + id));
         
-        // Guardar el motivo de anulación en el campo motivoRechazo
+        // Eliminar la imagen del voucher de Cloudinary si existe
+        if (pedido.getVoucherImagen() != null && !pedido.getVoucherImagen().isEmpty()) {
+            try {
+                cloudinaryService.deleteImageByUrl(pedido.getVoucherImagen());
+                System.out.println("Voucher eliminado de Cloudinary: " + pedido.getVoucherImagen());
+            } catch (Exception e) {
+                System.err.println("Error al eliminar el voucher de Cloudinary: " + e.getMessage());
+                // Considerar si lanzar una excepción o solo loguear el error
+            }
+        }
+        
+        // Guardar el motivo de eliminación en el campo motivoRechazo antes de eliminar
         if (motivo != null && !motivo.trim().isEmpty()) {
-            pedido.setMotivoRechazo("ANULADO: " + motivo);
-            pedidoWebRepository.save(pedido);
+            pedido.setMotivoRechazo("ELIMINADO: " + motivo);
+            pedidoWebRepository.save(pedido); // Guardar para registrar el motivo antes de la eliminación
         }
         
         pedidoWebRepository.deleteById(id);
+        System.out.println("Pedido web eliminado de la base de datos: " + id);
     }
 
     private String generarNumeroPedido() {

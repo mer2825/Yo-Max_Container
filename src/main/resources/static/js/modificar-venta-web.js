@@ -109,6 +109,7 @@ $(document).ready(function() {
 
                 $('#metodoPago').val(venta.metodoPago || 'Efectivo');
                 $('#notaVenta').val(venta.nota);
+                $('#pdfKey').val(venta.pdfKey || ''); // Set the pdfKey here
 
             } else {
                 showNotification(result.message || 'Error al obtener detalles de la venta.', 'error');
@@ -244,8 +245,8 @@ $(document).ready(function() {
 
     function filtrarProductos() {
         const nombre = $('#filtroNombre').val().toLowerCase();
-        const min = parseFloat($('#filtroPrecioMin').val()) || 0;
-        const max = parseFloat($('#filtroPrecioMax').val()) || Infinity;
+        const min = Math.max(0, parseFloat($('#filtroPrecioMin').val()) || 0);
+        const max = Math.max(0, parseFloat($('#filtroPrecioMax').val()) || Infinity);
 
         $('.product-list-item').each(function() {
             const item = $(this);
@@ -283,20 +284,21 @@ $(document).ready(function() {
 
     function actualizarCantidad(e) {
         const productoId = $(e.currentTarget).data('id');
-        const nuevaCantidad = parseInt($(e.currentTarget).val());
+        let nuevaCantidad = parseInt($(e.currentTarget).val());
+        if (isNaN(nuevaCantidad) || nuevaCantidad < 1) {
+            nuevaCantidad = 1;
+        }
+
         const item = carrito.find(item => item.producto.id === productoId);
         if (!item) return;
 
         const producto = productosCargados[productoId];
-        if (nuevaCantidad > 0) {
-            if (nuevaCantidad > producto.stock) {
-                $(e.currentTarget).val(item.cantidad);
-                return showNotification(`Cantidad excede el stock disponible (${producto.stock}).`, 'warning');
-            }
-            item.cantidad = nuevaCantidad;
-        } else {
+        if (nuevaCantidad > producto.stock) {
             $(e.currentTarget).val(item.cantidad);
+            return showNotification(`Cantidad excede el stock disponible (${producto.stock}).`, 'warning');
         }
+        item.cantidad = nuevaCantidad;
+        
         renderizarCarrito();
     }
 
@@ -314,7 +316,7 @@ $(document).ready(function() {
             const subtotalItem = item.producto.precio * item.cantidad;
             subtotalVenta += subtotalItem;
             const stock = productosCargados[item.producto.id]?.stock || item.cantidad;
-            tbody.append(`<tr><td>${item.producto.nombre}</td><td><input type="number" class="form-control form-control-sm cantidad-item" value="${item.cantidad}" data-id="${item.producto.id}" min="1" max="${stock}"></td><td>S/ ${subtotalItem.toFixed(2)}</td><td><button class="btn btn-danger btn-sm remover-item" data-id="${item.producto.id}"><i class="bi bi-x-circle"></i></button></td></tr>`);
+            tbody.append(`<tr><td>${item.producto.nombre}</td><td><input type="number" class="form-control form-control-sm cantidad-item" value="${item.cantidad}" data-id="${item.producto.id}" min="1" max="${stock}" onkeydown="return event.keyCode !== 69 && event.keyCode !== 189 && event.keyCode !== 190" oninput="this.value = Math.abs(this.value.replace(/[^0-9]/g, '')) || 1"></td><td>S/ ${subtotalItem.toFixed(2)}</td><td><button class="btn btn-danger btn-sm remover-item" data-id="${item.producto.id}"><i class="bi bi-x-circle"></i></button></td></tr>`);
         });
 
         const tipoDescuento = $('#tipoDescuento').val();

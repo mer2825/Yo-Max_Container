@@ -16,57 +16,80 @@
 
 <div class="container-fluid" style="padding-top: 2rem;">
 
-        <div class="container-fluid p-4">
-            <div class="card shadow-sm rounded-lg">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h2 class="card-title h5 fw-bold mb-0">Pedidos Web</h2>
-                    </div>
-
-                    <!-- Filtros -->
-                    <div class="row mb-4">
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">Estado</label>
-                            <select class="form-select" id="filtroEstado">
-                                <option value="">Todos</option>
-                                <option value="PENDIENTE">Pendientes</option>
-                                <option value="EN_REVISION">En Revisión</option>
-                                <option value="APROBADO">Aprobados</option>
-                                <option value="RECHAZADO">Rechazados</option>
-                                <option value="PROCESADO">Procesados</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">Fecha Desde</label>
-                            <input type="date" class="form-control" id="filtroFechaDesde">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">Fecha Hasta</label>
-                            <input type="date" class="form-control" id="filtroFechaHasta">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">Buscar</label>
-                            <input type="text" class="form-control" id="filtroBusqueda" placeholder="Nombre o DNI del cliente">
-                        </div>
-                    </div>
-
-                    <table id="tablaPedidosWeb" class="table table-hover responsive" style="width:100%">
-                        <thead>
-                        <tr>
-                            <th>N° Pedido</th>
-                            <th>Fecha y Hora</th>
-                            <th>Cliente</th>
-                            <th>Total</th>
-                            <th>Estado</th>
-                            <th>Acciones</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table>
+    <div class="container-fluid p-4">
+        <div class="card shadow-sm rounded-lg mb-4"> <!-- Añadido mb-4 para margen inferior -->
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="card-title h5 fw-bold mb-0">Pedidos Web Pendientes</h2>
                 </div>
+
+                <!-- Filtros -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Estado</label>
+                        <select class="form-select" id="filtroEstado">
+                            <option value="">Todos</option>
+                            <option value="PENDIENTE">Pendientes</option>
+                            <option value="EN_REVISION">En Revisión</option>
+                            <option value="APROBADO">Aprobados</option>
+                            <option value="RECHAZADO">Rechazados</option>
+                            <option value="PROCESADO">Procesados</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Fecha Desde</label>
+                        <input type="date" class="form-control" id="filtroFechaDesde">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Fecha Hasta</label>
+                        <input type="date" class="form-control" id="filtroFechaHasta">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Buscar</label>
+                        <input type="text" class="form-control" id="filtroBusqueda" placeholder="Nombre o DNI del cliente">
+                    </div>
+                </div>
+
+                <table id="tablaPedidosWeb" class="table table-hover responsive" style="width:100%">
+                    <thead>
+                    <tr>
+                        <th>N° Pedido</th>
+                        <th>Fecha y Hora</th>
+                        <th>Cliente</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
             </div>
         </div>
+
+        <!-- Nueva sección para Pedidos Web Anulados -->
+        <div class="card shadow-sm rounded-lg mt-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="card-title h5 fw-bold mb-0">Pedidos Web Anulados</h2>
+                </div>
+                <table id="tablaPedidosWebAnulados" class="table table-hover responsive" style="width:100%">
+                    <thead>
+                    <tr>
+                        <th>N° Pedido</th>
+                        <th>Fecha y Hora</th>
+                        <th>Cliente</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
     </main>
 </div>
 
@@ -82,9 +105,28 @@
                 <iframe id="editVentaIframe" src="" style="width: 100%; height: 80vh; border: none;"></iframe>
             </div>
         </div>
+    </div>
 </div>
 
-<div id="notification-container" class="toast-container position-fixed top-0 end-0 p-3"></div>
+<!-- Modal para Ver Voucher -->
+<div class="modal fade" id="voucherModal" tabindex="-1" aria-labelledby="voucherModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="voucherModalLabel"><i class="bi bi-image me-2"></i>Voucher de Pago</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center p-3">
+                <img id="voucherImg" src="" alt="Voucher de pago" class="img-fluid rounded shadow-sm" style="max-height: 75vh; object-fit: contain;">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/notificaciones :: notification-container}"></div>
 
 <!-- Fragmento de scripts comunes -->
 <div th:replace="~{fragments/scripts :: common-scripts}"></div>

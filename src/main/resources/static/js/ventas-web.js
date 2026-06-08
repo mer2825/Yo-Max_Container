@@ -1,36 +1,110 @@
 $(document).ready(function() {
     let dataTable;
+    let dataTableAnuladas; // Nueva DataTable para ventas anuladas
     let editVentaModal;
+    let voucherModal;
 
     const API_BASE = '/ventas_web/api';
     const ENDPOINTS = {
         list: `${API_BASE}/listar`,
         process: (id) => `${API_BASE}/procesar/${id}`,
-        delete: (id) => `${API_BASE}/eliminar/${id}`,
+        anular: (id) => `${API_BASE}/anular/${id}`, // Nuevo endpoint para anular
+        eliminar: (id) => `${API_BASE}/eliminar/${id}`, // Endpoint para eliminar permanentemente
+        approve: (id) => `${API_BASE}/aprobar/${id}`
     };
 
     initializeDataTable();
+    initializeDataTableAnuladas(); // Inicializar la tabla de anuladas
     editVentaModal = new bootstrap.Modal(document.getElementById('editVentaModal'));
+    voucherModal = new bootstrap.Modal(document.getElementById('voucherModal'));
     setupEventListeners();
 
     function initializeDataTable() {
         if (dataTable) dataTable.destroy();
-        console.log('Inicializando DataTable con URL:', ENDPOINTS.list);
+        console.log('Inicializando DataTable principal con URL:', ENDPOINTS.list);
         dataTable = $('#tablaPedidosWeb').DataTable({
             responsive: true,
             processing: true,
+            serverSide: true,
             ajax: {
                 url: ENDPOINTS.list,
-                dataSrc: function(data) {
-                    console.log('Datos recibidos:', data);
-                    console.log('Cantidad de datos:', data.data ? data.data.length : 0);
-                    return data.data;
+                type: 'GET',
+                data: function(d) {
+                    d.estado = $('#filtroEstado').val();
+                    d.fechaDesde = $('#filtroFechaDesde').val();
+                    d.fechaHasta = $('#filtroFechaHasta').val();
+                    d.busqueda = $('#filtroBusqueda').val();
+                    console.log('Parámetros enviados al backend (principal):', d);
+                },
+                dataSrc: function(json) {
+                    console.log('Datos recibidos (principal):', json);
+                    return json.data;
                 },
                 xhrFields: { withCredentials: true },
                 error: function(xhr, status, error) {
-                    console.error('Error en AJAX:', error);
-                    console.error('Status:', xhr.status);
-                    console.error('Response:', xhr.responseText);
+                    console.error('Error en AJAX (principal):', error);
+                    showNotification('Error al cargar los pedidos: ' + (xhr.responseJSON?.message || error), 'error');
+                }
+            },
+            columns: [
+                { data: 'numeroPedido' },
+                { data: 'fechaPedido', render: data => new Date(data).toLocaleString('es-PE') },
+                { data: 'nombreCliente' },
+                { data: 'total', render: data => `S/ ${parseFloat(data).toFixed(2)}` },
+                { data: 'estado' },
+                {
+                    data: null, orderable: false, searchable: false,
+                    render: (data, type, row) => {
+                        let buttons = `
+                            <button class="btn btn-sm btn-info action-view-voucher" data-id="${row.id}" data-voucher="${row.voucherImagen}" title="Ver Voucher"><i class="bi bi-eye"></i></button>
+                            <button class="btn btn-sm btn-primary action-view-detail" data-id="${row.id}" title="Ver Detalle"><i class="bi bi-list-ul"></i></button>
+                        `;
+                        // Mostrar botones de aprobar, anular y eliminar solo si el estado no es APROBADO o ANULADO
+                        if (row.estado !== 'APROBADO' && row.estado !== 'ANULADO') {
+                            buttons += `
+                                <button class="btn btn-sm btn-success action-approve" data-id="${row.id}" title="Aprobar"><i class="bi bi-check-lg"></i></button>
+                                <button class="btn btn-sm btn-warning action-anular" data-id="${row.id}" title="Anular"><i class="bi bi-x-lg"></i></button>
+                                <button class="btn btn-sm btn-danger action-eliminar" data-id="${row.id}" title="Eliminar"><i class="bi bi-trash"></i></button>
+                            `;
+                        } else if (row.estado === 'ANULADO') { // Si está anulado, solo permitir eliminar permanentemente
+                             buttons += `
+                                <button class="btn btn-sm btn-danger action-eliminar" data-id="${row.id}" title="Eliminar"><i class="bi bi-trash"></i></button>
+                            `;
+                        }
+                        return buttons;
+                    }
+                }
+            ],
+            language: { url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" },
+            order: [[0, 'desc']]
+        });
+    }
+
+    function initializeDataTableAnuladas() {
+        if (dataTableAnuladas) dataTableAnuladas.destroy();
+        console.log('Inicializando DataTable de anuladas con URL:', ENDPOINTS.list);
+        dataTableAnuladas = $('#tablaPedidosWebAnulados').DataTable({
+            responsive: true,
+            processing: true,
+            serverSide: true,
+            ajax: {
+                url: ENDPOINTS.list,
+                type: 'GET',
+                data: function(d) {
+                    d.estado = 'ANULADO'; // Siempre filtrar por ANULADO
+                    d.fechaDesde = $('#filtroFechaDesde').val(); // Mantener filtros de fecha y búsqueda
+                    d.fechaHasta = $('#filtroFechaHasta').val();
+                    d.busqueda = $('#filtroBusqueda').val();
+                    console.log('Parámetros enviados al backend (anuladas):', d);
+                },
+                dataSrc: function(json) {
+                    console.log('Datos recibidos (anuladas):', json);
+                    return json.data;
+                },
+                xhrFields: { withCredentials: true },
+                error: function(xhr, status, error) {
+                    console.error('Error en AJAX (anuladas):', error);
+                    showNotification('Error al cargar los pedidos anulados: ' + (xhr.responseJSON?.message || error), 'error');
                 }
             },
             columns: [
@@ -44,8 +118,7 @@ $(document).ready(function() {
                     render: (data, type, row) => `
                         <button class="btn btn-sm btn-info action-view-voucher" data-id="${row.id}" data-voucher="${row.voucherImagen}" title="Ver Voucher"><i class="bi bi-eye"></i></button>
                         <button class="btn btn-sm btn-primary action-view-detail" data-id="${row.id}" title="Ver Detalle"><i class="bi bi-list-ul"></i></button>
-                        <button class="btn btn-sm btn-success action-approve" data-id="${row.id}" title="Aprobar"><i class="bi bi-check-lg"></i></button>
-                        <button class="btn btn-sm btn-dark action-delete" data-id="${row.id}" title="Anular"><i class="bi bi-trash"></i></button>
+                        <button class="btn btn-sm btn-danger action-eliminar" data-id="${row.id}" title="Eliminar"><i class="bi bi-trash"></i></button>
                     `
                 }
             ],
@@ -58,13 +131,30 @@ $(document).ready(function() {
         $('#tablaPedidosWeb tbody').on('click', '.action-view-voucher', handleViewVoucher);
         $('#tablaPedidosWeb tbody').on('click', '.action-view-detail', handleViewDetail);
         $('#tablaPedidosWeb tbody').on('click', '.action-approve', handleApprove);
-        $('#tablaPedidosWeb tbody').on('click', '.action-delete', handleDelete);
+        $('#tablaPedidosWeb tbody').on('click', '.action-anular', handleAnular); // Nuevo listener para anular
+        $('#tablaPedidosWeb tbody').on('click', '.action-eliminar', handleEliminar); // Listener para eliminar
+
+        $('#tablaPedidosWebAnulados tbody').on('click', '.action-view-voucher', handleViewVoucher);
+        $('#tablaPedidosWebAnulados tbody').on('click', '.action-view-detail', handleViewDetail);
+        $('#tablaPedidosWebAnulados tbody').on('click', '.action-eliminar', handleEliminar); // Listener para eliminar en tabla de anuladas
+
+
+        // Event listeners para los filtros
+        $('#filtroEstado, #filtroFechaDesde, #filtroFechaHasta').on('change', function() {
+            dataTable.ajax.reload();
+            dataTableAnuladas.ajax.reload();
+        });
+        $('#filtroBusqueda').on('keyup', function() {
+            dataTable.ajax.reload();
+            dataTableAnuladas.ajax.reload();
+        });
 
         // Escuchar mensajes desde el iframe de edición para recargar la tabla
         window.addEventListener('message', function(event) {
             if (event.data === 'ventaActualizada') {
                 editVentaModal.hide();
                 dataTable.ajax.reload();
+                dataTableAnuladas.ajax.reload();
                 showNotification('Venta web actualizada con éxito.', 'success');
             }
         });
@@ -73,9 +163,11 @@ $(document).ready(function() {
     function handleViewVoucher() {
         const voucherPath = $(this).data('voucher');
         if (voucherPath) {
-            window.open(voucherPath, '_blank');
+            $('#voucherImg').attr('src', voucherPath);
+            $('#voucherDownloadLink').attr('href', voucherPath);
+            voucherModal.show();
         } else {
-            alert('No hay voucher disponible');
+            showNotification('No hay voucher disponible para este pedido.', 'error');
         }
     }
 
@@ -90,7 +182,7 @@ $(document).ready(function() {
                 if (response.success) {
                     const pedido = response.data;
                     let itemsHtml = '';
-                    
+
                     pedido.items.forEach(item => {
                         itemsHtml += `
                             <tr>
@@ -166,23 +258,33 @@ $(document).ready(function() {
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
-                    url: `/ventas_web/api/aprobar/${pedidoId}`,
+                    url: ENDPOINTS.approve(pedidoId),
                     method: 'PUT',
                     xhrFields: { withCredentials: true },
                     success: function(response) {
-                        dataTable.ajax.reload();
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Aprobado!',
-                            text: 'Pedido aprobado con éxito',
-                            confirmButtonColor: '#0d6efd'
-                        });
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Aprobado!',
+                                text: 'Pedido aprobado con éxito. Redirigiendo a la lista de ventas...',
+                                confirmButtonColor: '#0d6efd'
+                            }).then(() => {
+                                window.location.href = '/ventas/listar'; // Redirigir a la lista de ventas
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Error al aprobar el pedido: ' + response.message,
+                                confirmButtonColor: '#0d6efd'
+                            });
+                        }
                     },
                     error: function(xhr, status, error) {
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
-                            text: 'Error al aprobar el pedido: ' + error,
+                            text: 'Error al aprobar el pedido: ' + (xhr.responseJSON?.message || error),
                             confirmButtonColor: '#0d6efd'
                         });
                     }
@@ -191,79 +293,80 @@ $(document).ready(function() {
         });
     }
 
-    function handleEdit() {
-        const ventaId = $(this).data('id');
-        const iframe = $('#editVentaIframe');
-        iframe.attr('src', `/ventas_web/modificar/${ventaId}`);
-        editVentaModal.show();
-    }
-
-    function handleProcesar() {
+    function handleAnular() {
         const ventaId = $(this).data('id');
         Swal.fire({
-            title: '¿Estás seguro?',
-            text: "La venta será procesada y el stock de los productos será actualizado. Esta acción no se puede revertir.",
-            icon: 'info',
-            showCancelButton: true, confirmButtonColor: '#3085d6', cancelButtonColor: '#d33',
-            confirmButtonText: 'Sí, procesar', cancelButtonText: 'Cancelar'
+            title: '¿Está seguro de anular esta venta web?',
+            text: "Esta acción cambiará el estado del pedido a 'ANULADO'. Podrá ser revisado en la sección de pedidos anulados.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ffc107', // Color para anular (amarillo)
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, anular',
+            cancelButtonText: 'Cancelar',
+            input: 'text',
+            inputPlaceholder: 'Motivo de anulación (opcional)',
+            inputValidator: (value) => {
+                return null;
+            }
         }).then(result => {
             if (result.isConfirmed) {
+                const motivo = result.value || '';
                 $.ajax({
-                    url: ENDPOINTS.process(ventaId), type: 'POST',
+                    url: ENDPOINTS.anular(ventaId),
+                    type: 'PUT', // Usamos PUT para actualizar el estado
+                    contentType: 'application/json',
+                    data: JSON.stringify({ motivo: motivo }),
                     xhrFields: { withCredentials: true },
                     success: function(response) {
                         showNotification(response.message, response.success ? 'success' : 'error');
-                        if (response.success) dataTable.ajax.reload();
+                        if (response.success) {
+                            dataTable.ajax.reload();
+                            dataTableAnuladas.ajax.reload();
+                        }
                     },
-                    error: (xhr) => showNotification(xhr.responseJSON?.message || 'Error al procesar la venta.', 'error')
+                    error: function(xhr, status, error) {
+                        showNotification(xhr.responseJSON?.message || 'Error al anular la venta web.', 'error');
+                    }
                 });
             }
         });
     }
 
-    function handleDelete() {
+    function handleEliminar() {
         const ventaId = $(this).data('id');
         Swal.fire({
-            title: '¿Estás seguro de anular esta venta web?',
-            text: "Esta acción anulará el pedido permanentemente de la base de datos. No se podrá recuperar.",
-            icon: 'warning',
+            title: '¿Está seguro de ELIMINAR esta venta web?',
+            text: "Esta acción eliminará el pedido permanentemente de la base de datos, incluyendo el voucher asociado. ¡No se podrá recuperar!",
+            icon: 'error', // Icono de error para una acción destructiva
             showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Sí, anularla',
+            confirmButtonColor: '#dc3545', // Color para eliminar (rojo)
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminarla',
             cancelButtonText: 'Cancelar',
             input: 'text',
-            inputPlaceholder: 'Motivo de anulación (opcional)',
+            inputPlaceholder: 'Motivo de eliminación (opcional)',
             inputValidator: (value) => {
-                // El motivo es opcional, así que siempre retornamos válido
                 return null;
             }
         }).then(result => {
-            console.log('Resultado SweetAlert:', result);
             if (result.isConfirmed) {
                 const motivo = result.value || '';
-                console.log('Venta ID:', ventaId);
-                console.log('Motivo:', motivo);
-                console.log('URL:', ENDPOINTS.delete(ventaId));
                 $.ajax({
-                    url: ENDPOINTS.delete(ventaId),
+                    url: ENDPOINTS.eliminar(ventaId),
                     type: 'DELETE',
                     contentType: 'application/json',
                     data: JSON.stringify({ motivo: motivo }),
                     xhrFields: { withCredentials: true },
                     success: function(response) {
-                        console.log('Respuesta exitosa:', response);
                         showNotification(response.message, response.success ? 'success' : 'error');
                         if (response.success) {
                             dataTable.ajax.reload();
+                            dataTableAnuladas.ajax.reload();
                         }
                     },
                     error: function(xhr, status, error) {
-                        console.error('Error en AJAX:', xhr);
-                        console.error('Status:', status);
-                        console.error('Error:', error);
-                        console.error('Response:', xhr.responseText);
-                        showNotification(xhr.responseJSON?.message || 'Error al anular la venta web.', 'error');
+                        showNotification(xhr.responseJSON?.message || 'Error al eliminar la venta web.', 'error');
                     }
                 });
             }
@@ -292,7 +395,6 @@ $(document).ready(function() {
         const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
         toast.show();
 
-        // Eliminar el toast del DOM después de que se oculte
         toastElement.addEventListener('hidden.bs.toast', () => {
             toastElement.remove();
         });

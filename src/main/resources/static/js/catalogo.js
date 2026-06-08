@@ -23,15 +23,10 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 // Usuario logueado
                 const authBtn = document.getElementById('auth-btn');
-                const misPedidosBtn = document.getElementById('mis-pedidos-btn');
                 
                 if (authBtn) {
                     authBtn.textContent = 'Cerrar Sesión';
                     authBtn.href = '/logout';
-                }
-                
-                if (misPedidosBtn) {
-                    misPedidosBtn.classList.remove('d-none');
                 }
             })
             .catch(error => {
@@ -139,8 +134,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function filterAndDisplayProducts() {
         const nombreFilter = filterNombre ? filterNombre.value.toLowerCase() : '';
-        const precioMinFilter = filterPrecioMin ? parseFloat(filterPrecioMin.value) || 0 : 0;
-        const precioMaxFilter = filterPrecioMax ? parseFloat(filterPrecioMax.value) || Infinity : Infinity;
+        
+        // Validación para asegurar que los precios no sean negativos
+        const precioMinFilter = filterPrecioMin ? Math.max(0, parseFloat(filterPrecioMin.value) || 0) : 0;
+        const precioMaxFilter = filterPrecioMax ? Math.max(0, parseFloat(filterPrecioMax.value) || Infinity) : Infinity;
 
         const activeCategoryButton = categoryFilterButtonsContainer ? categoryFilterButtonsContainer.querySelector('.active') : null;
         const activeCategoryId = activeCategoryButton ? activeCategoryButton.getAttribute('data-category-id') : 'all';
@@ -294,6 +291,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Event listener para los botones "Agregar al carrito" en la vista de catálogo (modal de producto)
+    // Este ya no es necesario ya que el botón "Ver producto" fue eliminado y la tarjeta es clickeable
+    /*
     document.querySelectorAll('.product-item .add-to-cart-btn').forEach(button => {
         button.addEventListener('click', (e) => {
             const productId = e.target.dataset.productId;
@@ -303,10 +302,12 @@ document.addEventListener('DOMContentLoaded', function() {
             addToCart(productId, name, price);
         });
     });
+    */
 
     // NUEVO: Event listener para los botones "Añadir" en las tarjetas de producto
     document.querySelectorAll('.add-to-cart-card-btn').forEach(button => {
         button.addEventListener('click', (e) => {
+            e.stopPropagation(); // <--- AÑADIDO: Detener la propagación del evento
             const productId = e.target.dataset.productId;
             const productName = e.target.dataset.productName;
             const productPrice = parseFloat(e.target.dataset.productPrice);
@@ -422,13 +423,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const modalAddToCartBtn = document.getElementById('modalAddToCartBtn');
 
         productDetailModal.addEventListener('show.bs.modal', function (event) {
-            const button = event.relatedTarget;
-            const productId = button.getAttribute('data-product-id');
-            const productName = button.getAttribute('data-product-name');
-            const productDescription = button.getAttribute('data-product-description');
-            const productPrice = button.getAttribute('data-product-price');
-            const productStock = parseInt(button.getAttribute('data-product-stock'), 10);
-            const imagesAttr = button.getAttribute('data-product-images');
+            const relatedTarget = event.relatedTarget; // Ahora será la tarjeta clickeada
+            const productId = relatedTarget.getAttribute('data-product-id');
+            const productName = relatedTarget.getAttribute('data-product-name');
+            const productDescription = relatedTarget.getAttribute('data-product-description');
+            const productPrice = relatedTarget.getAttribute('data-product-price');
+            const productStock = parseInt(relatedTarget.getAttribute('data-product-stock'), 10);
+            const imagesAttr = relatedTarget.getAttribute('data-product-images');
             const productImages = imagesAttr ? imagesAttr.split(',') : [];
 
             modalProductName.textContent = productName;

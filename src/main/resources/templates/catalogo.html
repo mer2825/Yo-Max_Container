@@ -16,7 +16,7 @@
         <div class="container-fluid align-items-center">
             <a class="navbar-brand d-flex align-items-center pe-3" th:href="@{/}">
                 <img th:if="${empresaGlobal != null && empresaGlobal.logoUrl != null}"
-                     th:src="@{${empresaGlobal.logoUrl}}"
+                     th:src="${empresaGlobal.logoUrl}"
                      alt="Logo" class="logo me-3">
                 <span class="navbar-title fw-bold" th:text="${empresaGlobal != null ? empresaGlobal.nombre : 'Catálogo'}"></span>
             </a>
@@ -37,7 +37,6 @@
                         <span class="badge bg-warning text-dark position-absolute top-0 start-100 translate-middle" id="cart-count">0</span>
                     </button>
                     <a class="btn btn-outline-yomax" id="auth-btn" th:href="@{/login}">Iniciar Sesión</a>
-                    <a class="btn btn-outline-yomax d-none" id="mis-pedidos-btn" th:href="@{/mis-pedidos}">Mis Pedidos</a>
                 </div>
             </div>
         </div>
@@ -55,7 +54,7 @@
             <div class="hero-visual d-flex align-items-center justify-content-center position-relative">
                 <div class="hero-image-card rounded-4 shadow-sm">
                     <img th:if="${empresaGlobal != null && empresaGlobal.logoUrl != null}"
-                         th:src="@{${empresaGlobal.logoUrl}}"
+                         th:src="${empresaGlobal.logoUrl}"
                          alt="Logo destacado" class="hero-logo img-fluid rounded-4">
                     <div th:unless="${empresaGlobal != null && empresaGlobal.logoUrl != null}" class="hero-logo-fallback text-center text-white">
                         <span class="fs-2">Yo'Max</span>
@@ -121,13 +120,13 @@
                     <div class="col-6 col-md-3 col-lg-2">
                         <div class="input-group filter-input">
                             <span class="input-group-text bg-white border-end-0">S/</span>
-                            <input type="number" class="form-control border-start-0" id="filterPrecioMin" placeholder="Mín" min="0">
+                            <input type="number" class="form-control border-start-0" id="filterPrecioMin" placeholder="Mín" min="0" oninput="validity.valid||(value='');">
                         </div>
                     </div>
                     <div class="col-6 col-md-3 col-lg-2">
                         <div class="input-group filter-input">
                             <span class="input-group-text bg-white border-end-0">S/</span>
-                            <input type="number" class="form-control border-start-0" id="filterPrecioMax" placeholder="Máx" min="0">
+                            <input type="number" class="form-control border-start-0" id="filterPrecioMax" placeholder="Máx" min="0" oninput="validity.valid||(value='');">
                         </div>
                     </div>
                     <div class="col-12 col-lg-2 text-lg-end align-self-center">
@@ -142,7 +141,14 @@
             <div class="row" id="allProductsDisplay">
                 <th:block th:each="entry : ${productosPorCategoria}">
                     <div th:each="producto : ${entry.value}" class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mb-4 product-item" th:data-category-id="${entry.key.id}" th:data-product-name="${producto.nombre}" th:data-product-price="${producto.precio}">
-                        <div class="card product-card h-100 shadow-sm">
+                        <div class="card product-card h-100 shadow-sm cursor-pointer"
+                             data-bs-toggle="modal" data-bs-target="#productDetailModal"
+                             th:data-product-id="${producto.id}"
+                             th:data-product-name="${producto.nombre}"
+                             th:data-product-description="${!#strings.isEmpty(producto.descripcion) ? producto.descripcion : 'Sin descripción disponible.'}"
+                             th:data-product-price="${#numbers.formatDecimal(producto.precio, 1, 2)}"
+                             th:data-product-stock="${producto.stock}"
+                             th:data-product-images="${#strings.arrayJoin(#lists.sort(producto.imagenes.![url]), ',')}">
                             <div class="position-relative">
                                 <div th:if="${producto.stock == 0}" class="stock-overlay">
                                     <span class="out-of-stock-badge">¡Agotado!</span>
@@ -166,7 +172,7 @@
                                     <h5 class="card-title mb-2" th:text="${producto.nombre}"></h5>
                                     <div class="card-price">
                                         <span class="price" th:text="${'S/ ' + #numbers.formatDecimal(producto.precio, 1, 2)}"></span>
-                                        <span class="text-muted small" th:text="${producto.stock > 0 ? 'Disponible' : 'Sin stock'}"></span>
+                                        <span class="text-muted small" th:text="${producto.stock > 0 ? 'Stock: ' + producto.stock : 'Sin stock'}"></span>
                                     </div>
                                 </div>
                                 <div class="mt-auto d-grid gap-2 card-actions">
@@ -176,34 +182,11 @@
                                             th:data-product-price="${#numbers.formatDecimal(producto.precio, 1, 2)}">
                                         <i class="bi bi-cart-plus me-1"></i> Añadir al carrito
                                     </button>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm view-product-btn"
-                                            data-bs-toggle="modal" data-bs-target="#productDetailModal"
-                                            th:data-product-id="${producto.id}"
-                                            th:data-product-name="${producto.nombre}"
-                                            th:data-product-description="${!#strings.isEmpty(producto.descripcion) ? producto.descripcion : 'Sin descripción disponible.'}"
-                                            th:data-product-price="${#numbers.formatDecimal(producto.precio, 1, 2)}"
-                                            th:data-product-stock="${producto.stock}"
-                                            th:data-product-images="${#strings.arrayJoin(#lists.sort(producto.imagenes.![url]), ',')}">
-                                        Ver producto
-                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </th:block>
-            </div>
-        </section>
-
-        <section class="container py-5 pedidos-container" id="pedidos">
-            <h3 class="text-center mb-3">Pedidos</h3>
-            <div class="d-flex flex-column align-items-center">
-                <div id="mensajeConexion" class="alert alert-success text-center" role="alert" style="display:none;"></div>
-                <div class="alert alert-info text-center" role="alert">
-                    Para realizar un pedido, primero debes iniciar sesión.
-                </div>
-                <button id="btnRealizarPedido" class="btn btn-primary mt-3">
-                    Realizar Pedido
-                </button>
             </div>
         </section>
 

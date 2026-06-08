@@ -3,10 +3,9 @@ $(document).ready(function() {
     let productosCargados = {};
     let ventaId = null;
 
-    // --- Inicialización ---
     cargarProductos();
     setupEventListeners();
-    aplicarValidacionDocumento(); // Aplicar validación inicial
+    aplicarValidacionDocumento();
 
     const pathParts = window.location.pathname.split('/');
     ventaId = pathParts[pathParts.length - 1];
@@ -37,9 +36,6 @@ $(document).ready(function() {
         $('#btnBuscarCliente').on('click', () => buscarOCrearCliente(false));
         $('#btnLimpiarCliente').on('click', () => limpiarCliente(true));
         $('#product-selection-area').on('click', '.product-list-item', agregarAlCarrito);
-        $('#carrito-items').on('change', '.cantidad-item', actualizarCantidad);
-        $('#carrito-items').on('click', '.remover-item', removerDelCarrito);
-        $('#btnFinalizarVenta').on('click', modificarVenta);
         $('#filtroNombre, #filtroPrecioMin, #filtroPrecioMax').on('keyup input change', filtrarProductos);
         $('.category-header').on('click', function() {
             const target = $(this).data('bs-target');
@@ -56,8 +52,56 @@ $(document).ready(function() {
             }
         });
 
-        // Listeners para el descuento
         $('#descuentoVenta, #tipoDescuento').on('input change', renderizarCarrito);
+        $('#btnFinalizarVenta').on('click', modificarVenta);
+
+        $(document).on('keydown', '.cantidad-item', function(e) {
+            const teclasBloqueadas = ['-', '.', ',', 'e', '+'];
+            if (teclasBloqueadas.includes(e.key)) {
+                e.preventDefault();
+                return false;
+            }
+            if (e.key === 'ArrowDown' && parseInt($(this).val()) <= 1) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        $(document).on('input', '.cantidad-item', function() {
+            this.value = this.value.replace(/[^0-9]/g, '');
+            if (this.value === '' || this.value === '0') return;
+            actualizarCantidadDesdeInput(this);
+        });
+
+        $(document).on('blur', '.cantidad-item', function() {
+            if (!this.value || parseInt(this.value, 10) < 1) {
+                this.value = '1';
+                actualizarCantidadDesdeInput(this);
+            }
+        });
+
+        $(document).on('click', '.remover-item', removerDelCarrito);
+    }
+
+    function actualizarCantidadDesdeInput(input) {
+        const productoId = $(input).data('id');
+        let nuevaCantidad = parseInt(input.value, 10);
+
+        if (isNaN(nuevaCantidad) || nuevaCantidad < 1) return;
+
+        const item = carrito.find(item => item.producto.id === productoId);
+        if (!item) return;
+
+        const producto = productosCargados[productoId];
+        if (nuevaCantidad > producto.stock) {
+            input.value = item.cantidad;
+            return showNotification(`Cantidad excede el stock disponible (${producto.stock}).`, 'warning');
+        }
+
+        item.cantidad = nuevaCantidad;
+        const subtotalItem = item.producto.precio * nuevaCantidad;
+        $(input).closest('tr').find('.subtotal-item').text(`S/ ${subtotalItem.toFixed(2)}`);
+        recalcularTotales();
     }
 
     async function cargarDatosVenta(id) {
@@ -96,15 +140,13 @@ $(document).ready(function() {
                         cantidad: detalle.cantidad
                     };
                 });
-                
-                // Cargar descuento
+
                 if (venta.descuento && venta.descuento > 0) {
                     $('#tipoDescuento').val('monto');
                     $('#descuentoVenta').val(venta.descuento.toFixed(2));
                 }
 
                 renderizarCarrito();
-
                 $('#metodoPago').val(venta.metodoPago);
                 $('#notaVenta').val(venta.nota);
 
@@ -153,14 +195,14 @@ $(document).ready(function() {
             tipoDocumentoSelect.val('ruc').prop('disabled', true);
             seccionCliente.show();
         } else if (tipoComprobante === 'boleta') {
-            tipoDocumentoSelect.val('dni').prop('disabled', true);
+            tipoDocumentoSelect.val('dni').prop('disabled', false); // Allow changing for boleta
             seccionCliente.show();
         } else {
             limpiarCliente(false);
         }
-        
+
         if (!$('#loading-overlay').hasClass('loading-overlay-visible')) {
-             aplicarValidacionDocumento();
+            aplicarValidacionDocumento();
         }
     }
 
@@ -184,39 +226,96 @@ $(document).ready(function() {
     }
 
     async function buscarOCrearCliente(calledFromFinalizarVenta = false) {
-        // ... (código sin cambios)
+        const tipo = $('#tipoDocumento').val();
+        const numero = $('#numeroDocumento').val();
+        if (!numero) {
+            if (!calledFromFinalizarVenta) showNotification('Ingrese un número de documento', 'error');
+            return false;
+        }
+
+        const maxLength = (tipo === 'dni') ? 8 : 11;
+        if (numero.length !== maxLength) {
+            if (!calledFromFinalizarVenta) showNotification(`El ${tipo.toUpperCase()} debe tener ${maxLength} dígitos.`, 'error');
+            return false;
+        }
+
+        try {
+            const url = `/clientes/api/buscar-o-crear?tipo=${tipo}&numero=${numero}&forceCreate=false`;
+            const response = await fetch(url, { credentials: 'include' });
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                if (result.isNewClient) {
+                    const clienteNuevo = result.cliente;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    const confirmCreate = await Swal.fire({
+                        title: 'Cliente no registrado',
+                        html: `El cliente <strong>${clienteNuevo.nombre}</strong> no se encuentra registrado.<br>¿Desea registrarlo y asignarlo a la venta?`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, registrar',
+                        cancelButtonText: 'No, cancelar'
+                    });
+                    if (confirmCreate.isConfirmed) {
+                        showLoading(true);
+                        const forceCreateUrl = `/clientes/api/buscar-o-crear?tipo=${tipo}&numero=${numero}&forceCreate=true`;
+                        const createResponse = await fetch(forceCreateUrl, { credentials: 'include' });
+                        const createResult = await createResponse.json();
+                        if (createResponse.ok && createResult.success) {
+                            const clienteGuardado = createResult.cliente;
+                            $('#clienteId').val(clienteGuardado.id);
+                            updateClienteDisplay(clienteGuardado, tipo);
+                            showNotification(createResult.message || 'Cliente registrado y asignado.', 'success');
+                            return true;
+                        } else {
+                            showNotification(createResult.message || 'Error al registrar el nuevo cliente.', 'error');
+                            limpiarCliente(false);
+                            return false;
+                        }
+                    } else {
+                        showNotification('Registro de cliente cancelado.', 'info');
+                        limpiarCliente(false);
+                        return false;
+                    }
+                } else {
+                    const clienteExistente = result.cliente;
+                    $('#clienteId').val(clienteExistente.id);
+                    updateClienteDisplay(clienteExistente, tipo);
+                    showNotification('Cliente asignado con éxito.', 'success');
+                    return true;
+                }
+            } else {
+                if (!calledFromFinalizarVenta) showNotification(result.message || 'Error al buscar el cliente.', 'error');
+                limpiarCliente(false);
+                return false;
+            }
+        } catch (error) {
+            if (!calledFromFinalizarVenta) showNotification(`Error de conexión: ${error.message}`, 'error');
+            limpiarCliente(false);
+            return false;
+        } finally {
+            showLoading(false);
+        }
     }
 
     function filtrarProductos() {
         const filtroNombre = $('#filtroNombre').val().toLowerCase();
-        const filtroPrecioMin = parseFloat($('#filtroPrecioMin').val()) || 0;
-        const filtroPrecioMax = parseFloat($('#filtroPrecioMax').val()) || Infinity;
+        const filtroPrecioMin = Math.max(0, parseFloat($('#filtroPrecioMin').val()) || 0);
+        const filtroPrecioMax = Math.max(0, parseFloat($('#filtroPrecioMax').val()) || Infinity);
 
         $('.product-list-item').each(function() {
             const item = $(this);
             const nombre = item.data('product-nombre').toLowerCase();
             const precio = parseFloat(item.data('product-precio'));
-
             const cumpleNombre = nombre.includes(filtroNombre);
             const cumplePrecioMin = precio >= filtroPrecioMin;
             const cumplePrecioMax = precio <= filtroPrecioMax;
-
-            if (cumpleNombre && cumplePrecioMin && cumplePrecioMax) {
-                item.show();
-            } else {
-                item.hide();
-            }
+            item.toggle(cumpleNombre && cumplePrecioMin && cumplePrecioMax);
         });
 
-        // Ocultar categorías que no tengan productos visibles
         $('.category-group').each(function() {
             const group = $(this);
-            const productosVisibles = group.find('.product-list-item:visible').length;
-            if (productosVisibles === 0) {
-                group.hide();
-            } else {
-                group.show();
-            }
+            group.toggle(group.find('.product-list-item:visible').length > 0);
         });
     }
 
@@ -238,25 +337,6 @@ $(document).ready(function() {
         renderizarCarrito();
     }
 
-    function actualizarCantidad(e) {
-        const productoId = $(e.currentTarget).data('id');
-        const nuevaCantidad = parseInt($(e.currentTarget).val());
-        const item = carrito.find(item => item.producto.id === productoId);
-        if (!item) return;
-
-        const producto = productosCargados[productoId];
-        if (nuevaCantidad > 0) {
-            if (nuevaCantidad > producto.stock) {
-                $(e.currentTarget).val(item.cantidad);
-                return showNotification(`Cantidad excede el stock disponible (${producto.stock}).`, 'warning');
-            }
-            item.cantidad = nuevaCantidad;
-        } else {
-            $(e.currentTarget).val(item.cantidad);
-        }
-        renderizarCarrito();
-    }
-
     function removerDelCarrito(e) {
         const productoId = $(e.currentTarget).data('id');
         carrito = carrito.filter(item => item.producto.id !== productoId);
@@ -266,13 +346,45 @@ $(document).ready(function() {
     function renderizarCarrito() {
         const tbody = $('#carrito-items');
         tbody.empty();
-        let subtotalVenta = 0;
+
         carrito.forEach(item => {
-            const subtotalItem = item.producto.precio * item.cantidad;
-            subtotalVenta += subtotalItem;
-            const stock = productosCargados[item.producto.id]?.stock || item.cantidad;
-            tbody.append(`<tr><td>${item.producto.nombre}</td><td><input type="number" class="form-control form-control-sm cantidad-item" value="${item.cantidad}" data-id="${item.producto.id}" min="1" max="${stock}"></td><td>S/ ${subtotalItem.toFixed(2)}</td><td><button class="btn btn-danger btn-sm remover-item" data-id="${item.producto.id}"><i class="bi bi-x-circle"></i></button></td></tr>`);
+            const cantidad = Math.max(1, parseInt(item.cantidad, 10) || 1);
+            item.cantidad = cantidad;
+            const subtotalItem = item.producto.precio * cantidad;
+            const stock = productosCargados[item.producto.id]?.stock || cantidad;
+
+            tbody.append(`
+                <tr>
+                    <td>${item.producto.nombre}</td>
+                    <td>
+                        <input
+                            type="text"
+                            inputmode="numeric"
+                            class="form-control form-control-sm cantidad-item"
+                            value="${cantidad}"
+                            data-id="${item.producto.id}"
+                            data-stock="${stock}"
+                            autocomplete="off"
+                        >
+                    </td>
+                    <td class="subtotal-item">S/ ${subtotalItem.toFixed(2)}</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm remover-item" data-id="${item.producto.id}">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </td>
+                </tr>
+            `);
         });
+
+        recalcularTotales();
+    }
+
+    function recalcularTotales() {
+        let subtotalVenta = carrito.reduce((sum, item) => {
+            const cantidad = Math.max(1, parseInt(item.cantidad, 10) || 1);
+            return sum + (item.producto.precio * cantidad);
+        }, 0);
 
         const tipoDescuento = $('#tipoDescuento').val();
         let valorDescuento = parseFloat($('#descuentoVenta').val()) || 0;
@@ -289,7 +401,7 @@ $(document).ready(function() {
                 $('#descuentoVenta').val(100);
             }
             descuentoCalculado = (subtotalVenta * valorDescuento) / 100;
-        } else { // tipoDescuento === 'monto'
+        } else {
             if (valorDescuento > subtotalVenta) {
                 valorDescuento = subtotalVenta;
                 $('#descuentoVenta').val(subtotalVenta.toFixed(2));
@@ -298,8 +410,8 @@ $(document).ready(function() {
         }
 
         const totalVenta = subtotalVenta - descuentoCalculado;
-
         $('#venta-subtotal').text(`S/ ${subtotalVenta.toFixed(2)}`);
+        $('#venta-descuento').text(`S/ ${descuentoCalculado.toFixed(2)}`);
         $('#venta-total').text(`S/ ${totalVenta.toFixed(2)}`);
     }
 
@@ -307,13 +419,13 @@ $(document).ready(function() {
         const subtotalVenta = carrito.reduce((sum, item) => sum + (item.producto.precio * item.cantidad), 0);
         const tipoDescuento = $('#tipoDescuento').val();
         let valorDescuento = parseFloat($('#descuentoVenta').val()) || 0;
-        
+
         if (valorDescuento < 0) valorDescuento = 0;
 
         if (tipoDescuento === 'porcentaje') {
             if (valorDescuento > 100) valorDescuento = 100;
             return (subtotalVenta * valorDescuento) / 100;
-        } else { // monto
+        } else {
             if (valorDescuento > subtotalVenta) valorDescuento = subtotalVenta;
             return valorDescuento;
         }
@@ -339,9 +451,7 @@ $(document).ready(function() {
             clienteId = $('#clienteId').val();
         }
 
-        if (!clienteId) {
-            clienteId = 1; // Consumidor Final por defecto si no hay cliente
-        }
+        if (!clienteId) clienteId = 1;
 
         const ventaData = {
             tipoComprobante: mapTipoComprobante($('#tipoComprobanteVenta').val()),
@@ -380,10 +490,30 @@ $(document).ready(function() {
     }
 
     function showNotification(message, type = 'success') {
-        // ... (código sin cambios)
+        const toastContainer = $('#notification-container');
+        if (!toastContainer.length) {
+            // If the container is not in the current DOM (because it's an iframe),
+            // try to find it in the parent.
+            const parentToastContainer = $(window.parent.document).find('#notification-container');
+            if (parentToastContainer.length) {
+                // Use parent's notification system
+                window.parent.showNotification(message, type);
+                return;
+            }
+        }
+        const toastClass = type === 'success' ? 'text-bg-success' : (type === 'warning' ? 'text-bg-warning' : 'text-bg-danger');
+        const toastHTML = `<div class="toast align-items-center ${toastClass} border-0" role="alert" aria-live="assertive" aria-atomic="true"><div class="d-flex"><div class="toast-body">${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div></div>`;
+        toastContainer.append(toastHTML);
+        const toast = new bootstrap.Toast(toastContainer.children().last(), { delay: 3000 });
+        toast.show();
     }
 
     function showLoading(show) {
-        // ... (código sin cambios)
+        let loadingOverlay = $('#loading-overlay');
+        if (loadingOverlay.length === 0) {
+             $('body').append('<div id="loading-overlay" class="loading-overlay"><div class="spinner"></div></div>');
+            loadingOverlay = $('#loading-overlay');
+        }
+        loadingOverlay.toggleClass('loading-overlay-visible', show);
     }
 });

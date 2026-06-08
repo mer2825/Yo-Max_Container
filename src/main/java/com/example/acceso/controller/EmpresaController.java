@@ -46,9 +46,10 @@ public class EmpresaController {
     public ResponseEntity<?> guardarEmpresaApi(@RequestBody Empresa empresa, HttpSession session) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // Antes de guardar, asegúrate de que el publicId no se pierda
+            // Antes de guardar, asegúrate de que los publicId no se pierdan
             Empresa empresaActual = empresaService.getEmpresaInfo();
             empresa.setLogoPublicId(empresaActual.getLogoPublicId());
+            empresa.setQrYapePublicId(empresaActual.getQrYapePublicId());
 
             Empresa empresaGuardada = empresaService.saveEmpresa(empresa);
             session.setAttribute("empresa", empresaGuardada);
@@ -73,34 +74,26 @@ public class EmpresaController {
             return ResponseEntity.badRequest().body(response);
         }
 
-        // 1. Obtener la empresa y el publicId del logo antiguo
         Empresa empresa = empresaService.getEmpresaInfo();
         String oldPublicId = empresa.getLogoPublicId();
 
         try {
-            // 2. Subir la nueva imagen a Cloudinary
             Map<String, String> uploadResult = cloudinaryService.uploadFile(file, "logos");
             String newImageUrl = uploadResult.get("secure_url");
             String newPublicId = uploadResult.get("public_id");
 
-            // 3. Actualizar la entidad Empresa con los nuevos datos
             empresa.setLogoUrl(newImageUrl);
             empresa.setLogoPublicId(newPublicId);
-
-            // 4. Guardar los cambios en la base de datos
             empresaService.saveEmpresa(empresa);
 
-            // 5. Si había un logo antiguo, borrarlo de Cloudinary
             if (oldPublicId != null && !oldPublicId.isEmpty()) {
                 try {
                     cloudinaryService.deleteFile(oldPublicId);
                 } catch (IOException e) {
-                    // Log del error, pero no fallar la operación principal
                     System.err.println("Error al eliminar el logo antiguo de Cloudinary: " + e.getMessage());
                 }
             }
             
-            // 6. Devolver la respuesta exitosa
             response.put("success", true);
             response.put("message", "Logo subido y guardado correctamente.");
             response.put("imageUrl", newImageUrl);
@@ -109,6 +102,48 @@ public class EmpresaController {
         } catch (IOException e) {
             response.put("success", false);
             response.put("message", "Error al subir el logo: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+
+    @PostMapping("/api/subir-qr-yape")
+    @ResponseBody
+    public ResponseEntity<?> subirQrYape(@RequestParam("qrYapeFile") MultipartFile file) {
+        Map<String, Object> response = new HashMap<>();
+        if (file.isEmpty()) {
+            response.put("success", false);
+            response.put("message", "El archivo está vacío.");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        Empresa empresa = empresaService.getEmpresaInfo();
+        String oldPublicId = empresa.getQrYapePublicId();
+
+        try {
+            Map<String, String> uploadResult = cloudinaryService.uploadFile(file, "qrs_yape");
+            String newImageUrl = uploadResult.get("secure_url");
+            String newPublicId = uploadResult.get("public_id");
+
+            empresa.setQrYapeUrl(newImageUrl);
+            empresa.setQrYapePublicId(newPublicId);
+            empresaService.saveEmpresa(empresa);
+
+            if (oldPublicId != null && !oldPublicId.isEmpty()) {
+                try {
+                    cloudinaryService.deleteFile(oldPublicId);
+                } catch (IOException e) {
+                    System.err.println("Error al eliminar el QR Yape antiguo de Cloudinary: " + e.getMessage());
+                }
+            }
+            
+            response.put("success", true);
+            response.put("message", "QR de Yape subido y guardado correctamente.");
+            response.put("imageUrl", newImageUrl);
+            return ResponseEntity.ok(response);
+
+        } catch (IOException e) {
+            response.put("success", false);
+            response.put("message", "Error al subir el QR de Yape: " + e.getMessage());
             return ResponseEntity.internalServerError().body(response);
         }
     }

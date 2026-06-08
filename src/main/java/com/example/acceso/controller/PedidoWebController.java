@@ -7,13 +7,18 @@ import com.example.acceso.model.Empresa;
 import com.example.acceso.service.PedidoWebService;
 import com.example.acceso.service.EmpresaService;
 import com.example.acceso.service.CloudinaryService;
+import com.example.acceso.service.PdfService;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -26,11 +31,13 @@ public class PedidoWebController {
     private final PedidoWebService pedidoWebService;
     private final EmpresaService empresaService;
     private final CloudinaryService cloudinaryService;
+    private final PdfService pdfService;
 
-    public PedidoWebController(PedidoWebService pedidoWebService, EmpresaService empresaService, CloudinaryService cloudinaryService) {
+    public PedidoWebController(PedidoWebService pedidoWebService, EmpresaService empresaService, CloudinaryService cloudinaryService, PdfService pdfService) {
         this.pedidoWebService = pedidoWebService;
         this.empresaService = empresaService;
         this.cloudinaryService = cloudinaryService;
+        this.pdfService = pdfService;
     }
 
     private boolean tienePermisoParaGestionar(HttpSession session) {
@@ -63,7 +70,6 @@ public class PedidoWebController {
             return ResponseEntity.badRequest().body(response);
         }
 
-        // Validar tipo de archivo
         String contentType = file.getContentType();
         if (contentType == null || (!contentType.equals("image/jpeg") && 
             !contentType.equals("image/png") && !contentType.equals("image/webp"))) {
@@ -72,7 +78,6 @@ public class PedidoWebController {
             return ResponseEntity.badRequest().body(response);
         }
 
-        // Validar tamaño (5MB)
         if (file.getSize() > 5 * 1024 * 1024) {
             response.put("success", false);
             response.put("message", "El archivo no debe superar 5MB");
@@ -106,6 +111,23 @@ public class PedidoWebController {
         }
     }
 
+    @GetMapping("/api/descargar-especificacion/{numeroPedido}")
+    public ResponseEntity<InputStreamResource> descargarEspecificacion(@PathVariable String numeroPedido) {
+        PedidoWeb pedido = pedidoWebService.obtenerPedidoPorNumero(numeroPedido)
+                .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+
+        ByteArrayInputStream bis = pdfService.generarEspecificacionCompra(pedido);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Disposition", "inline; filename=especificacion-compra-" + numeroPedido + ".pdf");
+
+        return ResponseEntity
+                .ok()
+                .headers(headers)
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(new InputStreamResource(bis));
+    }
+
     @GetMapping("/api/usuario-actual")
     @ResponseBody
     public ResponseEntity<?> obtenerUsuarioActual(HttpSession session) {
@@ -115,27 +137,6 @@ public class PedidoWebController {
         } else {
             return ResponseEntity.status(401).body(Map.of("success", false, "message", "No hay usuario autenticado"));
         }
-    }
-
-    @GetMapping("/mis-pedidos")
-    public String verMisPedidos(Model model, HttpSession session) {
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-        Empresa empresa = empresaService.getEmpresaInfo();
-        model.addAttribute("usuarioLogueado", usuario);
-        model.addAttribute("empresaGlobal", empresa);
-        return "mis-pedidos";
-    }
-
-    @GetMapping("/api/mis-pedidos")
-    @ResponseBody
-    public ResponseEntity<?> obtenerMisPedidos(HttpSession session) {
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-        if (usuario == null) {
-            return ResponseEntity.status(401).body(Map.of("success", false, "message", "No hay usuario autenticado"));
-        }
-        
-        List<PedidoWeb> pedidos = pedidoWebService.listarPedidosPorCliente(usuario.getId());
-        return ResponseEntity.ok(Map.of("success", true, "data", pedidos));
     }
 
     @GetMapping("/api/listar")

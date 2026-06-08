@@ -25,6 +25,7 @@
                     <form id="formEmpresa" th:object="${empresa}">
                         <input type="hidden" th:field="*{id}" id="id" />
                         <input type="hidden" th:field="*{logoUrl}" id="logoUrl" />
+                        <input type="hidden" th:field="*{qrYapeUrl}" id="qrYapeUrl" />
 
                         <div class="mb-3">
                             <label for="nombre" class="form-label">Nombre de la Empresa</label>
@@ -60,6 +61,21 @@
                         </div>
 
                         <div class="mb-3">
+                            <label for="qrYapeFile" class="form-label">Código QR de Yape</label>
+                            <input type="file" class="form-control" id="qrYapeFile" name="qrYapeFile" accept="image/*">
+                            <small class="form-text text-muted">Sube la imagen del código QR de Yape (JPG, PNG, etc.). Se mostrará a los clientes al momento de pagar.</small>
+                            <div class="mt-2" id="qrYapePreviewContainer">
+                                <p>QR actual:</p>
+                                <th:block th:if="${empresa.qrYapeUrl != null and !empresa.qrYapeUrl.isEmpty()}">
+                                    <img th:src="${empresa.qrYapeUrl}" alt="QR Yape" id="currentQrYapePreview" style="max-width: 150px; height: auto; border: 1px solid #ddd; padding: 5px;"/>
+                                </th:block>
+                                <th:block th:unless="${empresa.qrYapeUrl != null and !empresa.qrYapeUrl.isEmpty()}">
+                                    <p class="text-muted fst-italic">No hay código QR configurado.</p>
+                                </th:block>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="productosDestacados" class="form-label">Productos Destacados para el Carrusel</label>
                             <select class="form-select" id="productosDestacados" multiple="multiple">
                                 <option th:each="producto : ${todosLosProductos}" 
@@ -85,6 +101,7 @@
                                 </th:block>
                             </div>
                         </div>
+
                         <button type="submit" class="btn btn-primary">Guardar Cambios</button>
                     </form>
                 </div>
@@ -93,7 +110,7 @@
     </main>
 </div>
 
-<div id="notification-container" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;"></div>
+<div th:replace="~{fragments/notificaciones :: notification-container}"></div>
 
 <!-- Fragmento de scripts comunes -->
 <div th:replace="~{fragments/scripts :: common-scripts}"></div>
