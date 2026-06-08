@@ -800,31 +800,41 @@ header .navbar .logo {
 }
 
 #productDetailModal .modal-header {
-    background-color: var(--ym-pink-dark); /* Rosa oscuro para el encabezado */
-    color: var(--ym-yellow); /* Amarillo para contraste */
+    background-color: transparent; /* Eliminamos la franja rosada */
     border-bottom: none;
-    padding: 1.5rem;
+    padding: 0; /* Eliminamos el padding del header */
     position: relative;
 }
 
 #productDetailModal .modal-header .btn-close {
-    filter: invert(1) grayscale(100%) brightness(200%); /* Mantener botón de cierre blanco */
-    opacity: 0.8;
-    transition: opacity 0.3s ease;
+    position: absolute; /* Posicionamiento absoluto */
+    top: 15px; /* Ajustamos la posición desde arriba */
+    right: 15px; /* Ajustamos la posición desde la derecha */
+    z-index: 1050; /* Aseguramos que esté por encima de todo */
+    background-color: var(--ym-dark); /* Fondo oscuro para la "X" */
+    border-radius: 50%; /* Lo hacemos circular */
+    width: 36px; /* Tamaño del botón */
+    height: 36px; /* Tamaño del botón */
+    display: flex; /* Para centrar la "X" */
+    align-items: center;
+    justify-content: center;
+    filter: brightness(0) invert(1); /* Hace el SVG blanco */
+    opacity: 1; /* Asegura visibilidad total */
+    transition: opacity 0.3s ease, background-color 0.3s ease;
 }
 #productDetailModal .modal-header .btn-close:hover {
-    opacity: 1;
+    opacity: 0.8; /* Reduce la opacidad al pasar el ratón */
+    background-color: var(--ym-pink-dark); /* Cambia el color de fondo al pasar el ratón */
 }
 
+/* Eliminamos el estilo del título del header, ya que el título del producto está en el body */
 #productDetailModal .modal-title {
-    font-weight: 700; /* Título más negrita */
-    font-size: 1.6rem; /* Título ligeramente más grande */
-    color: var(--ym-yellow); /* Asegurar que el color del título coincida con el texto del encabezado */
+    display: none; /* Ocultamos el título del header si no se usa */
 }
 
 #productDetailModal .modal-body {
-    padding: 2rem; /* Más padding para una sensación espaciosa */
-    color: var(--ym-dark); /* Usar color oscuro del tema */
+    padding: 2rem;
+    color: var(--ym-dark);
 }
 
 #productDetailModal #modalProductName {
