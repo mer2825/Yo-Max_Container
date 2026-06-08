@@ -108,6 +108,25 @@ public class ClienteController {
         }
     }
 
+    // ===================================================================
+    // NUEVO ENDPOINT: Ya conectado a tu lógica de base de datos y API Cloud
+    // ===================================================================
+    @GetMapping("/api/buscar-o-crear")
+    @ResponseBody
+    public ResponseEntity<?> buscarOCrearCliente(@RequestParam String numeroDocumento) {
+        // Ejecuta el método que implementa la búsqueda local y externa
+        Map<String, Object> resultado = clienteService.consultarDni(numeroDocumento);
+
+        if (Boolean.TRUE.equals(resultado.get("success"))) {
+            return ResponseEntity.ok(resultado);
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resultado);
+        }
+    }
+
+    // ===================================================================
+    // ENDPOINTS CON VARIABLES DINÁMICAS: Abajo para que no interfieran
+    // ===================================================================
     @GetMapping("/api/{id}")
     @ResponseBody
     public ResponseEntity<?> obtenerCliente(@PathVariable Long id) {
