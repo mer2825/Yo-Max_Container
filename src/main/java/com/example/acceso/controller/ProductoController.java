@@ -33,14 +33,9 @@ public class ProductoController {
         this.categoriaService = categoriaService;
     }
 
-    private boolean tienePermisoParaGestionar(HttpSession session) {
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-        if (usuario == null || usuario.getPerfil() == null) {
-            return false;
-        }
-        return usuario.getPerfil().getOpciones().stream()
-                .anyMatch(opcion -> "/productos/listar".equals(opcion.getRuta()));
-    }
+    // Se elimina el método tienePermisoParaGestionar(HttpSession session)
+    // ya que la lógica de permisos ahora se maneja en SessionInterceptor
+    // y la verificación en el controlador era redundante y errónea.
 
     @GetMapping("/listar")
     public String listarProductos(Model model) {
@@ -210,9 +205,8 @@ public class ProductoController {
     @DeleteMapping("/api/eliminar/{id}")
     @ResponseBody
     public ResponseEntity<?> eliminarProductoAjax(@PathVariable Long id, HttpSession session) {
-        if (!tienePermisoParaGestionar(session)) {
-            return ResponseEntity.status(403).body(Map.of("success", false, "message", "No tienes permiso para realizar esta acción."));
-        }
+        // Se elimina la verificación de permisos aquí, ya que SessionInterceptor
+        // se encarga de validar el acceso para administradores a rutas /api/.
         Map<String, Object> response = new HashMap<>();
         try {
             if (!productoService.obtenerProductoPorId(id).isPresent()) {
@@ -234,9 +228,8 @@ public class ProductoController {
     @PostMapping("/api/cambiar-estado/{id}")
     @ResponseBody
     public ResponseEntity<?> cambiarEstadoProductoAjax(@PathVariable Long id, HttpSession session) {
-        if (!tienePermisoParaGestionar(session)) {
-            return ResponseEntity.status(403).body(Map.of("success", false, "message", "No tienes permiso para realizar esta acción."));
-        }
+        // Se elimina la verificación de permisos aquí, ya que SessionInterceptor
+        // se encarga de validar el acceso para administradores a rutas /api/.
         Map<String, Object> response = new HashMap<>();
         try {
             return productoService.cambiarEstadoProducto(id)

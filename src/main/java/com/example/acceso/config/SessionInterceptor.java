@@ -12,8 +12,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 public class SessionInterceptor implements HandlerInterceptor {
@@ -33,86 +36,129 @@ public class SessionInterceptor implements HandlerInterceptor {
             "/api/upload",
             "/pedidos_web/api/crear",
             "/pedidos_web/api/listar",
+            "/pedidos_web/api/descargar-especificacion/",
             "/ventas_web/api/guardar",
             "/ventas_web/api/listar",
             "/ventas_web/api/detalle",
             "/ventas_web/api/aprobar",
-            "/ventas_web/api/rechazar"
+            "/ventas_web/api/rechazar",
+            "/clientes/api/consultar-dni/"
     );
 
     public SessionInterceptor(EmpresaService empresaService) {
         this.empresaService = empresaService;
     }
 
+    // Helper para extraer la "ruta base" o "entidad" de una URI
+    // Ej: "/productos/eliminar/1" -> "/productos"
+    // Ej: "/usuarios/api/listar" -> "/usuarios"
+    // Ej: "/dashboard" -> "/dashboard"
+    private String extractBasePath(String uri) {
+        if (uri == null || uri.isEmpty() || "/".equals(uri)) {
+            return "/";
+        }
+        // Eliminar el primer '/' si existe para facilitar el split
+        String cleanUri = uri.startsWith("/") ? uri.substring(1) : uri;
+        int firstSlash = cleanUri.indexOf('/');
+        if (firstSlash == -1) { // No hay más slashes, es una ruta base como "/dashboard"
+            return "/" + cleanUri;
+        }
+        return "/" + cleanUri.substring(0, firstSlash);
+    }
+
+    private Set<String> parseRutasDerivadas(String rutasDerivadas) {
+        if (rutasDerivadas == null || rutasDerivadas.trim().isEmpty()) {
+            return new HashSet<>();
+        }
+        return Arrays.stream(rutasDerivadas.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toSet());
+    }
+
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) throws Exception {
         String requestURI = request.getRequestURI();
+        HttpSession session = request.getSession(false); // Obtener la sesión aquí para depuración
+
+        System.out.println("--- SessionInterceptor: Interceptando URI: " + requestURI + " ---");
 
         // 1. Permitir acceso a rutas públicas definidas (sin autenticación ni verificación de permisos).
         boolean esRutaPublica = RUTAS_PUBLICAS.stream().anyMatch(requestURI::startsWith);
         if (esRutaPublica) {
+            System.out.println("--- SessionInterceptor: Ruta pública, acceso concedido. ---");
             return true; // Retornar inmediatamente sin más verificaciones
         }
 
         // 2. Si la ruta no es pública, verificar la sesión.
-        HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute("usuarioLogueado") == null) {
+            System.out.println("--- SessionInterceptor: Sesión no encontrada o usuario no logueado, redirigiendo a /login. ---");
             response.sendRedirect("/login");
             return false; // Detener la ejecución.
         }
 
+        // --- NUEVA LÓGICA PARA ADMINISTRADORES Y RUTAS /api/ ---
+        Boolean isAdmin = (Boolean) session.getAttribute("isAdmin");
+        System.out.println("--- SessionInterceptor: isAdmin en sesión: " + isAdmin + " ---");
+        if (isAdmin != null && isAdmin && requestURI.contains("/api/")) {
+            System.out.println("--- SessionInterceptor: Administrador accediendo a ruta /api/, acceso concedido. ---");
+            return true; // Administrador tiene acceso a todas las rutas /api/
+        }
+        // --- FIN NUEVA LÓGICA ---
+
         // 3. Si hay sesión, verificar permisos para la ruta solicitada.
         // La ruta raíz ("/") se permite para todos los usuarios logueados.
         if (requestURI.equals("/")) {
+            System.out.println("--- SessionInterceptor: Ruta raíz, acceso concedido. ---");
             return true;
         }
 
         @SuppressWarnings("unchecked")
         List<Opcion> menuOpciones = (List<Opcion>) session.getAttribute("menuOpciones");
 
-        boolean tienePermiso = false;
+        // Construir un conjunto de rutas base permitidas
+        Set<String> allowedBasePaths = new HashSet<>();
         if (menuOpciones != null) {
-            // Se excluye la ruta raíz "/" de esta comprobación `startsWith` para evitar
-            // conceder acceso a todas las rutas a los usuarios que solo tienen permiso para la página de inicio.
-            tienePermiso = menuOpciones.stream()
-                    .map(Opcion::getRuta)
-                    .filter(ruta -> !ruta.equals("/"))
-                    .anyMatch(requestURI::startsWith);
-        }
+            for (Opcion opcion : menuOpciones) {
+                // Añadir la ruta base de la ruta principal de la opción
+                String rutaPrincipal = opcion.getRuta();
+                if (!rutaPrincipal.equals("/")) { // No queremos que "/" conceda acceso a todo
+                    allowedBasePaths.add(extractBasePath(rutaPrincipal));
+                }
 
-        // Casos especiales para rutas que no están directamente en el menú de navegación,
-        // pero que deben ser accesibles si el usuario tiene el permiso de listado principal.
-        // Esto incluye:
-        // 1. Rutas de API (ej. /productos/api/listar)
-        // 2. Rutas de acciones (ejemplo. /productos/modificar/{id})
-        if (!tienePermiso && menuOpciones != null) {
-            String[] parts = requestURI.split("/");
-            if (parts.length > 2) { // Asegura que haya al menos /entity/action, ej. ["", "productos", "api"]
-                String entity = parts[1]; // ej. "productos"
-                String segment = parts[2]; // ej. "api", "modificar"
-
-                // Si la ruta es una API, una de modificación o de detalle, se verifica el permiso de listado principal.
-                if (segment.equals("api") || segment.equals("modificar") || segment.equals("detalle")) {
-                    String listPermission = "/" + entity + "/listar";
-                    tienePermiso = menuOpciones.stream()
-                            .map(Opcion::getRuta)
-                            .anyMatch(listPermission::equals);
+                // Añadir las rutas base de las rutas derivadas de la opción
+                Set<String> derivadas = parseRutasDerivadas(opcion.getRutasDerivadas());
+                for (String derivada : derivadas) {
+                    allowedBasePaths.add(extractBasePath(derivada));
                 }
             }
         }
 
+        // Extraer la ruta base de la URI solicitada
+        String requestedBasePath = extractBasePath(requestURI);
+
+        // Verificar si la ruta base solicitada está entre las permitidas
+        boolean tienePermiso = allowedBasePaths.contains(requestedBasePath);
+
+        System.out.println("--- SessionInterceptor: Ruta base solicitada: " + requestedBasePath + ", Rutas base permitidas: " + allowedBasePaths + " ---");
+        System.out.println("--- SessionInterceptor: Tiene permiso (por ruta base): " + tienePermiso + " ---");
+
+
         // 4. Si no tiene permiso, redirigir con mensaje de error.
         if (tienePermiso) {
+            System.out.println("--- SessionInterceptor: Acceso concedido por ruta base. ---");
             return true;
         } else {
             // Para las llamadas de API que fallan, es mejor no redirigir,
             // sino devolver un error 403 (Prohibido) para que el JS pueda manejarlo.
-            if (requestURI.contains("/api/")) {
+            if (requestURI.contains("/api/")) { // Esta verificación es para usuarios NO administradores
+                System.out.println("--- SessionInterceptor: Acceso denegado a API para usuario no administrador. ---");
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 response.getWriter().write("{\"error\": \"Acceso denegado a la API.\"}");
                 return false;
             }
 
+            System.out.println("--- SessionInterceptor: Acceso denegado, redirigiendo a / con mensaje de error. ---");
             session.setAttribute("access_denied_error", "No tienes permiso para acceder a esta página.");
             response.sendRedirect("/");
             return false; // Detener la ejecución.

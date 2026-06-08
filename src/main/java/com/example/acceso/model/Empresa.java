@@ -38,6 +38,12 @@ public class Empresa {
     @Column(length = 100)
     private String titularYape;
 
+    @Column(length = 255)
+    private String qrYapeUrl;
+
+    @Column(length = 255)
+    private String qrYapePublicId;
+
     // Relación Many-to-Many con Productos
     @ManyToMany(fetch = FetchType.EAGER) // EAGER para que siempre se carguen con la empresa
     @JoinTable(
@@ -129,6 +135,22 @@ public class Empresa {
 
     public void setTitularYape(String titularYape) {
         this.titularYape = titularYape;
+    }
+
+    public String getQrYapeUrl() {
+        return qrYapeUrl;
+    }
+
+    public void setQrYapeUrl(String qrYapeUrl) {
+        this.qrYapeUrl = qrYapeUrl;
+    }
+
+    public String getQrYapePublicId() {
+        return qrYapePublicId;
+    }
+
+    public void setQrYapePublicId(String qrYapePublicId) {
+        this.qrYapePublicId = qrYapePublicId;
     }
 
     public List<Producto> getProductosDestacados() {

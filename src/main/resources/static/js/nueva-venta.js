@@ -202,8 +202,8 @@
 
     function filtrarProductos() {
         const nombreFiltro = $('#filtroNombre').val().toLowerCase();
-        const precioMin = parseFloat($('#filtroPrecioMin').val()) || 0;
-        const precioMax = parseFloat($('#filtroPrecioMax').val()) || Infinity;
+        const precioMin = Math.max(0, parseFloat($('#filtroPrecioMin').val()) || 0);
+        const precioMax = Math.max(0, parseFloat($('#filtroPrecioMax').val()) || Infinity);
         const categoriaSeleccionada = $('.category-pill.active').data('category');
 
         $('#product-grid .product-card').each(function() {
@@ -256,17 +256,19 @@
 
     function actualizarCantidad(e) {
         const productoId = $(e.currentTarget).data('id');
-        const nuevaCantidad = parseInt($(e.currentTarget).val());
+        let nuevaCantidad = parseInt($(e.currentTarget).val().replace(/[^0-9]/g, ''));
+        if (isNaN(nuevaCantidad) || nuevaCantidad < 1) {
+            nuevaCantidad = 1;
+        }
+        
         const item = carrito.find(item => item.producto.id === productoId);
         const producto = productosCargados[productoId];
-        if (item && nuevaCantidad > 0) {
+        if (item) {
             if (nuevaCantidad > producto.stock) {
                 $(e.currentTarget).val(item.cantidad);
                 return showNotification(`Cantidad excede el stock disponible (${producto.stock}).`, 'warning');
             }
             item.cantidad = nuevaCantidad;
-        } else if (item) {
-            $(e.currentTarget).val(item.cantidad);
         }
         renderizarCarrito();
     }
@@ -299,17 +301,12 @@
         carrito.forEach(item => {
             const subtotalItem = item.producto.precio * item.cantidad;
             subtotalVenta += subtotalItem;
-            tbody.append(`<tr data-id="${item.producto.id}" class="flash-added"><td>${item.producto.nombre}</td><td><input type="number" class="form-control form-control-sm cantidad-item" value="${item.cantidad}" data-id="${item.producto.id}" min="1" max="${item.producto.stock}"></td><td>S/ ${subtotalItem.toFixed(2)}</td><td><button class="btn btn-danger btn-sm remover-item" data-id="${item.producto.id}"><i class="bi bi-trash"></i></button></td></tr>`);
+            tbody.append(`<tr data-id="${item.producto.id}" class="flash-added"><td>${item.producto.nombre}</td><td><input type="number" class="form-control form-control-sm cantidad-item" value="${item.cantidad}" data-id="${item.producto.id}" min="1" max="${item.producto.stock}" onkeydown="return event.keyCode !== 69 && event.keyCode !== 189 && event.keyCode !== 190" oninput="this.value = Math.abs(this.value.replace(/[^0-9]/g, '')) || 1"></td><td>S/ ${subtotalItem.toFixed(2)}</td><td><button class="btn btn-danger btn-sm remover-item" data-id="${item.producto.id}"><i class="bi bi-trash"></i></button></td></tr>`);
         });
 
         const tipoDescuento = $('#tipoDescuento').val();
-        let valorDescuento = parseFloat($('#descuentoVenta').val()) || 0;
+        let valorDescuento = Math.abs(parseFloat($('#descuentoVenta').val()) || 0);
         let descuentoCalculado = 0;
-
-        if (valorDescuento < 0) {
-            valorDescuento = 0;
-            $('#descuentoVenta').val(0);
-        }
 
         if (tipoDescuento === 'porcentaje') {
             if (valorDescuento > 100) {
@@ -387,8 +384,7 @@
     function getDescuentoFinalEnMonto() {
         const subtotalVenta = carrito.reduce((sum, item) => sum + (item.producto.precio * item.cantidad), 0);
         const tipoDescuento = $('#tipoDescuento').val();
-        let valorDescuento = parseFloat($('#descuentoVenta').val()) || 0;
-        if (valorDescuento < 0) valorDescuento = 0;
+        let valorDescuento = Math.abs(parseFloat($('#descuentoVenta').val()) || 0);
 
         if (tipoDescuento === 'porcentaje') {
             if (valorDescuento > 100) valorDescuento = 100;

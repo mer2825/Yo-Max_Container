@@ -228,14 +228,14 @@ header .navbar .logo {
 }
 
 #categoryFilterButtons .btn-outline-primary {
-  color: var(--ym-pink-dark);
+  color: white; /* Cambiado a blanco */
   border-color: var(--ym-pink-dark);
 }
 
 #categoryFilterButtons .btn-outline-primary:hover,
 #categoryFilterButtons .btn-outline-primary.active {
   background-color: var(--ym-pink);
-  color: var(--ym-yellow);
+  color: white; /* Cambiado a blanco */
   border-color: var(--ym-pink);
 }
 
@@ -677,9 +677,9 @@ header .navbar .logo {
     box-shadow: 0 2px 8px rgba(0,0,0,0.08); /* Sombra más suave */
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     background-color: #fff7f0;
-    height: 420px; /* Altura fija para la tarjeta completa */
-    min-height: 420px; /* Asegura que no sea más pequeña */
-    max-height: 420px; /* Asegura que no sea más grande */
+    height: auto; /* Altura automática para la tarjeta completa */
+    min-height: 420px; /* Asegura una altura mínima */
+    max-height: none; /* Permite que la tarjeta crezca si el contenido lo requiere */
     display: flex;
     flex-direction: column;
     position: relative; /* Necesario para el overlay */
@@ -789,90 +789,117 @@ header .navbar .logo {
 
 
 /* ===================================================== */
-/* --- NUEVOS ESTILOS PARA EL MODAL DE DETALLES DEL PRODUCTO --- */
+/* --- ESTILOS PARA EL MODAL DE DETALLES DEL PRODUCTO (PREMIUM PINK THEME) --- */
 /* ===================================================== */
 #productDetailModal .modal-content {
-    border-radius: 15px;
+    border-radius: 18px; /* Ligeramente más redondeado */
     overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    background-color: #fdf6f0;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25); /* Sombra más fuerte y premium */
+    background-color: var(--ym-bg-soft); /* Fondo suave del tema */
+    border: 1px solid rgba(255, 151, 190, 0.2); /* Borde rosa sutil (usando RGB inferido para --ym-pink) */
 }
 
 #productDetailModal .modal-header {
-    background-color: #d17a4b;
-    color: #fff;
+    background-color: var(--ym-pink-dark); /* Rosa oscuro para el encabezado */
+    color: var(--ym-yellow); /* Amarillo para contraste */
     border-bottom: none;
     padding: 1.5rem;
+    position: relative;
 }
 
 #productDetailModal .modal-header .btn-close {
-    filter: invert(1) grayscale(100%) brightness(200%);
+    filter: invert(1) grayscale(100%) brightness(200%); /* Mantener botón de cierre blanco */
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+#productDetailModal .modal-header .btn-close:hover {
+    opacity: 1;
 }
 
 #productDetailModal .modal-title {
-    font-weight: bold;
-    font-size: 1.5rem;
+    font-weight: 700; /* Título más negrita */
+    font-size: 1.6rem; /* Título ligeramente más grande */
+    color: var(--ym-yellow); /* Asegurar que el color del título coincida con el texto del encabezado */
 }
 
 #productDetailModal .modal-body {
-    padding: 1.5rem;
-    color: #4a2c2a;
+    padding: 2rem; /* Más padding para una sensación espaciosa */
+    color: var(--ym-dark); /* Usar color oscuro del tema */
 }
 
 #productDetailModal #modalProductName {
-    color: #4a2c2a;
-    font-weight: bold;
-    font-size: 2rem;
-    margin-bottom: 0.75rem;
+    color: var(--ym-dark); /* Usar color oscuro del tema */
+    font-weight: 800; /* Extra negrita */
+    font-size: 2.2rem; /* Ligeramente más grande */
+    margin-bottom: 0.85rem;
+    line-height: 1.2;
 }
 
 #productDetailModal #modalProductDescription {
-    color: #6f4e37;
-    font-size: 1rem;
+    color: rgba(74, 44, 42, 0.7); /* Oscuro más claro para la descripción (usando RGB inferido para --ym-dark) */
+    font-size: 1.05rem; /* Fuente ligeramente más grande */
     line-height: 1.6;
-    margin-bottom: 1rem;
-}
-
-#productDetailModal #modalProductPrice {
-    color: #d17a4b;
-    font-weight: bolder;
-    font-size: 2.2rem;
-}
-
-#productDetailModal #modalProductStock {
-    color: #4a2c2a;
-    font-weight: 600;
-    font-size: 1.1rem;
     margin-bottom: 1.5rem;
 }
 
+#productDetailModal #modalProductPrice {
+    color: var(--ym-pink); /* Rosa principal para el precio */
+    font-weight: 900; /* Ultra negrita */
+    font-size: 2.8rem; /* Precio más grande */
+    margin-top: 1rem;
+    text-shadow: 1px 1px 5px rgba(255, 151, 190, 0.2); /* Sombra sutil para el precio */
+}
+
+#productDetailModal #modalProductStock {
+    color: var(--ym-dark); /* Color oscuro del tema */
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 1.8rem; /* Más espacio debajo del stock */
+}
+
 #productDetailModal .carousel-item img {
-    max-height: 350px; /* Altura máxima para las imágenes del carrusel */
-    object-fit: contain; /* Asegura que la imagen se ajuste sin recortarse */
-    background-color: #fdf6f0; /* Fondo para imágenes con transparencia */
-    border-radius: 10px;
+    max-height: 380px; /* Imágenes del carrusel ligeramente más grandes */
+    object-fit: contain;
+    background-color: var(--ym-bg); /* Usar fondo principal para el carrusel */
+    border-radius: 12px; /* Imágenes ligeramente más redondeadas */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1); /* Sombra sutil para las imágenes */
 }
 
 #productDetailModal .carousel-control-prev-icon,
 #productDetailModal .carousel-control-next-icon {
-    background-color: rgba(74, 44, 42, 0.5); /* Color de fondo para los iconos de navegación */
+    background-color: rgba(201, 76, 124, 0.6); /* Rosa oscuro translúcido para los controles (usando RGB inferido para --ym-pink-dark) */
     border-radius: 50%;
-    padding: 10px;
+    padding: 12px; /* Más padding para los controles */
+    transition: background-color 0.3s ease;
+}
+#productDetailModal .carousel-control-prev-icon:hover,
+#productDetailModal .carousel-control-next-icon:hover {
+    background-color: var(--ym-pink-dark); /* Rosa oscuro sólido al pasar el ratón */
 }
 
 #productDetailModal #modalAddToCartBtn {
-    background-color: #d17a4b;
-    border-color: #d17a4b;
-    color: #fff;
-    font-weight: bold;
-    border-radius: 25px;
-    padding: 12px 20px;
-    transition: background-color 0.3s ease, border-color 0.3s ease;
+    background-color: var(--ym-pink); /* Rosa principal para el botón */
+    border-color: var(--ym-pink);
+    color: var(--ym-yellow); /* Texto amarillo para contraste */
+    font-weight: 700; /* Texto del botón más negrita */
+    border-radius: 30px; /* Botón más redondeado */
+    padding: 14px 25px; /* Más padding para el botón */
+    transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.2s ease;
+    letter-spacing: 0.05em; /* Ligero espaciado entre letras */
 }
 
 #productDetailModal #modalAddToCartBtn:hover {
-    background-color: #c0602c;
-    border-color: #c0602c;
+    background-color: var(--ym-pink-dark); /* Rosa oscuro al pasar el ratón */
+    border-color: var(--ym-pink-dark);
+    transform: translateY(-2px); /* Sutil efecto de elevación */
+}
+
+/* Estilos adicionales para la insignia de stock */
+#productDetailModal .badge.bg-success-subtle {
+    background-color: rgba(255, 151, 190, 0.15) !important; /* Fondo rosa claro (usando RGB inferido para --ym-pink) */
+    color: var(--ym-pink-dark) !important; /* Texto rosa oscuro */
+    font-weight: 700;
+    border: 1px solid rgba(255, 151, 190, 0.3);
 }
 
 /* ===================================================== */

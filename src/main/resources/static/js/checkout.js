@@ -20,10 +20,50 @@ document.addEventListener('DOMContentLoaded', function() {
     const totalAmount = document.getElementById('totalAmount');
     const paymentAmount = document.getElementById('paymentAmount');
     const ultraCompactSummary = document.getElementById('ultraCompactSummary');
+    
+    const dniClienteInput = document.getElementById('dniCliente');
+    const nombreClienteInput = document.getElementById('nombreCliente');
+    const dniError = document.getElementById('dni-error');
+    const dniSpinner = document.getElementById('dniSpinner');
 
     let uploadedFile = null;
     let cartData = [];
     let currentStep = 1;
+
+    // --- LÓGICA DE CONSULTA DE DNI ---
+    dniClienteInput.addEventListener('blur', async function() {
+        const dni = this.value.trim();
+
+        // Limpiar estado previo
+        nombreClienteInput.value = '';
+        dniError.style.display = 'none';
+        dniError.textContent = 'El DNI debe tener 8 dígitos numéricos.'; // Mensaje por defecto
+        
+        if (dni.length !== 8 || !/^[0-9]{8}$/.test(dni)) {
+            dniError.style.display = 'block';
+            return;
+        }
+
+        dniSpinner.style.display = 'inline-block';
+
+        try {
+            const response = await fetch(`/clientes/api/consultar-dni/${dni}`);
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                nombreClienteInput.value = result.data.nombre;
+            } else {
+                dniError.textContent = result.message || 'DNI no encontrado.';
+                dniError.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Error al consultar DNI:', error);
+            dniError.textContent = 'Error al conectar con el servicio. Intente de nuevo.';
+            dniError.style.display = 'block';
+        } finally {
+            dniSpinner.style.display = 'none';
+        }
+    });
 
     // Cargar carrito desde localStorage
     function loadCart() {
@@ -34,7 +74,6 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Parsed cart data:', cartData);
             renderCart();
         } else {
-            // Si no hay carrito, redirigir al catálogo
             console.log('No cart found, redirecting to /');
             window.location.href = '/';
         }
@@ -54,7 +93,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         cartData.forEach(item => {
             console.log('Processing item:', item);
-            // Compatibilidad con nombres de propiedades del catálogo (price, quantity, name)
             const precio = item.precio || item.price;
             const cantidad = item.cantidad || item.quantity;
             const nombre = item.nombre || item.name;
@@ -77,15 +115,11 @@ document.addEventListener('DOMContentLoaded', function() {
         subtotalAmount.textContent = `S/ ${subtotal.toFixed(2)}`;
         totalAmount.textContent = `S/ ${total.toFixed(2)}`;
         paymentAmount.textContent = `S/ ${total.toFixed(2)}`;
-
-        // Generar resumen ultra-compacto
         generateUltraCompactSummary(total);
     }
 
-    // Generar resumen ultra-compacto
     function generateUltraCompactSummary(total) {
         if (cartData.length === 0) return;
-
         let summaryText = '';
         if (cartData.length === 1) {
             const item = cartData[0];
@@ -99,21 +133,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const remainingCount = cartData.length - 1;
             summaryText = `${nombre} x${cantidad} + ${remainingCount} producto${remainingCount > 1 ? 's' : ''} más`;
         }
-
         summaryText += ` · Total: S/ ${total.toFixed(2)}`;
         ultraCompactSummary.textContent = summaryText;
     }
 
-    // Navegar entre pantallas
     function goToStep(step) {
         currentStep = step;
-
-        // Ocultar todas las pantallas
-        document.querySelectorAll('.checkout-screen').forEach(screen => {
-            screen.classList.remove('active');
-        });
-
-        // Mostrar la pantalla correspondiente
+        document.querySelectorAll('.checkout-screen').forEach(screen => screen.classList.remove('active'));
         if (step === 1) {
             document.getElementById('screen1').classList.add('active');
             updateProgressBar(2);
@@ -126,12 +152,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Actualizar barra de progreso
     function updateProgressBar(activeStep) {
         document.querySelectorAll('.step').forEach((stepEl, index) => {
             const stepNumber = index + 1;
             stepEl.classList.remove('completed', 'active');
-
             if (stepNumber < activeStep) {
                 stepEl.classList.add('completed');
             } else if (stepNumber === activeStep) {
@@ -140,76 +164,34 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Validar paso 1
     function validateStep1() {
         const nombreCliente = document.getElementById('nombreCliente').value.trim();
         const dniCliente = document.getElementById('dniCliente').value.trim();
         const telefonoCliente = document.getElementById('telefonoCliente').value.trim();
-        const dniError = document.getElementById('dni-error');
-
-        const dniRegex = /^[0-9]{8}$/;
-        const telefonoRegex = /^[0-9]{9}$/;
-
-        // Ocultar mensaje de error DNI
-        if (dniError) {
-            dniError.style.display = 'none';
-        }
-
+        
         if (!nombreCliente) {
-            alert('Por favor, ingresa tu nombre completo.');
+            alert('Por favor, ingresa un DNI válido para autocompletar el nombre.');
             return false;
         }
-
-        if (!dniCliente || !dniRegex.test(dniCliente)) {
-            if (dniError) {
-                dniError.style.display = 'block';
-            }
+        if (!dniCliente || !/^[0-9]{8}$/.test(dniCliente)) {
+            dniError.style.display = 'block';
             return false;
         }
-
-        if (!telefonoCliente || !telefonoRegex.test(telefonoCliente)) {
+        if (!telefonoCliente || !/^[0-9]{9}$/.test(telefonoCliente)) {
             alert('Por favor, ingresa un teléfono válido de 9 dígitos.');
             return false;
         }
-
         return true;
     }
 
-    // Validar DNI en tiempo real
-    document.getElementById('dniCliente').addEventListener('input', function() {
-        const dniCliente = this.value.trim();
-        const dniError = document.getElementById('dni-error');
-        const dniRegex = /^[0-9]{8}$/;
-
-        // Solo permitir números
-        this.value = this.value.replace(/[^0-9]/g, '');
-
-        if (dniError) {
-            if (dniCliente.length > 0 && !dniRegex.test(dniCliente)) {
-                dniError.style.display = 'block';
-            } else {
-                dniError.style.display = 'none';
-            }
-        }
-    });
-
-    // Validar archivo
     function validateFile(file) {
         const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
         const maxSize = 5 * 1024 * 1024; // 5MB
-
-        if (!validTypes.includes(file.type)) {
-            return 'El archivo debe ser JPG, PNG o WEBP';
-        }
-
-        if (file.size > maxSize) {
-            return 'El archivo no debe superar 5MB';
-        }
-
+        if (!validTypes.includes(file.type)) return 'El archivo debe ser JPG, PNG o WEBP';
+        if (file.size > maxSize) return 'El archivo no debe superar 5MB';
         return null;
     }
 
-    // Mostrar preview del archivo
     function showPreview(file) {
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -220,7 +202,6 @@ document.addEventListener('DOMContentLoaded', function() {
         reader.readAsDataURL(file);
     }
 
-    // Limpiar archivo
     function clearFile() {
         uploadedFile = null;
         voucherFile.value = '';
@@ -230,45 +211,20 @@ document.addEventListener('DOMContentLoaded', function() {
         validateForm();
     }
 
-    // Validar formulario paso 2 (solo archivo)
     function validateForm() {
-        const isFormValid = uploadedFile;
-        confirmBtn.disabled = !isFormValid;
+        confirmBtn.disabled = !uploadedFile;
     }
 
-    // Event listeners para subida de archivo
     uploadArea.addEventListener('click', () => voucherFile.click());
-
-    uploadArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadArea.classList.add('dragover');
-    });
-
-    uploadArea.addEventListener('dragleave', () => {
-        uploadArea.classList.remove('dragover');
-    });
-
+    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
     uploadArea.addEventListener('drop', (e) => {
         e.preventDefault();
         uploadArea.classList.remove('dragover');
-
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            handleFile(files[0]);
-        }
+        if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
     });
-
-    selectFileBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        voucherFile.click();
-    });
-
-    voucherFile.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            handleFile(e.target.files[0]);
-        }
-    });
-
+    selectFileBtn.addEventListener('click', (e) => { e.stopPropagation(); voucherFile.click(); });
+    voucherFile.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFile(e.target.files[0]); });
     removeFileBtn.addEventListener('click', clearFile);
 
     function handleFile(file) {
@@ -278,54 +234,32 @@ document.addEventListener('DOMContentLoaded', function() {
             fileError.style.display = 'block';
             return;
         }
-
         fileError.style.display = 'none';
         uploadedFile = file;
         showPreview(file);
         validateForm();
     }
 
-    // Event listener para botón "Continuar al pago"
-    continueToPaymentBtn.addEventListener('click', () => {
-        if (validateStep1()) {
-            goToStep(2);
-        }
-    });
+    continueToPaymentBtn.addEventListener('click', () => { if (validateStep1()) goToStep(2); });
+    backToStep1Btn.addEventListener('click', () => goToStep(1));
 
-    // Event listener para botón "Volver"
-    backToStep1Btn.addEventListener('click', () => {
-        goToStep(1);
-    });
-
-    // Enviar pedido
     confirmBtn.addEventListener('click', async () => {
         if (!uploadedFile) {
             fileError.textContent = 'Debes subir el comprobante de pago';
             fileError.style.display = 'block';
             return;
         }
-
         confirmBtn.disabled = true;
         confirmBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Procesando...';
 
         try {
-            // Subir voucher
             const formData = new FormData();
             formData.append('file', uploadedFile);
-
-            const uploadResponse = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!uploadResponse.ok) {
-                throw new Error('Error al subir el comprobante');
-            }
-
+            const uploadResponse = await fetch('/api/upload', { method: 'POST', body: formData });
+            if (!uploadResponse.ok) throw new Error('Error al subir el comprobante');
             const uploadData = await uploadResponse.json();
             const voucherPath = uploadData.filePath;
 
-            // Crear pedido
             const clienteId = document.getElementById('clienteId').value;
             const nombreCliente = document.getElementById('nombreCliente').value.trim();
             const dniCliente = document.getElementById('dniCliente').value.trim();
@@ -348,9 +282,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const pedidoResponse = await fetch('/pedidos_web/api/crear', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(pedidoData)
             });
 
@@ -361,14 +293,17 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             const pedidoResult = await pedidoResponse.json();
-
-            // Limpiar carrito
             localStorage.removeItem('cart');
             updateCartCount();
 
-            // Mostrar pantalla de confirmación
             document.getElementById('confirmationOrderNumber').textContent = pedidoResult.pedidoId;
             document.getElementById('confirmationPhone').textContent = telefonoCliente;
+            
+            const downloadBtn = document.getElementById('downloadPdfBtn');
+            if(downloadBtn) {
+                downloadBtn.href = `/pedidos_web/api/descargar-especificacion/${pedidoResult.pedidoId}`;
+            }
+
             goToStep(3);
 
         } catch (error) {
@@ -379,44 +314,75 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Actualizar contador del carrito
     function updateCartCount() {
         const cart = localStorage.getItem('cart');
         const count = cart ? JSON.parse(cart).length : 0;
         const cartCountElement = document.getElementById('cart-count');
-        if (cartCountElement) {
-            cartCountElement.textContent = count;
-        }
+        if (cartCountElement) cartCountElement.textContent = count;
     }
 
-    // Verificar configuración Yape y mostrar alerta para admin si está vacía
     function checkYapeConfig() {
         const yapeConfigAlert = document.getElementById('yapeConfigAlert');
         if (!yapeConfigAlert) return;
-
-        // Verificar si el usuario es administrador
         const mainElement = document.querySelector('.checkout-container');
         const isAdmin = mainElement && mainElement.getAttribute('data-is-admin') === 'true';
-
-        if (!isAdmin) return; // Solo mostrar alerta para administradores
-
-        // Verificar si los campos Yape están vacíos en el HTML
+        if (!isAdmin) return;
         const yapeNumberElement = document.querySelector('.yape-number');
-        const yapeTitularElement = document.querySelector('.payment-section .fs-4');
-
+        const yapeTitularElement = document.querySelector('.yape-titular');
         if (yapeNumberElement && yapeTitularElement) {
             const yapeNumber = yapeNumberElement.textContent.trim();
             const yapeTitular = yapeTitularElement.textContent.trim();
-
-            // Si están vacíos o son "---", mostrar alerta
             if ((yapeNumber === '---' || yapeNumber === '') && (yapeTitular === '---' || yapeTitular === '')) {
                 yapeConfigAlert.classList.remove('d-none');
+            } else {
+                yapeConfigAlert.classList.add('d-none');
             }
         }
     }
 
-    // Inicializar
+    // Escuchar cambios en localStorage (cuando el admin actualiza la empresa)
+    window.addEventListener('storage', async function(e) {
+        if (e.key === 'empresaActualizada') {
+            console.log('Detectada actualización de empresa, recargando datos Yape...');
+            try {
+                const response = await fetch('/empresa/api/info');
+                if (response.ok) {
+                    const empresaInfo = await response.json();
+                    
+                    // Actualizar textos
+                    const yapeNumberElement = document.querySelector('.yape-number');
+                    const yapeTitularElement = document.querySelector('.yape-titular');
+                    
+                    if (yapeNumberElement) yapeNumberElement.textContent = empresaInfo.numeroYape || '---';
+                    if (yapeTitularElement) yapeTitularElement.textContent = empresaInfo.titularYape || '---';
+
+                    // Actualizar QR
+                    const qrContainer = document.querySelector('.yape-info-card img[alt="QR Yape"]');
+                    if (qrContainer) {
+                        if (empresaInfo.qrYapeUrl) {
+                            qrContainer.src = empresaInfo.qrYapeUrl;
+                        } else {
+                            qrContainer.parentElement.remove(); // Quitar el div si no hay QR
+                        }
+                    } else if (empresaInfo.qrYapeUrl) {
+                        // Si no existía la imagen y ahora sí hay QR, añadirla
+                        const colHtml = `
+                            <div class="col-md-6">
+                                <img src="${empresaInfo.qrYapeUrl}" alt="QR Yape" class="img-fluid rounded" style="max-height: 400px; border: 2px solid white; padding: 5px;">
+                            </div>
+                        `;
+                        document.querySelector('.yape-info-card .row').insertAdjacentHTML('beforeend', colHtml);
+                    }
+                    
+                    checkYapeConfig(); // Re-verificar alerta de admin
+                }
+            } catch (error) {
+                console.error('Error al actualizar datos de empresa:', error);
+            }
+        }
+    });
+
     loadCart();
-    updateProgressBar(2); // Inicializar barra de progreso en paso 2 (Mis datos)
-    checkYapeConfig(); // Verificar configuración Yape
+    updateProgressBar(2);
+    checkYapeConfig();
 });

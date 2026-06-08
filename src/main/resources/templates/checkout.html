@@ -427,23 +427,28 @@
                 <input type="hidden" id="clienteId" th:value="${usuarioLogueado != null ? usuarioLogueado.id : ''}">
 
                 <div class="mb-3">
-                    <label for="nombreCliente" class="form-label">Nombre Completo <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="nombreCliente" required
-                           th:value="${usuarioLogueado != null ? usuarioLogueado.nombre : ''}"
-                           placeholder="Tu nombre completo">
-                </div>
-
-                <div class="mb-3">
                     <label for="dniCliente" class="form-label">DNI <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="dniCliente" required
-                           th:value="${usuarioLogueado != null ? usuarioLogueado.dni : ''}"
-                           placeholder="Número de DNI (8 dígitos)"
-                           pattern="[0-9]{8}"
-                           title="El DNI debe tener 8 dígitos numéricos"
-                           maxlength="8">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="dniCliente" required
+                               th:value="${usuarioLogueado != null ? usuarioLogueado.dni : ''}"
+                               placeholder="Número de DNI (8 dígitos)"
+                               pattern="[0-9]{8}"
+                               title="El DNI debe tener 8 dígitos numéricos"
+                               maxlength="8">
+                        <span class="input-group-text" id="dniSpinner" style="display: none;">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        </span>
+                    </div>
                     <div id="dni-error" class="text-danger mt-1" style="display: none; font-size: 0.875em;">
                         El DNI debe tener 8 dígitos numéricos.
                     </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="nombreCliente" class="form-label">Nombre Completo <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="nombreCliente" required readonly
+                           th:value="${usuarioLogueado != null ? usuarioLogueado.nombre : ''}"
+                           placeholder="Se autocompletará al ingresar un DNI válido">
                 </div>
 
                 <div class="mb-3">
@@ -487,15 +492,16 @@
         <div class="payment-section">
             <h3 class="mb-4"><i class="bi bi-credit-card"></i> Instrucciones de Pago Yape</h3>
             
-            <div class="yape-info-card">
-                <div class="row">
+            <div class="yape-info-card text-center">
+                <div class="row align-items-center">
                     <div class="col-md-6 mb-3 mb-md-0">
                         <p class="yape-label">Número Yape</p>
                         <div class="yape-number" th:text="${empresaGlobal != null ? empresaGlobal.numeroYape : '---'}">---</div>
-                    </div>
-                    <div class="col-md-6">
-                        <p class="yape-label">Titular</p>
+                        <p class="yape-label mt-3">Titular</p>
                         <div class="yape-titular" th:text="${empresaGlobal != null ? empresaGlobal.titularYape : '---'}">---</div>
+                    </div>
+                    <div class="col-md-6" th:if="${empresaGlobal != null && empresaGlobal.qrYapeUrl != null && !empresaGlobal.qrYapeUrl.isEmpty()}">
+                        <img th:src="${empresaGlobal.qrYapeUrl}" alt="QR Yape" class="img-fluid rounded" style="max-height: 400px; border: 2px solid white; padding: 5px;">
                     </div>
                 </div>
             </div>
@@ -553,22 +559,17 @@
             </div>
             <h2 class="mb-3">¡Pedido recibido!</h2>
             <div class="order-number" id="confirmationOrderNumber">PED-0000</div>
-            <p class="contact-message">
+
+            <div class="alert alert-warning text-center" style="max-width: 500px; margin: 0 auto 1.5rem auto;">
+                <i class="bi bi-clock"></i> Tu pedido está en revisión.<br>
                 Te contactaremos al <strong id="confirmationPhone">---</strong> cuando confirmemos tu pago.
-            </p>
-            <div class="info-badges">
-                <span class="badge badge-custom badge-yellow">
-                    <i class="bi bi-clock"></i> ⏳ Tu pedido está en revisión
-                </span>
-                <span class="badge badge-custom badge-blue">
-                    <i class="bi bi-list-check"></i> Puedes seguir el estado en Mis Pedidos
-                </span>
             </div>
-            <div class="confirmation-buttons">
-                <a th:href="@{/mis-pedidos}" class="btn btn-primary btn-lg">
-                    <i class="bi bi-list-check me-2"></i> Ver mis pedidos
+
+            <div class="confirmation-buttons flex-column align-items-center gap-3 mt-4">
+                <a href="#" id="downloadPdfBtn" class="btn btn-primary btn-lg w-100" style="max-width: 400px;" target="_blank">
+                    <i class="bi bi-file-earmark-pdf me-2"></i> Descargar Especificación de Compra y Pago
                 </a>
-                <a th:href="@{/catalogo}" class="btn-text-link">
+                <a th:href="@{/catalogo}" class="btn btn-outline-secondary btn-lg w-100" style="max-width: 400px;">
                     Volver al catálogo
                 </a>
             </div>

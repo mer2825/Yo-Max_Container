@@ -19,6 +19,7 @@ import jakarta.persistence.PersistenceContext;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -39,29 +40,32 @@ public class DataInitializer implements CommandLineRunner {
         this.clienteRepository = clienteRepository;
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
+        System.out.println("--- Constructor de DataInitializer ejecutado ---"); // Línea de depuración en el constructor
     }
 
     @Override
     @Transactional
     public void run(String... args) throws Exception {
+        System.out.println("--- Ejecutando DataInitializer.run() ---"); // Línea de depuración
         crearOpcionesDeMenu();
         crearPerfilAdminConTodasLasOpciones();
         crearClienteSiNoExiste("Consumidor Final", "DNI", "00000000", "Sin dirección");
         garantizarUsuarioAdmin();
+        System.out.println("--- DataInitializer.run() finalizado ---"); // Línea de depuración
     }
 
     private void crearOpcionesDeMenu() {
-        crearOpcionSiNoExiste("Gestión de Usuarios", "/usuarios/listar", "bi-people");
-        crearOpcionSiNoExiste("Gestión de Perfiles", "/perfiles/listar", "bi-person-check");
-        crearOpcionSiNoExiste("Gestión de Categorías", "/categorias/listar", "bi-tags");
-        crearOpcionSiNoExiste("Gestión de Productos", "/productos/listar", "bi-cake2");
-        crearOpcionSiNoExiste("Gestión de Clientes", "/clientes/listar", "bi-person-vcard");
-        crearOpcionSiNoExiste("Gestión de Empresa", "/empresa/listar", "bi-shop-window");
-        crearOpcionSiNoExiste("Listado de Ventas", "/ventas/listar", "bi-receipt");
-        crearOpcionSiNoExiste("Nueva Venta", "/ventas/nueva", "bi-cart-plus");
-        crearOpcionSiNoExiste("Ventas Web", "/ventas_web", "bi-globe");
-        crearOpcionSiNoExiste("Gestión Inventario", "/inventario/listar", "bi-boxes");
-        crearOpcionSiNoExiste("Ir al Catálogo", "/catalogo", "bi-shop"); // Nueva opción añadida
+        crearOpcionSiNoExiste("Gestión de Usuarios", "/usuarios/listar", "bi-people", null);
+        crearOpcionSiNoExiste("Gestión de Perfiles", "/perfiles/listar", "bi-person-check", null);
+        crearOpcionSiNoExiste("Gestión de Categorías", "/categorias/listar", "bi-tags", null);
+        crearOpcionSiNoExiste("Gestión de Productos", "/productos/listar", "bi-cake2", null);
+        crearOpcionSiNoExiste("Gestión de Clientes", "/clientes/listar", "bi-person-vcard", null);
+        crearOpcionSiNoExiste("Gestión de Empresa", "/empresa/listar", "bi-shop-window", null);
+        crearOpcionSiNoExiste("Listado de Ventas", "/ventas/listar", "bi-receipt", null);
+        crearOpcionSiNoExiste("Nueva Venta", "/ventas/nueva", "bi-cart-plus", null);
+        crearOpcionSiNoExiste("Ventas Web", "/ventas_web", "bi-globe", null);
+        crearOpcionSiNoExiste("Gestión Inventario", "/inventario/listar", "bi-boxes", null);
+        crearOpcionSiNoExiste("Ir al Catálogo", "/catalogo", "bi-shop", null); // Nueva opción añadida
     }
 
     private void crearPerfilAdminConTodasLasOpciones() {
@@ -71,13 +75,14 @@ public class DataInitializer implements CommandLineRunner {
                     nuevoPerfil.setNombre("Administrador");
                     nuevoPerfil.setDescripcion("Acceso total al sistema");
                     nuevoPerfil.setEstado(1);
-                    return nuevoPerfil;
+                    return perfilRepository.save(nuevoPerfil); // Guardar el nuevo perfil si no existe
                 });
 
         List<Opcion> todasLasOpciones = opcionRepository.findAll();
         adminPerfil.setOpciones(new HashSet<>(todasLasOpciones));
-        perfilRepository.save(adminPerfil);
+        perfilRepository.save(adminPerfil); // Guardar el perfil con las opciones actualizadas
         System.out.println("Perfil 'Administrador' configurado con todos los permisos.");
+        System.out.println("Opciones asignadas al perfil 'Administrador': " + todasLasOpciones.stream().map(Opcion::getRuta).collect(Collectors.joining(", ")));
     }
 
     private void garantizarUsuarioAdmin() {
@@ -145,7 +150,7 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    private void crearOpcionSiNoExiste(String nombre, String ruta, String icono) {
+    private void crearOpcionSiNoExiste(String nombre, String ruta, String icono, String rutasDerivadas) {
         Opcion opcion = opcionRepository.findByRuta(ruta).orElse(null);
         if (opcion == null) {
             opcion = new Opcion();
@@ -154,6 +159,7 @@ public class DataInitializer implements CommandLineRunner {
         opcion.setRuta(ruta);
         opcion.setIcono(icono);
         opcion.setEstado(true);
+        opcion.setRutasDerivadas(rutasDerivadas); // Asegurarse de que se setea
         opcionRepository.save(opcion);
     }
 }

@@ -5,5 +5,6 @@ public enum EstadoPedidoWeb {
     EN_REVISION,
     APROBADO,
     RECHAZADO,
-    PROCESADO
+    PROCESADO,
+    ANULADO // Añadido el estado ANULADO
 }

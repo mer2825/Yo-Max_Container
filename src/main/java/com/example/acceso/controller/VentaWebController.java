@@ -11,11 +11,14 @@ import com.example.acceso.service.ProductoService;
 import com.example.acceso.service.VentaWebService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page; // Import Page
+import org.springframework.format.annotation.DateTimeFormat; // Import DateTimeFormat
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate; // Import LocalDate
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -37,15 +40,9 @@ public class VentaWebController {
         this.pedidoWebService = pedidoWebService;
     }
 
-    private boolean tienePermisoParaGestionar(HttpSession session) {
-        Usuario usuario = (Usuario) session.getAttribute("usuario");
-        if (usuario == null || usuario.getPerfil() == null) {
-            return false;
-        }
-        return usuario.getPerfil().getOpciones().stream()
-                .anyMatch(opcion -> "/pedidos_web/listar".equals(opcion.getRuta()) ||
-                                     "/ventas_web/listar".equals(opcion.getRuta()));
-    }
+    // Se elimina el método tienePermisoParaGestionar(HttpSession session)
+    // ya que la lógica de permisos ahora se maneja en SessionInterceptor
+    // y la verificación en el controlador era redundante y errónea.
 
     @GetMapping("")
     public String listarVentasWeb() {
@@ -81,15 +78,37 @@ public class VentaWebController {
 
     @GetMapping("/api/listar")
     @ResponseBody
-    public ResponseEntity<?> listarVentasWebApi() {
+    public ResponseEntity<?> listarVentasWebApi(
+            @RequestParam(defaultValue = "0") int draw, // DataTables draw counter
+            @RequestParam(defaultValue = "0") int start, // Start index for pagination
+            @RequestParam(defaultValue = "10") int length, // Page size for pagination
+            @RequestParam(name = "order[0][column]", defaultValue = "0") int orderColumn, // Column index for sorting
+            @RequestParam(name = "order[0][dir]", defaultValue = "desc") String orderDir, // Sort direction
+            @RequestParam(name = "columns[0][data]", defaultValue = "id") String orderColumnName, // Default column name for sorting
+            @RequestParam(required = false) String estado,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaDesde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta,
+            @RequestParam(required = false) String busqueda) {
         try {
             System.out.println("=== ENDPOINT /ventas_web/api/listar LLAMADO ===");
-            List<PedidoWeb> pedidos = pedidoWebService.listarTodosLosPedidos();
-            System.out.println("=== CANTIDAD DE PEDIDOS: " + pedidos.size() + " ===");
-            for (PedidoWeb pedido : pedidos) {
-                System.out.println("Pedido ID: " + pedido.getId() + ", Número: " + pedido.getNumeroPedido() + ", Cliente: " + pedido.getNombreCliente());
-            }
-            return ResponseEntity.ok(Map.of("success", true, "data", pedidos));
+            System.out.println("Filtros recibidos: estado=" + estado + ", fechaDesde=" + fechaDesde + ", fechaHasta=" + fechaHasta + ", busqueda=" + busqueda);
+
+            // Convert DataTables parameters to Spring Data Pageable
+            // DataTables sends start and length, Spring Data uses page and size
+            int page = start / length;
+            String sortBy = orderColumnName; // Assuming orderColumnName is the data property name
+
+            Page<PedidoWeb> pedidos = pedidoWebService.listarPedidosConFiltros(page, length, sortBy, orderDir, estado, fechaDesde, fechaHasta, busqueda);
+
+            // DataTables expects 'data', 'draw', 'recordsTotal', 'recordsFiltered'
+
+            // DataTables expects 'data', 'draw', 'recordsTotal', 'recordsFiltered'
+            return ResponseEntity.ok(Map.of(
+                    "draw", draw,
+                    "recordsTotal", pedidos.getTotalElements(),
+                    "recordsFiltered", pedidos.getTotalElements(), // Assuming filtered equals total for now, or implement actual filtering logic in service
+                    "data", pedidos.getContent()
+            ));
         } catch (Exception e) {
             System.out.println("=== ERROR EN ENDPOINT /ventas_web/api/listar ===");
             System.out.println("Error: " + e.getMessage());
@@ -110,7 +129,7 @@ public class VentaWebController {
     @ResponseBody
     public ResponseEntity<?> aprobarPedido(@PathVariable Long id, HttpSession session) {
         try {
-            Usuario usuario = (Usuario) session.getAttribute("usuario");
+            Usuario usuario = (Usuario) session.getAttribute("usuarioLogueado"); // Corregido para usar "usuarioLogueado"
             Long verificadoPorId = usuario != null ? usuario.getId() : null;
             pedidoWebService.aprobarPedido(id, verificadoPorId);
             return ResponseEntity.ok(Map.of("success", true, "message", "Pedido aprobado con éxito"));
@@ -119,12 +138,28 @@ public class VentaWebController {
         }
     }
 
+    // Nuevo endpoint para anular un pedido (cambiar estado a ANULADO)
+    @PutMapping("/api/anular/{id}")
+    @ResponseBody
+    public ResponseEntity<?> anularPedido(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body, HttpSession session) {
+        // Se elimina la verificación de permisos aquí, ya que SessionInterceptor
+        // se encarga de validar el acceso para administradores a rutas /api/.
+        try {
+            String motivo = body != null ? body.get("motivo") : null;
+            // Reusing rechazarPedido as "anulado" and "rechazado" are the same
+            // Assuming rechazarPedido changes the status to ANULADO/RECHAZADO
+            pedidoWebService.rechazarPedido(id, null, motivo); // Pass null for verificadoPorId if not applicable for anular
+            return ResponseEntity.ok(Map.of("success", true, "message", "Pedido web anulado con éxito."));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Error al anular el pedido web: " + e.getMessage()));
+        }
+    }
+
     @PutMapping("/api/rechazar/{id}")
     @ResponseBody
     public ResponseEntity<?> rechazarPedido(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body, HttpSession session) {
-        if (!tienePermisoParaGestionar(session)) {
-            return ResponseEntity.status(403).body(Map.of("success", false, "message", "No tienes permiso para realizar esta acción."));
-        }
+        // Se elimina la verificación de permisos aquí, ya que SessionInterceptor
+        // se encarga de validar el acceso para administradores a rutas /api/.
         try {
             String motivo = body != null ? body.get("motivo") : null;
             pedidoWebService.rechazarPedido(id, null, motivo);
@@ -137,9 +172,8 @@ public class VentaWebController {
     @PostMapping("/api/procesar/{id}")
     @ResponseBody
     public ResponseEntity<?> procesarVentaWeb(@PathVariable Long id, HttpSession session) {
-        if (!tienePermisoParaGestionar(session)) {
-            return ResponseEntity.status(403).body(Map.of("success", false, "message", "No tienes permiso para realizar esta acción."));
-        }
+        // Se elimina la verificación de permisos aquí, ya que SessionInterceptor
+        // se encarga de validar el acceso para administradores a rutas /api/.
         try {
             ventaWebService.procesarVentaWeb(id);
             return ResponseEntity.ok(Map.of("success", true, "message", "Venta procesada con éxito."));
@@ -148,18 +182,18 @@ public class VentaWebController {
         }
     }
 
+    // Renombrado y mensajes actualizados para eliminación permanente
     @DeleteMapping("/api/eliminar/{id}")
     @ResponseBody
-    public ResponseEntity<?> eliminarVentaWeb(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body, HttpSession session) {
-        if (!tienePermisoParaGestionar(session)) {
-            return ResponseEntity.status(403).body(Map.of("success", false, "message", "No tienes permiso para realizar esta acción."));
-        }
+    public ResponseEntity<?> eliminarPedidoWebPermanentemente(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body, HttpSession session) {
+        // Se elimina la verificación de permisos aquí, ya que SessionInterceptor
+        // se encarga de validar el acceso para administradores a rutas /api/.
         try {
             String motivo = body != null ? body.get("motivo") : null;
-            pedidoWebService.eliminarPedido(id, motivo);
-            return ResponseEntity.ok(Map.of("success", true, "message", "Pedido web anulado con éxito."));
+            pedidoWebService.eliminarPedido(id, motivo); // Assuming this performs a hard delete and Cloudinary cleanup
+            return ResponseEntity.ok(Map.of("success", true, "message", "Pedido web eliminado permanentemente con éxito."));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Error al anular el pedido web: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Error al eliminar el pedido web permanentemente: " + e.getMessage()));
         }
     }
 

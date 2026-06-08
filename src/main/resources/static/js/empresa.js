@@ -59,7 +59,8 @@ $(document).ready(function() {
 
     // Función para guardar los datos de la empresa vía AJAX
     async function saveEmpresa() {
-        let logoUrl = $('#logoUrl').val(); // Obtener la URL original
+        let logoUrl = $('#logoUrl').val();
+        let qrYapeUrl = $('#qrYapeUrl').val();
 
         // 1. Si hay un nuevo archivo de logo, súbelo primero
         const logoFile = $('#logoFile')[0].files[0];
@@ -75,18 +76,43 @@ $(document).ready(function() {
                 const result = await response.json();
 
                 if (result.success) {
-                    logoUrl = result.imageUrl; // Actualizar logoUrl con la nueva
+                    logoUrl = result.imageUrl;
                 } else {
                     showNotification('Error al subir el nuevo logo: ' + result.message, 'error');
-                    return; // Detener el proceso de guardado si la subida falla
+                    return;
                 }
             } catch (error) {
                 showNotification('Error de conexión al subir el logo.', 'error');
-                return; // Detener
+                return;
             }
         }
 
-        // 2. Recopilar el resto de los datos del formulario
+        // 2. Si hay un nuevo archivo de QR, súbelo
+        const qrYapeFile = $('#qrYapeFile')[0].files[0];
+        if (qrYapeFile) {
+            const formData = new FormData();
+            formData.append('qrYapeFile', qrYapeFile);
+
+            try {
+                const response = await fetch('/empresa/api/subir-qr-yape', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    qrYapeUrl = result.imageUrl;
+                } else {
+                    showNotification('Error al subir el nuevo QR de Yape: ' + result.message, 'error');
+                    return;
+                }
+            } catch (error) {
+                showNotification('Error de conexión al subir el QR de Yape.', 'error');
+                return;
+            }
+        }
+
+        // 3. Recopilar el resto de los datos del formulario
         const nombreEmpresa = $('#nombre').val();
         const productosIds = $('#productosDestacados').val();
         const productosDestacados = productosIds ? productosIds.map(id => ({ id: parseInt(id) })) : [];
@@ -100,11 +126,12 @@ $(document).ready(function() {
             nosotros: $('#nosotros').val(),
             numeroYape: $('#numeroYape').val(),
             titularYape: $('#titularYape').val(),
-            logoUrl: logoUrl, // Usar la URL del logo (antigua o nueva)
+            logoUrl: logoUrl,
+            qrYapeUrl: qrYapeUrl,
             productosDestacados: productosDestacados
         };
 
-        // 3. Guardar toda la información de la empresa
+        // 4. Guardar toda la información de la empresa
         fetch('/empresa/api/guardar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -115,21 +142,21 @@ $(document).ready(function() {
             if (data.success) {
                 showNotification(data.message, 'success');
 
-                // 4. Actualizar la UI (logos y valor oculto) DESPUÉS de guardar
+                // 5. Actualizar la UI
                 if (logoUrl) {
                     $('#logoUrl').val(logoUrl);
                     $('#currentLogoPreview').attr('src', logoUrl);
                     $('#sidebar-empresa-logo').attr('src', logoUrl);
-                    $('#topbar-empresa-logo').attr('src', logoUrl); // <-- LÍNEA AÑADIDA
+                    $('#topbar-empresa-logo').attr('src', logoUrl);
                 }
-                // Actualizar el nombre de la empresa en la barra lateral
+                if (qrYapeUrl) {
+                    $('#qrYapeUrl').val(qrYapeUrl);
+                    $('#currentQrYapePreview').attr('src', qrYapeUrl);
+                }
                 $('#sidebar-empresa-nombre').text(nombreEmpresa);
-
-                // 5. Enviar señal a otras pestañas
                 localStorage.setItem('empresaActualizada', Date.now());
-
-                // Limpiar el input de archivo para evitar re-subidas accidentales
                 $('#logoFile').val('');
+                $('#qrYapeFile').val('');
             } else {
                 showNotification(data.message || 'Error al guardar.', 'error');
             }
@@ -144,10 +171,19 @@ $(document).ready(function() {
     $('#logoFile').on('change', function(event) {
         const file = event.target.files[0];
         if (file) {
-            // Usar URL.createObjectURL para mostrar una vista previa local sin subir el archivo
             const previewUrl = URL.createObjectURL(file);
             $('#currentLogoPreview').attr('src', previewUrl);
             showNotification('Logo listo para subir. Haz clic en "Guardar Cambios" para aplicar todo.', 'info');
+        }
+    });
+
+    // Lógica para la PREVISUALIZACIÓN del QR de Yape
+    $('#qrYapeFile').on('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const previewUrl = URL.createObjectURL(file);
+            $('#currentQrYapePreview').attr('src', previewUrl);
+            showNotification('QR de Yape listo para subir. Haz clic en "Guardar Cambios" para aplicar todo.', 'info');
         }
     });
 

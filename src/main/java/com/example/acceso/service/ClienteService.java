@@ -3,6 +3,7 @@ package com.example.acceso.service;
 import com.example.acceso.model.Cliente;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface ClienteService {
@@ -21,4 +22,7 @@ public interface ClienteService {
 
     // Nuevo método para listar clientes por tipo de documento
     List<Cliente> listarClientesPorTipoDocumento(String tipoDocumento);
+
+    // Consulta DNI en local y luego en API externa
+    Map<String, Object> consultarDni(String dni);
 }

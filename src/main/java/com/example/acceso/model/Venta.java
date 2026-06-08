@@ -52,6 +52,9 @@ public class Venta {
     @JsonManagedReference
     private List<DetalleVenta> detalles;
 
+    @Column(length = 20)
+    private String pdfKey;
+
     // Getters y Setters
 
     public Long getId() {
@@ -156,5 +159,13 @@ public class Venta {
 
     public void setOrigen(String origen) {
         this.origen = origen;
+    }
+
+    public String getPdfKey() {
+        return pdfKey;
+    }
+
+    public void setPdfKey(String pdfKey) {
+        this.pdfKey = pdfKey;
     }
 }
