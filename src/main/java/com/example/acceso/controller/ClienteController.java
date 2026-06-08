@@ -108,25 +108,6 @@ public class ClienteController {
         }
     }
 
-    // ===================================================================
-    // NUEVO ENDPOINT: Ya conectado a tu lógica de base de datos y API Cloud
-    // ===================================================================
-    @GetMapping("/api/buscar-o-crear")
-    @ResponseBody
-    public ResponseEntity<?> buscarOCrearCliente(@RequestParam String numeroDocumento) {
-        // Ejecuta el método que implementa la búsqueda local y externa
-        Map<String, Object> resultado = clienteService.consultarDni(numeroDocumento);
-
-        if (Boolean.TRUE.equals(resultado.get("success"))) {
-            return ResponseEntity.ok(resultado);
-        } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resultado);
-        }
-    }
-
-    // ===================================================================
-    // ENDPOINTS CON VARIABLES DINÁMICAS: Abajo para que no interfieran
-    // ===================================================================
     @GetMapping("/api/{id}")
     @ResponseBody
     public ResponseEntity<?> obtenerCliente(@PathVariable Long id) {
@@ -142,5 +123,133 @@ public class ClienteController {
         Map<String, Boolean> response = new HashMap<>();
         response.put("isValid", cliente.isPresent());
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/auth/verify-document")
+    @ResponseBody
+    public ResponseEntity<?> verifyDocumentForAuth(@RequestBody Map<String, String> payload) {
+        String documento = payload.get("documento");
+        if (documento == null || documento.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "El número de documento es requerido."));
+        }
+
+        Map<String, Object> serviceResult = clienteService.consultarDni(documento);
+
+        if (Boolean.TRUE.equals(serviceResult.get("success"))) {
+            return ResponseEntity.ok(Map.of("success", true, "message", "Documento verificado correctamente."));
+        } else {
+            // Si consultarDni devuelve success:false, ya contiene un mensaje de error.
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(serviceResult);
+        }
+    }
+
+    @GetMapping("/api/buscar-o-crear")
+    @ResponseBody
+    public ResponseEntity<?> buscarOCrearCliente(
+            @RequestParam String tipo,
+            @RequestParam String numero,
+            @RequestParam(defaultValue = "false") boolean forceCreate) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        if ("dni".equalsIgnoreCase(tipo)) {
+            Map<String, Object> dniResult = clienteService.consultarDni(numero);
+
+            if (Boolean.TRUE.equals(dniResult.get("success"))) {
+                String source = (String) dniResult.get("source");
+                Cliente clienteData = (Cliente) dniResult.get("data");
+
+                if ("local".equals(source)) {
+                    response.put("success", true);
+                    response.put("isNewClient", false);
+                    response.put("cliente", clienteData);
+                    response.put("message", "Cliente DNI encontrado localmente.");
+                    return ResponseEntity.ok(response);
+                } else { // source is "external"
+                    if (forceCreate) {
+                        try {
+                            // Asegurarse de que el cliente de la API externa tenga el tipo y número correctos
+                            clienteData.setTipoDocumento(tipo.toUpperCase());
+                            clienteData.setNumeroDocumento(numero);
+                            Cliente savedCliente = clienteService.guardarCliente(clienteData);
+                            response.put("success", true);
+                            response.put("isNewClient", false); // Ya no es "nuevo" para el sistema, está guardado
+                            response.put("cliente", savedCliente);
+                            response.put("message", "Cliente DNI registrado desde API externa y asignado.");
+                            return ResponseEntity.ok(response);
+                        } catch (DataIntegrityViolationException e) {
+                            response.put("success", false);
+                            response.put("message", "Error al guardar el cliente DNI: ya existe un cliente con este documento.");
+                            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+                        } catch (Exception e) {
+                            response.put("success", false);
+                            response.put("message", "Error inesperado al guardar el cliente DNI: " + e.getMessage());
+                            return ResponseEntity.internalServerError().body(response);
+                        }
+                    } else {
+                        // Devolver datos del cliente externo, pero marcar como nuevo para que el frontend pregunte si desea guardar
+                        response.put("success", true);
+                        response.put("isNewClient", true);
+                        response.put("cliente", clienteData);
+                        response.put("message", "Cliente DNI encontrado en API externa, pero no registrado localmente.");
+                        return ResponseEntity.ok(response);
+                    }
+                }
+            } else {
+                // DNI no encontrado en ninguna parte
+                response.put("success", false);
+                response.put("message", dniResult.get("message")); // Mensaje de consultarDni
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            }
+        } else if ("ruc".equalsIgnoreCase(tipo)) {
+            // Para RUC, por ahora, solo buscamos en la base de datos local.
+            // Si se necesita una API externa para RUC, se debería implementar en ClienteService.
+            Optional<Cliente> clienteExistente = clienteService.findByNumeroDocumento(numero);
+            if (clienteExistente.isPresent()) {
+                response.put("success", true);
+                response.put("isNewClient", false);
+                response.put("cliente", clienteExistente.get());
+                response.put("message", "Cliente RUC encontrado localmente.");
+                return ResponseEntity.ok(response);
+            } else {
+                if (forceCreate) {
+                    Cliente newCliente = new Cliente();
+                    newCliente.setTipoDocumento(tipo.toUpperCase());
+                    newCliente.setNumeroDocumento(numero);
+                    newCliente.setNombre("RUC " + numero); // Nombre por defecto para RUC no encontrado externamente
+                    try {
+                        Cliente savedCliente = clienteService.guardarCliente(newCliente);
+                        response.put("success", true);
+                        response.put("isNewClient", false);
+                        response.put("cliente", savedCliente);
+                        response.put("message", "Cliente RUC registrado y asignado.");
+                        return ResponseEntity.ok(response);
+                    } catch (DataIntegrityViolationException e) {
+                        response.put("success", false);
+                        response.put("message", "Error al guardar el cliente RUC: ya existe un cliente con este documento.");
+                        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+                    } catch (Exception e) {
+                        response.put("success", false);
+                        response.put("message", "Error inesperado al guardar el cliente RUC: " + e.getMessage());
+                        return ResponseEntity.internalServerError().body(response);
+                    }
+                } else {
+                    // RUC no encontrado localmente, sugerir creación
+                    Cliente tempCliente = new Cliente();
+                    tempCliente.setTipoDocumento(tipo.toUpperCase());
+                    tempCliente.setNumeroDocumento(numero);
+                    tempCliente.setNombre("RUC " + numero); // Nombre temporal para mostrar
+                    response.put("success", true);
+                    response.put("isNewClient", true);
+                    response.put("cliente", tempCliente);
+                    response.put("message", "Cliente RUC no encontrado localmente. Sugerir registro.");
+                    return ResponseEntity.ok(response);
+                }
+            }
+        } else {
+            response.put("success", false);
+            response.put("message", "Tipo de documento no soportado.");
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 }
