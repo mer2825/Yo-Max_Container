@@ -14,7 +14,7 @@ $(document).ready(function() {
         buscarDoc: (tipo, numero) => `${API_BASE}/buscar-o-crear?tipo=${tipo}&numero=${numero}`
     };
 
-    // Inicializar el overlay de carga una sola vez al cargar la página
+    // Inicializar el overlay de carga una una sola vez al cargar la página
     const loadingOverlay = $('<div id="loading-overlay"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></div>');
     $('body').append(loadingOverlay);
 
