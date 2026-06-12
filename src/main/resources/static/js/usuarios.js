@@ -89,10 +89,33 @@ $(document).ready(function() {
     function validatePasswordRealTime(passwordInput) {
         const password = passwordInput.val();
         const feedbackElement = $('#clave-feedback');
-        
-        if (password.length > 0 && password.length < 6) {
+        let messages = [];
+
+        if (password.length === 0) {
+            passwordInput.removeClass('is-invalid');
+            feedbackElement.text('');
+            return;
+        }
+
+        if (password.length < 8) {
+            messages.push('La contraseña debe tener como mínimo 8 caracteres.');
+        }
+        if (!/[A-Z]/.test(password)) {
+            messages.push('Debe contener al menos una letra mayúscula.');
+        }
+        if (!/[a-z]/.test(password)) {
+            messages.push('Debe contener al menos una letra minúscula.');
+        }
+        if (!/\d/.test(password)) {
+            messages.push('Debe contener al menos un número.');
+        }
+        if (!/[!@#$%^&*()_+\-=\[\]{};':"|,.<>/?]/.test(password)) {
+            messages.push('Debe contener al menos un carácter especial.');
+        }
+
+        if (messages.length > 0) {
             passwordInput.addClass('is-invalid');
-            feedbackElement.text('La contraseña debe tener como mínimo 6 caracteres.');
+            feedbackElement.html(messages.join('<br>')); // Usar .html() para mostrar múltiples mensajes
         } else {
             passwordInput.removeClass('is-invalid');
             feedbackElement.text('');
@@ -122,7 +145,7 @@ $(document).ready(function() {
     function openModalForNew() {
         clearForm();
         $('#modalTitle').text('Agregar Usuario');
-        $('#clave').attr('placeholder', 'Mínimo 6 caracteres');
+        $('#clave').attr('placeholder', 'Mínimo 8 caracteres, mayúscula, minúscula, número, especial');
         cargarPerfiles();
         usuarioModal.show();
     }
@@ -217,12 +240,30 @@ $(document).ready(function() {
         const isNewUser = !$('#id').val();
         const claveInput = $('#clave');
         const clave = claveInput.val();
+        let passwordErrors = [];
 
         if (isNewUser && !clave) {
-            showFieldError('clave', 'La contraseña es obligatoria para nuevos usuarios.');
-            isValid = false;
-        } else if (clave && clave.length < 6) {
-            showFieldError('clave', 'La contraseña debe tener como mínimo 6 caracteres.');
+            passwordErrors.push('La contraseña es obligatoria para nuevos usuarios.');
+        } else if (clave) { // Solo validar si se proporciona una clave (para nuevo usuario o si se modificó en edición)
+            if (clave.length < 8) {
+                passwordErrors.push('La contraseña debe tener como mínimo 8 caracteres.');
+            }
+            if (!/[A-Z]/.test(clave)) {
+                passwordErrors.push('Debe contener al menos una letra mayúscula.');
+            }
+            if (!/[a-z]/.test(clave)) {
+                passwordErrors.push('Debe contener al menos una letra minúscula.');
+            }
+            if (!/\d/.test(clave)) {
+                passwordErrors.push('Debe contener al menos un número.');
+            }
+            if (!/[!@#$%^&*()_+\-=\[\]{};':"|,.<>/?]/.test(clave)) {
+                passwordErrors.push('Debe contener al menos un carácter especial.');
+            }
+        }
+
+        if (passwordErrors.length > 0) {
+            showFieldError('clave', passwordErrors.join('<br>'));
             isValid = false;
         }
         
@@ -284,6 +325,9 @@ $(document).ready(function() {
         $('#formUsuario')[0].reset();
         $('#id').val('');
         clearFieldErrors();
+        // También limpiar el feedback de la contraseña
+        $('#clave-feedback').text('');
+        $('#clave').removeClass('is-invalid');
     }
 
     function showFieldError(field, message) {
@@ -291,10 +335,16 @@ $(document).ready(function() {
         fieldElement.addClass('is-invalid');
         const feedbackElement = $(`#${field}-feedback`);
         if (feedbackElement.length) {
-            feedbackElement.text(message);
+            // Si el mensaje es un array, lo unimos con <br>
+            if (Array.isArray(message)) {
+                feedbackElement.html(message.join('<br>'));
+            } else {
+                feedbackElement.text(message);
+            }
         } else {
             // Si no existe un div de feedback específico, lo creamos
-            fieldElement.after(`<div id="${field}-feedback" class="invalid-feedback">${message}</div>`);
+            const displayMessage = Array.isArray(message) ? message.join('<br>') : message;
+            fieldElement.after(`<div id="${field}-feedback" class="invalid-feedback">${displayMessage}</div>`);
         }
     }
 
@@ -305,6 +355,7 @@ $(document).ready(function() {
 
     function handleServerErrors(errors) {
         Object.keys(errors).forEach(field => {
+            // errors[field] ahora es una lista de strings
             showFieldError(field, errors[field]);
         });
     }

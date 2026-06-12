@@ -23,7 +23,7 @@ public class Usuario extends Auditable {
     @Column(nullable = false, unique = true, length = 50)
     private String usuario;
 
-    @Size(min = 6, message = "La contraseña debe tener como mínimo 6 caracteres")
+    // @Size(min = 6, message = "La contraseña debe tener como mínimo 6 caracteres") // Eliminado
     @Column(nullable = false)
     private String clave;
 
