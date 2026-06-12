@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
+import java.util.ArrayList; // Importar ArrayList
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -126,21 +127,39 @@ public class UsuarioController {
 
         // Validación de contraseña
         boolean isNewUser = usuario.getId() == null;
-        if (isNewUser && (usuario.getClave() == null || usuario.getClave().trim().isEmpty())) {
-            bindingResult.rejectValue("clave", "NotBlank", "La contraseña es obligatoria para nuevos usuarios.");
-        }
-        if (usuario.getClave() != null && !usuario.getClave().trim().isEmpty() && usuario.getClave().length() < 6) {
-            bindingResult.rejectValue("clave", "Size", "La contraseña debe tener como mínimo 6 caracteres");
+        if (isNewUser || (usuario.getClave() != null && !usuario.getClave().trim().isEmpty())) { // Solo validar si es nuevo usuario o si se está actualizando y se proporciona una nueva clave
+            if (usuario.getClave() == null || usuario.getClave().trim().isEmpty()) {
+                bindingResult.rejectValue("clave", "NotBlank", "La contraseña es obligatoria para nuevos usuarios.");
+            } else {
+                String clave = usuario.getClave();
+                if (clave.length() < 8) {
+                    bindingResult.rejectValue("clave", "Size", "La contraseña debe tener como mínimo 8 caracteres.");
+                }
+                if (!clave.matches(".*[A-Z].*")) {
+                    bindingResult.rejectValue("clave", "Pattern", "La contraseña debe contener al menos una letra mayúscula.");
+                }
+                if (!clave.matches(".*[a-z].*")) {
+                    bindingResult.rejectValue("clave", "Pattern", "La contraseña debe contener al menos una letra minúscula.");
+                }
+                if (!clave.matches(".*\\d.*")) {
+                    bindingResult.rejectValue("clave", "Pattern", "La contraseña debe contener al menos un número.");
+                }
+                if (!clave.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"|,.<>/?].*")) {
+                    bindingResult.rejectValue("clave", "Pattern", "La contraseña debe contener al menos un carácter especial.");
+                }
+            }
         }
 
 
         Map<String, Object> response = new HashMap<>();
         if (bindingResult.hasErrors()) {
-            Map<String, String> errores = new HashMap<>();
-            bindingResult.getFieldErrors().forEach(error -> errores.put(error.getField(), error.getDefaultMessage()));
+            Map<String, List<String>> errores = new HashMap<>(); // Cambiado a List<String>
+            bindingResult.getFieldErrors().forEach(error -> {
+                errores.computeIfAbsent(error.getField(), k -> new ArrayList<>()).add(error.getDefaultMessage());
+            });
             response.put("success", false);
             response.put("message", "Datos inválidos");
-            response.put("errors", errores);
+            response.put("errors", errores); // Ahora contendrá listas de errores
             return ResponseEntity.badRequest().body(response);
         }
         try {

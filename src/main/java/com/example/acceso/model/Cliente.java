@@ -33,7 +33,7 @@ public class Cliente {
     @Column(length = 255)
     private String direccion;
 
-    @Pattern(regexp = "^[0-9]{7,15}$", message = "El teléfono debe tener entre 7 y 15 dígitos")
+    @Pattern(regexp = "^$|^[0-9]{7,15}$", message = "El teléfono debe tener entre 7 y 15 dígitos")
     @Column(length = 50)
     private String telefono;
 

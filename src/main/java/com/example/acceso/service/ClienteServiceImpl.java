@@ -56,12 +56,48 @@ public class ClienteServiceImpl implements ClienteService {
     @Override
     @Transactional
     public Cliente guardarCliente(Cliente cliente) {
+        // Si es un nuevo cliente (id es null)
         if (cliente.getId() == null) {
-            cliente.setEstado(1);
+            // Buscar si ya existe un cliente con ese numeroDocumento, incluyendo los eliminados lógicamente
+            Optional<Cliente> existingClientAnyStatus = clienteRepository.findByNumeroDocumento(cliente.getNumeroDocumento());
+
+            if (existingClientAnyStatus.isPresent()) {
+                Cliente foundClient = existingClientAnyStatus.get();
+                // Si el cliente encontrado está lógicamente eliminado (estado = 2), lo reactivamos
+                if (foundClient.getEstado() == 2) {
+                    foundClient.setEstado(1); // Reactivar (estado = 1)
+                    foundClient.setTipoDocumento(cliente.getTipoDocumento());
+                    foundClient.setNombre(cliente.getNombre());
+                    foundClient.setDireccion(cliente.getDireccion());
+                    foundClient.setTelefono(cliente.getTelefono());
+                    foundClient.setEmail(cliente.getEmail());
+
+                    // Asegurarse de que los clientes DNI no tengan dirección
+                    if ("DNI".equalsIgnoreCase(foundClient.getTipoDocumento())) {
+                        foundClient.setDireccion(null);
+                    }
+                    return clienteRepository.save(foundClient); // Guardar el cliente reactivado
+                }
+                // Si el cliente existe y no está eliminado lógicamente (estado 0 o 1),
+                // la validación de duplicidad en ClienteController debería haberlo capturado.
+                // Si llega aquí, significa que se está intentando crear un nuevo cliente
+                // con un documento ya existente y activo/inactivo, lo cual resultará en
+                // una DataIntegrityViolationException manejada por el controlador.
+                // Por lo tanto, simplemente establecemos el estado para el nuevo cliente
+                // y dejamos que el save final maneje el posible error de duplicidad.
+                cliente.setEstado(1); // Establecer estado activo para el nuevo cliente
+            } else {
+                // No se encontró ningún cliente con ese numeroDocumento (en ningún estado),
+                // así que es un cliente completamente nuevo.
+                cliente.setEstado(1); // Establecer estado activo para el nuevo cliente
+            }
         }
+
+        // Asegurarse de que los clientes DNI no tengan dirección (aplica a nuevos y actualizados)
         if ("DNI".equalsIgnoreCase(cliente.getTipoDocumento())) {
             cliente.setDireccion(null);
         }
+
         return clienteRepository.save(cliente);
     }
 
@@ -117,7 +153,7 @@ public class ClienteServiceImpl implements ClienteService {
         Map<String, Object> response = new HashMap<>();
 
         // 1. Buscar en la base de datos local
-        Optional<Cliente> clienteExistente = findByNumeroDocumento(dni);
+        Optional<Cliente> clienteExistente = findByNumeroDocumento(dni); // Este usa findByNumeroDocumentoAndEstadoNot(dni, 2)
         if (clienteExistente.isPresent()) {
             response.put("success", true);
             response.put("source", "local");

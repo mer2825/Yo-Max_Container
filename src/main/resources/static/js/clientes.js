@@ -160,6 +160,10 @@ $(document).ready(function() {
             this.value = this.value.replace(/[^0-9]/g, '');
         });
 
+        $('#telefono').on('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+
         $('#tipoDocumento').on('change', function() {
             documentSearchedAndValid = false;
             toggleDireccionField();
@@ -189,7 +193,7 @@ $(document).ready(function() {
         if (result) {
             fillForm(result.data);
             $('#modalTitle').text('Editar Cliente');
-            documentSearchedAndValid = true;
+            documentSearchedAndValid = true; // Un cliente existente se considera válido
             toggleDireccionField();
             actualizarValidacionDocumento();
             clienteModal.show();
@@ -264,18 +268,18 @@ $(document).ready(function() {
         const result = await apiCall(ENDPOINTS.buscarDoc(tipo, numero));
 
         if (result) {
-            if (result.isNewClient === false) {
+            if (result.isNewClient === false) { // Existing local client
                 showNotification(`El cliente con documento ${numero} ya está registrado.`, 'error');
                 documentSearchedAndValid = false;
-            } else if (result.cliente) {
+            } else if (result.cliente) { // New client (from external API or new RUC)
                 fillForm(result.cliente);
                 showNotification('Nuevo cliente encontrado. Complete y guarde los datos.', 'success');
                 documentSearchedAndValid = true;
-            } else {
+            } else { // No client found at all
                 showNotification(result.message || 'No se encontraron datos para ese documento.', 'error');
                 documentSearchedAndValid = false;
             }
-        } else {
+        } else { // API call failed
             documentSearchedAndValid = false;
         }
         toggleDireccionField();
