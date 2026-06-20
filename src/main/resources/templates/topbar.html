@@ -44,7 +44,7 @@
                             <i class="bi bi-cart-check me-1"></i> Ventas
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="ventasDropdown">
-                            <li th:if="${session.usuarioLogueado.perfil.opciones.?[ruta == '/ventas/nueva'].size() > 0}">
+                            <li th:if="${session.usuarioLogueado.perfil.opciones.?[ruta == '/ventas/nueva'].size() > 0 and activeUri != '/ventas/nueva'}">
                                 <a class="dropdown-item" th:href="@{/ventas/nueva}"><i class="bi bi-plus-circle me-2"></i>Nueva Venta</a>
                             </li>
                             <li th:if="${session.usuarioLogueado.perfil.opciones.?[ruta == '/ventas/listar'].size() > 0}">
@@ -110,7 +110,7 @@
 
                 <!-- Sección derecha -->
                 <div class="d-flex align-items-center gap-3 ms-auto" th:if="${session.usuarioLogueado != null}">
-                    <a th:if="${session.usuarioLogueado.perfil.opciones.?[ruta == '/ventas/nueva'].size() > 0}" 
+                    <a th:if="${session.usuarioLogueado.perfil.opciones.?[ruta == '/ventas/nueva'].size() > 0 and activeUri != '/ventas/nueva'}"
                        th:href="@{/ventas/nueva}" class="btn btn-primary fw-semibold d-flex align-items-center gap-2" style="padding: 0.5rem 1rem;">
                         <i class="bi bi-plus-lg"></i> Nueva Venta
                     </a>

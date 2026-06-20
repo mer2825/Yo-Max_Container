@@ -184,6 +184,8 @@ $(document).ready(function() {
         documentSearchedAndValid = false;
         toggleDireccionField();
         actualizarValidacionDocumento();
+        $('#numeroDocumento').prop('readonly', false);
+        $('#btnBuscarDoc').prop('disabled', false);
         clienteModal.show();
     }
 
@@ -196,6 +198,8 @@ $(document).ready(function() {
             documentSearchedAndValid = true; // Un cliente existente se considera válido
             toggleDireccionField();
             actualizarValidacionDocumento();
+            $('#numeroDocumento').prop('readonly', true);
+            $('#btnBuscarDoc').prop('disabled', true);
             clienteModal.show();
         }
     }
