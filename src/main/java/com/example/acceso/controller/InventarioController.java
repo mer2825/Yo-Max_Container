@@ -101,4 +101,100 @@ public class InventarioController {
             return ResponseEntity.internalServerError().body(response);
         }
     }
+
+    @PostMapping("/inventario/api/registrar-movimiento")
+    @ResponseBody
+    public ResponseEntity<?> registrarMovimiento(@RequestBody Map<String, Object> payload) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            Long productoId = payload.get("productoId") != null ? ((Number) payload.get("productoId")).longValue() : null;
+            String tipoMovimiento = (String) payload.get("tipoMovimiento");
+            Integer cantidad = payload.get("cantidad") != null ? ((Number) payload.get("cantidad")).intValue() : null;
+            String motivo = (String) payload.get("motivo");
+            String referenciaDocumento = (String) payload.get("referenciaDocumento");
+            String proveedor = (String) payload.get("proveedor");
+            String observacion = (String) payload.get("observacion");
+            Integer stockAnterior = payload.get("stockAnterior") != null ? ((Number) payload.get("stockAnterior")).intValue() : null;
+            Integer stockResultante = payload.get("stockResultante") != null ? ((Number) payload.get("stockResultante")).intValue() : null;
+            Integer stockMinimo = payload.get("stockMinimo") != null ? ((Number) payload.get("stockMinimo")).intValue() : null;
+
+            if (productoId == null || tipoMovimiento == null || cantidad == null) {
+                response.put("success", false);
+                response.put("message", "Faltan datos obligatorios.");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            return productoService.obtenerProductoPorId(productoId)
+                    .map(producto -> {
+                        // Actualizar stock del producto
+                        producto.setStock(stockResultante);
+                        if (stockMinimo != null) {
+                            producto.setStockMinimo(stockMinimo);
+                        }
+                        Producto productoActualizado = productoService.guardarProducto(producto);
+
+                        // Registrar movimiento con todos los campos
+                        productoService.registrarMovimientoConDetalles(
+                                productoId,
+                                cantidad,
+                                tipoMovimiento,
+                                motivo,
+                                referenciaDocumento,
+                                proveedor,
+                                observacion,
+                                stockAnterior,
+                                stockResultante
+                        );
+
+                        response.put("success", true);
+                        response.put("message", "Movimiento registrado correctamente.");
+                        response.put("producto", productoActualizado);
+                        return ResponseEntity.ok(response);
+                    })
+                    .orElseGet(() -> {
+                        response.put("success", false);
+                        response.put("message", "Producto no encontrado.");
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                    });
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error al registrar movimiento: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+
+    @PostMapping("/inventario/api/actualizar-stock-minimo/{id}")
+    @ResponseBody
+    public ResponseEntity<?> actualizarStockMinimo(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            Integer stockMinimo = payload.get("stockMinimo") != null ? ((Number) payload.get("stockMinimo")).intValue() : null;
+
+            if (stockMinimo == null) {
+                response.put("success", false);
+                response.put("message", "El valor de stock mínimo es obligatorio.");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            return productoService.obtenerProductoPorId(id)
+                    .map(producto -> {
+                        producto.setStockMinimo(stockMinimo);
+                        Producto productoActualizado = productoService.guardarProducto(producto);
+
+                        response.put("success", true);
+                        response.put("message", "Stock mínimo actualizado correctamente.");
+                        response.put("producto", productoActualizado);
+                        return ResponseEntity.ok(response);
+                    })
+                    .orElseGet(() -> {
+                        response.put("success", false);
+                        response.put("message", "Producto no encontrado.");
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                    });
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error al actualizar stock mínimo: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
 }

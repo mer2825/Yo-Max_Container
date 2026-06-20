@@ -226,6 +226,62 @@ public class ProductoService {
     }
 
     @Transactional
+    public void registrarMovimientoConDetalles(Long productoId, Integer cantidad, String tipoMovimiento,
+                                                String motivo, String referenciaDocumento, String proveedor,
+                                                String observacion, Integer stockAnterior, Integer stockResultante) {
+        com.example.acceso.model.StockMovimiento movimiento = new com.example.acceso.model.StockMovimiento();
+        movimiento.setProductoId(productoId);
+        movimiento.setFecha(java.time.LocalDateTime.now());
+        movimiento.setCantidad(cantidad);
+        movimiento.setTipo(tipoMovimiento); // Mantener compatibilidad con campo existente
+
+        // Nuevos campos
+        try {
+            movimiento.setTipoMovimiento(com.example.acceso.model.TipoMovimiento.valueOf(tipoMovimiento));
+        } catch (IllegalArgumentException e) {
+            // Si el tipo no es válido, usar null
+            movimiento.setTipoMovimiento(null);
+        }
+        movimiento.setMotivo(motivo);
+        movimiento.setReferenciaDocumento(referenciaDocumento);
+        movimiento.setProveedor(proveedor);
+        movimiento.setObservacion(observacion);
+        movimiento.setStockAnterior(stockAnterior);
+        movimiento.setStockResultante(stockResultante);
+
+        stockMovimientoRepository.save(movimiento);
+    }
+
+    @Transactional
+    public void registrarMovimientoConDetalles(Long productoId, Integer cantidad, String tipoMovimiento,
+                                                String motivo, String referenciaDocumento, String proveedor,
+                                                String observacion, Integer stockAnterior, Integer stockResultante,
+                                                String usuario) {
+        com.example.acceso.model.StockMovimiento movimiento = new com.example.acceso.model.StockMovimiento();
+        movimiento.setProductoId(productoId);
+        movimiento.setFecha(java.time.LocalDateTime.now());
+        movimiento.setCantidad(cantidad);
+        movimiento.setTipo(tipoMovimiento); // Mantener compatibilidad con campo existente
+
+        // Nuevos campos
+        try {
+            movimiento.setTipoMovimiento(com.example.acceso.model.TipoMovimiento.valueOf(tipoMovimiento));
+        } catch (IllegalArgumentException e) {
+            // Si el tipo no es válido, usar null
+            movimiento.setTipoMovimiento(null);
+        }
+        movimiento.setMotivo(motivo);
+        movimiento.setReferenciaDocumento(referenciaDocumento);
+        movimiento.setProveedor(proveedor);
+        movimiento.setObservacion(observacion);
+        movimiento.setStockAnterior(stockAnterior);
+        movimiento.setStockResultante(stockResultante);
+        movimiento.setComentario(usuario); // Usar campo comentario para usuario (compatibilidad)
+
+        stockMovimientoRepository.save(movimiento);
+    }
+
+    @Transactional
     public void eliminarProducto(Long id) {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("ID de producto inválido");
@@ -269,27 +325,42 @@ public class ProductoService {
     public List<MovimientoProductoDTO> getMovimientosByProductId(Long productId) {
         List<DetalleVenta> detallesVenta = detalleVentaRepository.findByProductoId(productId);
         List<MovimientoProductoDTO> ventasMovs = detallesVenta.stream()
-                .map(detalle -> new MovimientoProductoDTO(
-                        detalle.getVenta().getNumeroVenta(),
-                        detalle.getVenta().getFechaVenta(),
-                        detalle.getPrecioUnitario(),
-                        detalle.getCantidad(),
-                        detalle.getSubtotal()
-                ))
+                .map(detalle -> {
+                    MovimientoProductoDTO dto = new MovimientoProductoDTO(
+                            detalle.getVenta().getNumeroVenta(),
+                            detalle.getVenta().getFechaVenta(),
+                            detalle.getPrecioUnitario(),
+                            detalle.getCantidad(),
+                            detalle.getSubtotal()
+                    );
+                    // Por ahora no incluimos usuario de ventas ya que Venta no tiene relación con Usuario
+                    dto.setUsuario("Sistema"); // Valor por defecto
+                    return dto;
+                })
                 .collect(Collectors.toList());
 
-        List<com.example.acceso.model.StockMovimiento> ajustes = stockMovimientoRepository.findByProductoIdOrderByFechaDesc(productId);
-        List<MovimientoProductoDTO> ajustesDTO = ajustes.stream()
-                .map(a -> new MovimientoProductoDTO(
-                        "AJUSTE",
-                        a.getFecha(),
-                        java.math.BigDecimal.ZERO,
-                        a.getCantidad(),
-                        java.math.BigDecimal.ZERO
-                ))
+        List<com.example.acceso.model.StockMovimiento> movimientos = stockMovimientoRepository.findByProductoIdOrderByFechaDesc(productId);
+        List<MovimientoProductoDTO> movimientosDTO = movimientos.stream()
+                .map(a -> {
+                    MovimientoProductoDTO dto = new MovimientoProductoDTO(
+                            a.getTipoMovimiento() != null ? a.getTipoMovimiento().name() : a.getTipo(),
+                            a.getFecha(),
+                            java.math.BigDecimal.ZERO,
+                            a.getCantidad(),
+                            java.math.BigDecimal.ZERO
+                    );
+                    // Agregar nuevos campos
+                    dto.setStockAnterior(a.getStockAnterior());
+                    dto.setStockResultante(a.getStockResultante());
+                    dto.setMotivo(a.getMotivo());
+                    dto.setReferenciaDocumento(a.getReferenciaDocumento());
+                    dto.setObservacion(a.getObservacion());
+                    dto.setUsuario(a.getComentario()); // Usar comentario como usuario por ahora
+                    return dto;
+                })
                 .collect(Collectors.toList());
 
-        ventasMovs.addAll(ajustesDTO);
+        ventasMovs.addAll(movimientosDTO);
         return ventasMovs;
     }
 

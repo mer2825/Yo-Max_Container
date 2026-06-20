@@ -21,10 +21,33 @@ public class StockMovimiento {
     private Integer cantidad;
 
     @Column(name = "tipo", length = 50)
-    private String tipo; // 'AJUSTE', 'INICIAL', etc.
+    private String tipo; // 'AJUSTE', 'INICIAL', etc. (Mantenido para compatibilidad)
 
     @Column(name = "comentario", length = 500)
     private String comentario;
+
+    // Nuevos campos opcionales para enriquecer el inventario
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_movimiento", length = 20)
+    private TipoMovimiento tipoMovimiento; // ingreso, salida, ajuste, venta
+
+    @Column(name = "motivo", length = 100)
+    private String motivo; // Lista predefinida según tipo
+
+    @Column(name = "referencia_documento", length = 50)
+    private String referenciaDocumento; // Número de factura, guía, etc.
+
+    @Column(name = "proveedor", length = 100)
+    private String proveedor;
+
+    @Column(name = "observacion", length = 1000)
+    private String observacion;
+
+    @Column(name = "stock_anterior")
+    private Integer stockAnterior; // Calculado automáticamente al guardar
+
+    @Column(name = "stock_resultante")
+    private Integer stockResultante; // Calculado automáticamente
 
     public StockMovimiento() {
     }
@@ -79,5 +102,62 @@ public class StockMovimiento {
 
     public void setComentario(String comentario) {
         this.comentario = comentario;
+    }
+
+    // Getters y setters para nuevos campos
+    public TipoMovimiento getTipoMovimiento() {
+        return tipoMovimiento;
+    }
+
+    public void setTipoMovimiento(TipoMovimiento tipoMovimiento) {
+        this.tipoMovimiento = tipoMovimiento;
+    }
+
+    public String getMotivo() {
+        return motivo;
+    }
+
+    public void setMotivo(String motivo) {
+        this.motivo = motivo;
+    }
+
+    public String getReferenciaDocumento() {
+        return referenciaDocumento;
+    }
+
+    public void setReferenciaDocumento(String referenciaDocumento) {
+        this.referenciaDocumento = referenciaDocumento;
+    }
+
+    public String getProveedor() {
+        return proveedor;
+    }
+
+    public void setProveedor(String proveedor) {
+        this.proveedor = proveedor;
+    }
+
+    public String getObservacion() {
+        return observacion;
+    }
+
+    public void setObservacion(String observacion) {
+        this.observacion = observacion;
+    }
+
+    public Integer getStockAnterior() {
+        return stockAnterior;
+    }
+
+    public void setStockAnterior(Integer stockAnterior) {
+        this.stockAnterior = stockAnterior;
+    }
+
+    public Integer getStockResultante() {
+        return stockResultante;
+    }
+
+    public void setStockResultante(Integer stockResultante) {
+        this.stockResultante = stockResultante;
     }
 }

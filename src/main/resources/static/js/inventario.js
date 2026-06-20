@@ -182,10 +182,26 @@ $(document).ready(function() {
         $('#modalProductoNombre').text(productName);
         $('#modalStockActual').text(currentStock);
         $('#modalStockMinimo').text(currentStockMinimo);
-        $('#inputStock').val(currentStock);
+        $('#modalStockDiferencia').text(currentStock - currentStockMinimo);
         $('#inputStockMinimo').val(currentStockMinimo);
-        $('#tablaMovimientos tbody').empty();
+        $('#productoId').val(currentProductId);
 
+        // Actualizar colores de la tarjeta de stock actual
+        var cardStockActual = $('#cardStockActual');
+        cardStockActual.removeClass('bg-success bg-danger');
+        if (currentStock < currentStockMinimo) {
+            cardStockActual.addClass('bg-danger');
+            $('#alertaStockBajo').removeClass('d-none');
+        } else {
+            cardStockActual.addClass('bg-success');
+            $('#alertaStockBajo').addClass('d-none');
+        }
+
+        // Resetear formulario de movimientos
+        resetearFormularioMovimiento();
+
+        // Cargar movimientos
+        $('#tablaMovimientos tbody').empty();
         cargarMovimientos(currentProductId);
 
         var movimientosModal = new bootstrap.Modal(document.getElementById('movimientosModal'));
@@ -201,121 +217,284 @@ $(document).ready(function() {
                     var movimientos = response.data;
                     if (movimientos.length > 0) {
                         movimientos.forEach(function(movimiento) {
+                            var tipo = movimiento.tipoMovimiento || movimiento.tipo || '-';
+                            var badgeClass = '';
+                            var cantidadSign = '';
+
+                            // Determinar badge de color según tipo
+                            if (tipo === 'INGRESO') {
+                                badgeClass = 'bg-success';
+                                cantidadSign = '+';
+                            } else if (tipo === 'SALIDA' || tipo === 'VENTA') {
+                                badgeClass = 'bg-danger';
+                                cantidadSign = '-';
+                            } else if (tipo === 'AJUSTE') {
+                                badgeClass = 'bg-warning text-dark';
+                                cantidadSign = movimiento.stockResultante > movimiento.stockAnterior ? '+' : '-';
+                            } else {
+                                badgeClass = 'bg-secondary';
+                            }
+
+                            // Determinar si es link a venta
+                            var referenciaHtml = movimiento.referenciaDocumento || '-';
+                            if (movimiento.numeroVenta) {
+                                referenciaHtml = '<a href="/ventas/modificar/' + movimiento.numeroVenta + '" target="_blank" class="text-decoration-none">Venta #' + movimiento.numeroVenta + '</a>';
+                            }
+
                             $('#tablaMovimientos tbody').append(
                                 '<tr>' +
-                                    '<td>' + movimiento.numeroVenta + '</td>' +
-                                    '<td>' + (movimiento.fechaVenta ? new Date(movimiento.fechaVenta).toLocaleDateString() : '') + '</td>' +
-                                    '<td>' + movimiento.precioVenta.toFixed(2) + '</td>' +
-                                    '<td>' + movimiento.cantidad + '</td>' +
-                                    '<td>' + movimiento.subtotal.toFixed(2) + '</td>' +
-                                    '<td>' + (movimiento.comentario ? movimiento.comentario : '-') + '</td>' +
+                                    '<td>' + (movimiento.fecha ? new Date(movimiento.fecha).toLocaleString() : (movimiento.fechaVenta ? new Date(movimiento.fechaVenta).toLocaleString() : '')) + '</td>' +
+                                    '<td><span class="badge ' + badgeClass + '">' + tipo + '</span></td>' +
+                                    '<td>' + (movimiento.motivo || '-') + '</td>' +
+                                    '<td>' + cantidadSign + movimiento.cantidad + '</td>' +
+                                    '<td>' + (movimiento.stockResultante || '-') + '</td>' +
+                                    '<td>' + referenciaHtml + '</td>' +
+                                    '<td>' + (movimiento.usuario || '-') + '</td>' +
                                 '</tr>'
                             );
                         });
                     } else {
-                        $('#tablaMovimientos tbody').append('<tr><td colspan="5" class="text-center">No hay movimientos para este producto.</td></tr>');
+                        $('#tablaMovimientos tbody').append('<tr><td colspan="7" class="text-center">No hay movimientos para este producto.</td></tr>');
                     }
                 } else {
                     console.error('Error al cargar movimientos:', response.message);
-                    $('#tablaMovimientos tbody').append('<tr><td colspan="5" class="text-center">Error al cargar movimientos.</td></tr>');
+                    $('#tablaMovimientos tbody').append('<tr><td colspan="7" class="text-center">Error al cargar movimientos.</td></tr>');
                 }
                 if (typeof callback === 'function') callback();
             },
             error: function(xhr, status, error) {
-                console.error('Erro r en la petición AJAX para movimientos:', error);
-                $('#tablaMovimientos tbody').append('<tr><td colspan="5" class="text-center">Error de conexión al cargar movimientos.</td></tr>');
+                console.error('Error en la petición AJAX para movimientos:', error);
+                $('#tablaMovimientos tbody').append('<tr><td colspan="7" class="text-center">Error de conexión al cargar movimientos.</td></tr>');
                 if (typeof callback === 'function') callback();
             }
         });
     }
 
-    var pendingNewStock = null;
-    var pendingNewStockMinimo = null;
+    function resetearFormularioMovimiento() {
+        $('#movimientoTipoSeleccionado').val('');
+        $('.tipo-movimiento-card').removeClass('selected');
+        $('#formIngreso, #formSalida, #formAjuste').addClass('d-none');
+        $('#formMovimiento')[0].reset();
+        $('#btnConfirmarMovimiento').text('Registrar movimiento').prop('disabled', true);
+    }
 
-    $('#btnAjustarStock').on('click', function() {
-        if (!currentProductId) {
-            showNotification('No se ha seleccionado ningún producto.', 'danger');
-            return;
+    // Manejar selección de tipo de movimiento
+    $('.tipo-movimiento-card').on('click', function() {
+        var tipo = $(this).data('tipo');
+        $('#movimientoTipoSeleccionado').val(tipo);
+
+        $('.tipo-movimiento-card').removeClass('selected');
+        $(this).addClass('selected');
+
+        // Ocultar todos los formularios
+        $('#formIngreso, #formSalida, #formAjuste').addClass('d-none');
+
+        // Mostrar formulario correspondiente
+        var currentStock = parseInt($('#modalStockActual').text(), 10);
+
+        switch(tipo) {
+            case 'INGRESO':
+                $('#formIngreso').removeClass('d-none');
+                $('#btnConfirmarMovimiento').text('Registrar ingreso');
+                $('#ingresoStockActual').text(currentStock);
+                actualizarPreviewIngreso();
+                break;
+            case 'SALIDA':
+                $('#formSalida').removeClass('d-none');
+                $('#btnConfirmarMovimiento').text('Registrar salida');
+                $('#salidaStockActual').text(currentStock);
+                $('#salidaMaximo').text(currentStock);
+                $('#salidaCantidad').attr('max', currentStock);
+                actualizarPreviewSalida();
+                break;
+            case 'AJUSTE':
+                $('#formAjuste').removeClass('d-none');
+                $('#btnConfirmarMovimiento').text('Aplicar ajuste');
+                actualizarPreviewAjuste();
+                break;
         }
 
-        var newStock = parseInt($('#inputStock').val(), 10);
-        var newStockMinimo = parseInt($('#inputStockMinimo').val(), 10);
-        var newComentario = $('#inputStockComentario').val().trim();
-
-        if (isNaN(newStock) || newStock < 0) {
-            showNotification('Ingresa un valor de stock válido.', 'danger');
-            return;
-        }
-
-        pendingNewStock = newStock;
-        pendingNewStockMinimo = isNaN(newStockMinimo) ? null : newStockMinimo;
-        pendingNewComentario = newComentario;
-
-        $('#confirmSaveMessage').text(`Confirma guardar el ajuste: Stock ${pendingNewStock}` + (pendingNewStockMinimo !== null ? `, Stock mínimo ${pendingNewStockMinimo}` : '') + (pendingNewComentario ? `, Comentario: ${pendingNewComentario}` : ''));
-        var confirmModal = new bootstrap.Modal(document.getElementById('confirmSaveModal'));
-        confirmModal.show();
+        $('#btnConfirmarMovimiento').prop('disabled', false);
     });
 
-    $('#confirmSaveBtn').on('click', function() {
-        if (!currentProductId || pendingNewStock === null) {
-            showNotification('No hay datos para guardar.', 'danger');
+    // Eventos para actualización de previews
+    $('#ingresoCantidad').on('input', actualizarPreviewIngreso);
+    $('#salidaCantidad').on('input', actualizarPreviewSalida);
+    $('#ajusteStockReal').on('input', actualizarPreviewAjuste);
+
+    function actualizarPreviewIngreso() {
+        var currentStock = parseInt($('#modalStockActual').text(), 10);
+        var cantidad = parseInt($('#ingresoCantidad').val(), 10) || 0;
+        var resultado = currentStock + cantidad;
+        $('#ingresoCantidadPreview').text(cantidad);
+        $('#ingresoResultado').text(resultado);
+    }
+
+    function actualizarPreviewSalida() {
+        var currentStock = parseInt($('#modalStockActual').text(), 10);
+        var cantidad = parseInt($('#salidaCantidad').val(), 10) || 0;
+        var resultado = currentStock - cantidad;
+        $('#salidaCantidadPreview').text(cantidad);
+        $('#salidaResultado').text(resultado);
+    }
+
+    function actualizarPreviewAjuste() {
+        var currentStock = parseInt($('#modalStockActual').text(), 10);
+        var stockReal = parseInt($('#ajusteStockReal').val(), 10) || 0;
+        var diferencia = stockReal - currentStock;
+        $('#ajusteDiferencia').text(Math.abs(diferencia));
+        $('#ajusteSigno').text(diferencia >= 0 ? '+' : '-');
+    }
+
+    // Función para mostrar mensajes inline
+    function mostrarMensajeInline(mensaje, tipo) {
+        var $mensajeDiv = $('#formMovimientoMensaje');
+        $mensajeDiv.removeClass('d-none alert-success alert-danger alert-warning');
+        
+        if (tipo === 'success') {
+            $mensajeDiv.addClass('alert alert-success');
+        } else if (tipo === 'error') {
+            $mensajeDiv.addClass('alert alert-danger');
+        } else if (tipo === 'warning') {
+            $mensajeDiv.addClass('alert alert-warning');
+        }
+        
+        $mensajeDiv.html(mensaje);
+    }
+
+    function ocultarMensajeInline() {
+        $('#formMovimientoMensaje').addClass('d-none');
+    }
+
+    // Envío del formulario de movimiento
+    $('#formMovimiento').on('submit', function(e) {
+        e.preventDefault();
+        ocultarMensajeInline();
+
+        var tipo = $('#movimientoTipoSeleccionado').val();
+        console.log('Tipo de movimiento seleccionado:', tipo);
+        console.log('Producto ID:', currentProductId);
+
+        if (!tipo) {
+            mostrarMensajeInline('Selecciona un tipo de movimiento.', 'error');
             return;
         }
 
-        var $btn = $(this);
+        var currentStock = parseInt($('#modalStockActual').text(), 10);
+        var stockMinimo = parseInt($('#inputStockMinimo').val(), 10) || null;
+        var movimientoData = {
+            productoId: currentProductId,
+            tipoMovimiento: tipo,
+            stockMinimo: stockMinimo
+        };
+
+        switch(tipo) {
+            case 'INGRESO':
+                var cantidadIngreso = parseInt($('#ingresoCantidad').val(), 10);
+                if (!cantidadIngreso || cantidadIngreso <= 0) {
+                    mostrarMensajeInline('La cantidad debe ser mayor a 0.', 'error');
+                    return;
+                }
+                if (!Number.isInteger(cantidadIngreso)) {
+                    mostrarMensajeInline('La cantidad debe ser un número entero.', 'error');
+                    return;
+                }
+                movimientoData.cantidad = cantidadIngreso;
+                movimientoData.motivo = $('#ingresoMotivo').val();
+                movimientoData.referenciaDocumento = $('#ingresoReferencia').val();
+                movimientoData.proveedor = $('#ingresoProveedor').val();
+                movimientoData.observacion = $('#ingresoObservacion').val();
+                movimientoData.stockAnterior = currentStock;
+                movimientoData.stockResultante = currentStock + cantidadIngreso;
+                break;
+
+            case 'SALIDA':
+                var cantidadSalida = parseInt($('#salidaCantidad').val(), 10);
+                if (!cantidadSalida || cantidadSalida <= 0) {
+                    mostrarMensajeInline('La cantidad debe ser mayor a 0.', 'error');
+                    return;
+                }
+                if (!Number.isInteger(cantidadSalida)) {
+                    mostrarMensajeInline('La cantidad debe ser un número entero.', 'error');
+                    return;
+                }
+                if (cantidadSalida > currentStock) {
+                    mostrarMensajeInline('No puedes retirar más unidades de las disponibles (stock actual: ' + currentStock + ').', 'error');
+                    return;
+                }
+                movimientoData.cantidad = cantidadSalida;
+                movimientoData.motivo = $('#salidaMotivo').val();
+                movimientoData.observacion = $('#salidaObservacion').val();
+                movimientoData.stockAnterior = currentStock;
+                movimientoData.stockResultante = currentStock - cantidadSalida;
+                break;
+
+            case 'AJUSTE':
+                var stockReal = parseInt($('#ajusteStockReal').val(), 10);
+                if (isNaN(stockReal) || stockReal < 0) {
+                    mostrarMensajeInline('Ingresa un stock real válido (mayor o igual a 0).', 'error');
+                    return;
+                }
+                if (!Number.isInteger(stockReal)) {
+                    mostrarMensajeInline('El stock debe ser un número entero.', 'error');
+                    return;
+                }
+                var diferencia = stockReal - currentStock;
+                movimientoData.cantidad = Math.abs(diferencia);
+                movimientoData.motivo = $('#ajusteMotivo').val();
+                movimientoData.stockAnterior = currentStock;
+                movimientoData.stockResultante = stockReal;
+                break;
+        }
+
+        var $btn = $('#btnConfirmarMovimiento');
         $btn.prop('disabled', true);
 
+        console.log('Datos a enviar:', movimientoData);
+
         $.ajax({
-            url: '/inventario/api/ajustar-stock/' + currentProductId,
+            url: '/inventario/api/registrar-movimiento',
             method: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({
-                stock: pendingNewStock,
-                stockMinimo: pendingNewStockMinimo,
-                comentario: pendingNewComentario
-            }),
+            data: JSON.stringify(movimientoData),
             success: function(response) {
+                console.log('Respuesta del servidor:', response);
                 $btn.prop('disabled', false);
-                var confirmModalEl = document.getElementById('confirmSaveModal');
-                var confirmInstance = bootstrap.Modal.getInstance(confirmModalEl);
-                if (confirmInstance) confirmInstance.hide();
 
                 if (response.success) {
-                    showNotification(response.message, 'success');
+                    mostrarMensajeInline('✓ Movimiento registrado. Nuevo stock: ' + response.producto.stock + ' unidades.', 'success');
                     actualizarFilaProducto(currentProductId, response.producto);
-                    // Recargar movimientos y luego cerrar el modal principal
-                    $('#tablaMovimientos tbody').empty();
-                    cargarMovimientos(currentProductId, function() {
-                        var movimientosModalEl = document.getElementById('movimientosModal');
-                        var movimientosInstance = bootstrap.Modal.getInstance(movimientosModalEl);
-                        if (movimientosInstance) movimientosInstance.hide();
-                    });
-                } else {
-                    showNotification(response.message || 'No se pudo actualizar el stock.', 'danger');
-                }
 
-                pendingNewStock = null;
-                pendingNewStockMinimo = null;
+                    // Actualizar resumen de stock en el modal
+                    $('#modalStockActual').text(response.producto.stock);
+                    $('#modalStockDiferencia').text(response.producto.stock - response.producto.stockMinimo);
+
+                    var cardStockActual = $('#cardStockActual');
+                    cardStockActual.removeClass('bg-success bg-danger');
+                    if (response.producto.stock < response.producto.stockMinimo) {
+                        cardStockActual.addClass('bg-danger');
+                        $('#alertaStockBajo').removeClass('d-none');
+                    } else {
+                        cardStockActual.addClass('bg-success');
+                        $('#alertaStockBajo').addClass('d-none');
+                    }
+
+                    // Recargar movimientos sin recargar la página
+                    $('#tablaMovimientos tbody').empty();
+                    cargarMovimientos(currentProductId);
+
+                    // Resetear formulario
+                    resetearFormularioMovimiento();
+                } else {
+                    mostrarMensajeInline(response.message || 'No se pudo registrar el movimiento.', 'error');
+                }
             },
             error: function(xhr, status, error) {
+                console.log('Error en la petición:', xhr, status, error);
                 $btn.prop('disabled', false);
-                showNotification('Error al actualizar stock: ' + error, 'danger');
+                mostrarMensajeInline('Error al registrar movimiento: ' + error, 'error');
             }
         });
-    });
-
-    $('#btnIncrementarStock').on('click', function() {
-        var currentValue = parseInt($('#inputStock').val(), 10);
-        $('#inputStock').val(isNaN(currentValue) ? 10 : currentValue + 10);
-    });
-
-    $('#btnDecrementarStock').on('click', function() {
-        var currentValue = parseInt($('#inputStock').val(), 10);
-        if (isNaN(currentValue)) {
-            $('#inputStock').val(0);
-        } else {
-            $('#inputStock').val(Math.max(0, currentValue - 10));
-        }
     });
 
     function actualizarFilaProducto(productId, producto) {
@@ -326,6 +505,58 @@ $(document).ready(function() {
         fila.find('.btn-movimientos').data('stock', producto.stock).data('stock-minimo', producto.stockMinimo);
         actualizarResumenInventario();
     }
+
+    // Manejar botón para actualizar stock mínimo
+    $('#btnActualizarMinimo').on('click', function() {
+        if (!currentProductId) {
+            showNotification('No se ha seleccionado ningún producto.', 'danger');
+            return;
+        }
+
+        var stockMinimo = parseInt($('#inputStockMinimo').val(), 10);
+        if (isNaN(stockMinimo) || stockMinimo < 0) {
+            showNotification('Ingresa un valor de stock mínimo válido.', 'danger');
+            return;
+        }
+
+        var $btn = $(this);
+        $btn.prop('disabled', true);
+
+        $.ajax({
+            url: '/inventario/api/actualizar-stock-minimo/' + currentProductId,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ stockMinimo: stockMinimo }),
+            success: function(response) {
+                $btn.prop('disabled', false);
+
+                if (response.success) {
+                    showNotification('Stock mínimo actualizado correctamente.', 'success');
+                    actualizarFilaProducto(currentProductId, response.producto);
+
+                    // Actualizar resumen de stock en el modal
+                    $('#modalStockMinimo').text(response.producto.stockMinimo);
+                    $('#modalStockDiferencia').text(response.producto.stock - response.producto.stockMinimo);
+
+                    var cardStockActual = $('#cardStockActual');
+                    cardStockActual.removeClass('bg-success bg-danger');
+                    if (response.producto.stock < response.producto.stockMinimo) {
+                        cardStockActual.addClass('bg-danger');
+                        $('#alertaStockBajo').removeClass('d-none');
+                    } else {
+                        cardStockActual.addClass('bg-success');
+                        $('#alertaStockBajo').addClass('d-none');
+                    }
+                } else {
+                    showNotification(response.message || 'No se pudo actualizar el stock mínimo.', 'danger');
+                }
+            },
+            error: function(xhr, status, error) {
+                $btn.prop('disabled', false);
+                showNotification('Error al actualizar stock mínimo: ' + error, 'danger');
+            }
+        });
+    });
 
     // Exportar a PDF
     $('#btnExportarPdf').on('click', function() {

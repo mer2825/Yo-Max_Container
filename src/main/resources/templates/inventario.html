@@ -10,6 +10,38 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
     <link rel="stylesheet" th:href="@{/css/main.css}"> <!-- Asegúrate de incluir main.css si es necesario para el diseño general -->
+    <style>
+        .tipo-movimiento-card {
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+        .tipo-movimiento-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .tipo-movimiento-card.selected {
+            border-color: #0d6efd;
+            background-color: #f8f9fa;
+        }
+        .tipo-movimiento-card[data-tipo="INGRESO"].selected {
+            border-color: #198754;
+            background-color: #d1e7dd;
+        }
+        .tipo-movimiento-card[data-tipo="SALIDA"].selected {
+            border-color: #dc3545;
+            background-color: #f8d7da;
+        }
+        .tipo-movimiento-card[data-tipo="AJUSTE"].selected {
+            border-color: #ffc107;
+            background-color: #fff3cd;
+        }
+        #cardStockActual.bg-success {
+            background-color: #d1e7dd !important;
+        }
+        #cardStockActual.bg-danger {
+            background-color: #f8d7da !important;
+        }
+    </style>
 </head>
 <body>
 
@@ -128,48 +160,222 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-4 d-flex flex-wrap gap-2 align-items-center">
-                    <span class="badge bg-secondary py-2">Stock actual: <strong id="modalStockActual">0</strong></span>
-                    <span class="badge bg-warning text-dark py-2">Stock mínimo: <strong id="modalStockMinimo">0</strong></span>
-                    <span class="badge bg-info text-dark py-2">Revisa el historial y guarda ajustes con seguridad</span>
+                <!-- Barra de resumen de stock -->
+                <div class="row g-3 mb-4" id="stockSummaryBar">
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm" id="cardStockActual">
+                            <div class="card-body text-center">
+                                <p class="small text-muted mb-1">Stock actual</p>
+                                <h2 class="mb-0 fw-bold" id="modalStockActual">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm bg-light">
+                            <div class="card-body text-center">
+                                <p class="small text-muted mb-1">Stock mínimo</p>
+                                <h2 class="mb-0 fw-bold" id="modalStockMinimo">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm bg-light">
+                            <div class="card-body text-center">
+                                <p class="small text-muted mb-1">Diferencia</p>
+                                <h2 class="mb-0 fw-bold" id="modalStockDiferencia">0</h2>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="d-flex flex-wrap align-items-start">
-                    <div class="inventory-side me-4">
-                        <div class="card border rounded-4 mb-4 inventory-side-card">
-                            <div class="card-body inventory-modal-card">
-                                <h6 class="mb-3">Ajuste rápido de stock</h6>
-                                <p class="small text-muted">Ingresa la cantidad real disponible y el mínimo recomendado para este producto.</p>
-                                <div class="mb-3">
-                                    <label class="form-label fw-semibold">Stock Actual</label>
-                                    <input type="number" class="form-control form-control-lg" id="inputStock" min="0" placeholder="Ej: 50">
+
+                <!-- Banner de alerta -->
+                <div class="alert alert-warning d-none" id="alertaStockBajo" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> ⚠ Stock por debajo del mínimo recomendado.
+                </div>
+
+                <!-- Pestañas -->
+                <ul class="nav nav-tabs mb-4" id="movimientosTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="registrar-tab" data-bs-toggle="tab" data-bs-target="#registrar" type="button" role="tab">Registrar movimiento</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="historial-tab" data-bs-toggle="tab" data-bs-target="#historial" type="button" role="tab">Historial completo</button>
+                    </li>
+                </ul>
+
+                <!-- Contenido de pestañas -->
+                <div class="tab-content" id="movimientosTabsContent">
+                    <!-- Pestaña: Registrar movimiento -->
+                    <div class="tab-pane fade show active" id="registrar" role="tabpanel">
+                        <!-- Selector visual de tipo de movimiento -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <div class="card border-0 shadow-sm cursor-pointer tipo-movimiento-card" data-tipo="INGRESO">
+                                    <div class="card-body text-center py-4">
+                                        <i class="bi bi-box-arrow-in-down fs-1 text-success mb-2"></i>
+                                        <h6 class="mb-0">Ingreso</h6>
+                                        <p class="small text-muted mb-0">Llegada de mercadería</p>
+                                    </div>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label fw-semibold">Stock Mínimo</label>
-                                    <input type="number" class="form-control form-control-lg" id="inputStockMinimo" min="0" placeholder="Ej: 5">
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-0 shadow-sm cursor-pointer tipo-movimiento-card" data-tipo="SALIDA">
+                                    <div class="card-body text-center py-4">
+                                        <i class="bi bi-box-arrow-up-right fs-1 text-danger mb-2"></i>
+                                        <h6 class="mb-0">Salida / Merma</h6>
+                                        <p class="small text-muted mb-0">Pérdidas o daños</p>
+                                    </div>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label fw-semibold">Comentario</label>
-                                    <textarea class="form-control" id="inputStockComentario" rows="3" placeholder="Ej: Ajuste manual por inventario físico"></textarea>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-0 shadow-sm cursor-pointer tipo-movimiento-card" data-tipo="AJUSTE">
+                                    <div class="card-body text-center py-4">
+                                        <i class="bi bi-balance-scale fs-1 text-warning mb-2"></i>
+                                        <h6 class="mb-0">Ajuste por conteo</h6>
+                                        <p class="small text-muted mb-0">Corrección tras inventario</p>
+                                    </div>
                                 </div>
-                                <div class="d-grid gap-2">
-                                    <button type="button" class="btn btn-primary btn-lg w-100" id="btnAjustarStock">Guardar ajuste</button>
-                                    <button type="button" class="btn btn-outline-secondary btn-lg w-100" id="btnIncrementarStock">+10</button>
-                                    <button type="button" class="btn btn-outline-danger btn-lg w-100" id="btnDecrementarStock">-10</button>
+                            </div>
+                        </div>
+
+                        <!-- Formulario dinámico -->
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-body">
+                                <!-- Área de mensajes inline -->
+                                <div id="formMovimientoMensaje" class="d-none mb-3"></div>
+
+                                <form id="formMovimiento">
+                                    <input type="hidden" id="movimientoTipoSeleccionado" value="">
+                                    <input type="hidden" id="productoId" value="">
+
+                                    <!-- Formulario Ingreso -->
+                                    <div id="formIngreso" class="d-none">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Cantidad a ingresar *</label>
+                                                <input type="number" class="form-control" id="ingresoCantidad" min="1">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Motivo *</label>
+                                                <select class="form-select" id="ingresoMotivo">
+                                                    <option value="">Seleccionar...</option>
+                                                    <option value="compra_proveedor">Compra a proveedor</option>
+                                                    <option value="devolucion_cliente">Devolución de cliente</option>
+                                                    <option value="stock_no_registrado">Stock encontrado no registrado</option>
+                                                    <option value="otro">Otro</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">N° Documento / Referencia</label>
+                                                <input type="text" class="form-control" id="ingresoReferencia" placeholder="Factura o guía">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Proveedor</label>
+                                                <input type="text" class="form-control" id="ingresoProveedor">
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label fw-semibold">Observación</label>
+                                                <textarea class="form-control" id="ingresoObservacion" rows="2"></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3 p-3 bg-success bg-opacity-10 rounded">
+                                            <strong class="text-success">Nuevo stock: <span id="ingresoStockActual">0</span> + <span id="ingresoCantidadPreview">0</span> = <span id="ingresoResultado">0</span></strong>
+                                        </div>
+                                    </div>
+
+                                    <!-- Formulario Salida -->
+                                    <div id="formSalida" class="d-none">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Cantidad a retirar *</label>
+                                                <input type="number" class="form-control" id="salidaCantidad" min="1">
+                                                <small class="text-muted">Máximo: <span id="salidaMaximo">0</span></small>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Motivo *</label>
+                                                <select class="form-select" id="salidaMotivo">
+                                                    <option value="">Seleccionar...</option>
+                                                    <option value="producto_danado">Producto dañado</option>
+                                                    <option value="producto_perdido">Producto perdido</option>
+                                                    <option value="devolucion_proveedor">Devolución a proveedor</option>
+                                                    <option value="vencimiento">Vencimiento</option>
+                                                    <option value="otro">Otro</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label fw-semibold">Observación *</label>
+                                                <textarea class="form-control" id="salidaObservacion" rows="2"></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3 p-3 bg-danger bg-opacity-10 rounded">
+                                            <strong class="text-danger">Nuevo stock: <span id="salidaStockActual">0</span> − <span id="salidaCantidadPreview">0</span> = <span id="salidaResultado">0</span></strong>
+                                        </div>
+                                    </div>
+
+                                    <!-- Formulario Ajuste -->
+                                    <div id="formAjuste" class="d-none">
+                                        <div class="alert alert-warning" role="alert">
+                                            <i class="bi bi-exclamation-triangle-fill me-2"></i> Este ajuste modificará el stock directamente. Asegúrate de haber realizado el conteo físico.
+                                        </div>
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Stock real contado *</label>
+                                                <input type="number" class="form-control" id="ajusteStockReal" min="0">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Motivo del ajuste *</label>
+                                                <select class="form-select" id="ajusteMotivo">
+                                                    <option value="">Seleccionar...</option>
+                                                    <option value="inventario_fisico">Inventario físico periódico</option>
+                                                    <option value="correccion_error">Corrección de error anterior</option>
+                                                    <option value="auditoria">Auditoría</option>
+                                                    <option value="otro">Otro</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3 p-3 bg-warning bg-opacity-10 rounded">
+                                            <strong>Diferencia: <span id="ajusteDiferencia">0</span> unidades (<span id="ajusteSigno">+</span>)</strong>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-4">
+                                        <button type="submit" class="btn btn-primary btn-lg w-100" id="btnConfirmarMovimiento">Registrar movimiento</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Sección separada para Stock Mínimo -->
+                        <div class="card border-0 shadow-sm mt-4">
+                            <div class="card-body">
+                                <h6 class="mb-3">Configuración de Stock Mínimo</h6>
+                                <p class="small text-muted mb-3">El stock mínimo es de referencia para alertas. No afecta el inventario.</p>
+                                <div class="row align-items-end">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold">Stock mínimo</label>
+                                        <input type="number" class="form-control" id="inputStockMinimo" min="0">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <button type="button" class="btn btn-outline-primary w-100" id="btnActualizarMinimo">Actualizar mínimo</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="movements-side flex-fill">
-                        <div class="table-responsive movements-table">
+
+                    <!-- Pestaña: Historial completo -->
+                    <div class="tab-pane fade" id="historial" role="tabpanel">
+                        <div class="table-responsive">
                             <table id="tablaMovimientos" class="table table-striped table-hover" style="width:100%">
                                 <thead class="table-dark">
                                     <tr>
-                                        <th>N° Venta</th>
-                                        <th>Fecha Venta</th>
-                                        <th>Precio Venta</th>
+                                        <th>Fecha</th>
+                                        <th>Tipo</th>
+                                        <th>Motivo</th>
                                         <th>Cantidad</th>
-                                        <th>Subtotal</th>
-                                        <th>Comentario</th>
+                                        <th>Stock Resultante</th>
+                                        <th>Documento/Referencia</th>
+                                        <th>Usuario</th>
                                     </tr>
                                 </thead>
                                 <tbody>
