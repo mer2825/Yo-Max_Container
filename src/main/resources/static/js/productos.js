@@ -60,7 +60,7 @@ $(document).ready(function() {
                 },
                 { data: null, orderable: false, searchable: false, render: (data, type, row) => createActionButtons(row) }
             ],
-            language: { url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" }
+            language: { url: "/js/i18n/es-ES.json" }
         });
     }
 

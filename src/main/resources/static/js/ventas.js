@@ -6,7 +6,9 @@ $(document).ready(function() {
     const ENDPOINTS = {
         list: `${API_BASE}/listar`,
         delete: (id) => `${API_BASE}/eliminar/${id}`,
-        print: (id) => `/ventas/imprimir/${id}`
+        print: (id) => `/ventas/imprimir/${id}`,
+        enviarSunat: (id) => `${API_BASE}/enviar-sunat/${id}`,
+        enviarEmail: (id) => `${API_BASE}/enviar-email/${id}`
     };
 
     initializeDataTable();
@@ -59,6 +61,8 @@ $(document).ready(function() {
         $('#tablaVentas tbody').on('click', '.action-print', handlePrint);
         $('#tablaVentas tbody').on('click', '.action-delete', handleDelete);
         $('#tablaVentas tbody').on('click', '.action-edit', handleEdit);
+        $('#tablaVentas tbody').on('click', '.action-sunat', handleSunat);
+        $('#tablaVentas tbody').on('click', '.action-email', handleEmail);
         $('#btnPrintBoleta').on('click', () => document.getElementById('boletaIframe').contentWindow.print());
 
         window.addEventListener('message', function(event) {
@@ -114,6 +118,36 @@ $(document).ready(function() {
         }
     }
 
+    function handleSunat() {
+        const ventaId = $(this).data('id');
+        if (!ventaId) {
+            showNotification('No se pudo obtener el ID de la venta para enviar a SUNAT.', 'error');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Enviar a SUNAT',
+            text: '¿Deseas generar el JSON y guardarlo para enviar a SUNAT?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, generar',
+            cancelButtonText: 'Cancelar'
+        }).then(result => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: ENDPOINTS.enviarSunat(ventaId),
+                    type: 'POST',
+                    success: function(response) {
+                        showNotification(response.message || 'JSON generado correctamente.', response.success ? 'success' : 'error');
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message || 'Error al generar el JSON.', 'error');
+                    }
+                });
+            }
+        });
+    }
+
     function handleDelete() {
         const ventaId = $(this).data('id');
         Swal.fire({
@@ -131,6 +165,47 @@ $(document).ready(function() {
                         if (response.success) dataTable.ajax.reload();
                     },
                     error: (xhr) => showNotification(xhr.responseJSON?.message || 'Error al anular la venta.', 'error')
+                });
+            }
+        });
+     }
+
+    function handleEmail() {
+        const ventaId = $(this).data('id');
+        if (!ventaId) {
+            showNotification('No se pudo obtener el ID de la venta para enviar el email.', 'error');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Enviar Email',
+            text: '¿Deseas enviar el comprobante de venta al email del cliente?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, enviar',
+            cancelButtonText: 'Cancelar'
+        }).then(result => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: ENDPOINTS.enviarEmail(ventaId),
+                    type: 'POST',
+                    success: function(response) {
+                        showNotification(response.message || 'Email enviado correctamente.', response.success ? 'success' : 'error');
+                    },
+                                    error: function(xhr) {
+                                        let msg = 'Error al enviar el email.';
+                                        try {
+                                            if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
+                                            else if (xhr.responseText) {
+                                                const parsed = JSON.parse(xhr.responseText);
+                                                if (parsed && parsed.message) msg = parsed.message;
+                                                else msg = xhr.responseText;
+                                            }
+                                        } catch (e) {
+                                            msg = xhr.responseText || msg;
+                                        }
+                                        showNotification(msg, 'error');
+                                    }
                 });
             }
         });

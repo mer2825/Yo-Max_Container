@@ -44,7 +44,7 @@ $(document).ready(function() {
                     render: (data, type, row) => createActionButtons(row)
                 }
             ],
-            language: { url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" }
+            language: { url: "/js/i18n/es-ES.json" }
         });
     }
 

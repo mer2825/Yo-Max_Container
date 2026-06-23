@@ -16,4 +16,11 @@ public interface EmailService {
      * @param motivo Motivo del rechazo
      */
     void enviarEmailRechazo(String emailDestino, String numeroPedido, String motivo);
+    
+    /**
+     * Envía un email de venta/boleta al cliente
+     * @param ventaId ID de la venta
+     * @throws Exception si ocurre un error al enviar el email
+     */
+    void enviarEmailVenta(Long ventaId) throws Exception;
 }
