@@ -44,6 +44,8 @@ public class VentaServiceImpl implements VentaService {
     @Transactional
     public Venta crearVenta(Venta venta) {
         // Lógica para manejar el cliente en ventas web
+
+
         if ("web".equals(venta.getOrigen())) {
             // ...
         } else {

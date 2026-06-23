@@ -49,7 +49,7 @@ public class DataInitializer implements CommandLineRunner {
         System.out.println("--- Ejecutando DataInitializer.run() ---"); // Línea de depuración
         crearOpcionesDeMenu();
         crearPerfilAdminConTodasLasOpciones();
-        crearClienteSiNoExiste("Consumidor Final", "DNI", "00000000", "Sin dirección");
+        crearClienteSiNoExiste("Consumidor Final", "DNI", "00000000", "Sin dirección", "email@gmail.com");
         garantizarUsuarioAdmin();
         System.out.println("--- DataInitializer.run() finalizado ---"); // Línea de depuración
     }
@@ -137,7 +137,7 @@ public class DataInitializer implements CommandLineRunner {
         return !admins.isEmpty();
     }
 
-    private void crearClienteSiNoExiste(String nombre, String tipoDoc, String numDoc, String direccion) {
+    private void crearClienteSiNoExiste(String nombre, String tipoDoc, String numDoc, String direccion, String email) {
         if (!clienteRepository.findByNombre(nombre).isPresent()) {
             Cliente clienteGenerico = new Cliente();
             clienteGenerico.setNombre(nombre);
@@ -145,6 +145,7 @@ public class DataInitializer implements CommandLineRunner {
             clienteGenerico.setNumeroDocumento(numDoc);
             clienteGenerico.setDireccion(direccion);
             clienteGenerico.setEstado(1);
+            clienteGenerico.setEmail(email);
             clienteRepository.save(clienteGenerico);
             System.out.println("Cliente por defecto creado: " + nombre);
         }

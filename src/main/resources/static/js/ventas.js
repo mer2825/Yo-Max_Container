@@ -33,6 +33,18 @@ $(document).ready(function() {
                         <button class="btn btn-sm btn-info action-edit" data-id="${row.id}" title="Editar Venta"><i class="bi bi-pencil-fill"></i></button>
                         <button class="btn btn-sm btn-danger action-delete" data-id="${row.id}" title="Anular Venta"><i class="bi bi-trash-fill"></i></button>
                         <a href="/ventas/imprimir/${row.id}" target="_blank" class="btn btn-sm btn-primary" title="Imprimir Boleta"><i class="bi bi-printer-fill"></i></a>
+                        <button
+                            class="btn btn-sm btn-warning action-sunat"
+                            data-id="${row.id}"
+                            title="Enviar a SUNAT">
+                            <i class="bi bi-arrow-left-right"></i>
+                        </button>
+                        <button
+                            class="btn btn-sm btn-success action-email"
+                            data-id="${row.id}"
+                            title="Enviar correo">
+                            <i class="bi bi-envelope-fill"></i>
+                        </button>
                     `
                 }
             ],
