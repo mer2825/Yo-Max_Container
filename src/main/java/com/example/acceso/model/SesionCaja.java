@@ -31,6 +31,9 @@ public class SesionCaja {
     @Column(precision = 10, scale = 2)
     private BigDecimal diferencia;
 
+    @Column(name = "saldo_traspasado", precision = 10, scale = 2)
+    private BigDecimal saldoTraspasado;
+
     @Column(length = 500)
     private String motivoDiferencia;
 
@@ -121,6 +124,14 @@ public class SesionCaja {
 
     public void setDiferencia(BigDecimal diferencia) {
         this.diferencia = diferencia;
+    }
+
+    public BigDecimal getSaldoTraspasado() {
+        return saldoTraspasado;
+    }
+
+    public void setSaldoTraspasado(BigDecimal saldoTraspasado) {
+        this.saldoTraspasado = saldoTraspasado;
     }
 
     public String getMotivoDiferencia() {

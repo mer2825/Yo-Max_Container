@@ -23,6 +23,32 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 
+    <!-- Banner de alerta de cierre -->
+    <th:block th:if="${hayAlertaCierre}">
+        <div style="background:#faeeda;border:1px solid #e4b063;border-radius:10px;
+                    padding:12px 16px;display:flex;align-items:center;gap:12px;
+                    margin-bottom:16px;">
+            <span style="font-size:22px">⏰</span>
+            <div style="flex:1">
+                <div style="font-size:11px;font-weight:500;color:#7a4c0d">
+                    Recuerda cerrar la caja antes de salir
+                </div>
+                <div style="font-size:10px;color:#a86a1a">
+                    Son las
+                    <span th:text="${#temporals.format(#temporals.createNow(), 'hh:mm a')}"></span>
+                    · La sesión lleva
+                    <span th:text="${resumen.duracion}"></span>
+                    abierta
+                </div>
+            </div>
+            <a href="/caja/cerrar"
+               style="background:#7a4c0d;color:white;border:none;border-radius:6px;
+                      padding:6px 12px;font-size:10px;text-decoration:none;">
+                Cerrar caja
+            </a>
+        </div>
+    </th:block>
+
     <div class="row mb-3">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">

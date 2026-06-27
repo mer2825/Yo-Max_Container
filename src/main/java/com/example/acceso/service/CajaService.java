@@ -29,4 +29,9 @@ public interface CajaService {
     java.util.List<MovimientoLogDTO> construirLogSesion(Long sesionId);
 
     CierreResumenDTO obtenerResumenParaCierre();
+
+    java.math.BigDecimal obtenerSaldoParaApertura();
+    boolean debeAlertarCierre(SesionCaja sesion);
+    boolean haySesionDelDiaAnteriorSinCerrar();
+    java.util.Optional<SesionCaja> obtenerUltimaSesionCerrada();
 }

@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS sesiones_caja (
   estado VARCHAR(20) NOT NULL,
   usuario_apertura_id BIGINT NOT NULL,
   usuario_cierre_id BIGINT,
+  saldo_traspasado DECIMAL(10,2),
   CONSTRAINT fk_sesion_usuario_apertura FOREIGN KEY (usuario_apertura_id) REFERENCES usuarios(id),
   CONSTRAINT fk_sesion_usuario_cierre FOREIGN KEY (usuario_cierre_id) REFERENCES usuarios(id)
 );

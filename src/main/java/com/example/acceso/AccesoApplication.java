@@ -4,6 +4,7 @@ package com.example.acceso;
 // Importaciones de clases necesarias de Spring Boot.
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 // @SpringBootApplication: Es una anotación de conveniencia que combina tres anotaciones:
 // 1. @Configuration: Marca la clase como una fuente de definiciones de beans.
@@ -12,6 +13,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 // 3. @ComponentScan: Le dice a Spring que busque otros componentes, configuraciones y servicios
 //    en el paquete 'com.example.acceso' y sus subpaquetes.
 @SpringBootApplication
+@EnableScheduling
 public class AccesoApplication {
 
 	// El método main es el punto de entrada estándar de cualquier aplicación Java.

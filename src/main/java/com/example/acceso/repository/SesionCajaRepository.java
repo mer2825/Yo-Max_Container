@@ -23,6 +23,10 @@ public interface SesionCajaRepository extends JpaRepository<SesionCaja, Long> {
 
     List<SesionCaja> findByEstadoOrderByFechaAperturaDesc(String estado);
 
+    Optional<SesionCaja> findFirstByEstadoOrderByFechaCierreDesc(String estado);
+
+    Optional<SesionCaja> findTopByEstadoOrderByFechaCierreDesc(String estado);
+
     @Query("SELECT sc FROM SesionCaja sc WHERE sc.estado = 'CERRADA' AND sc.fechaApertura >= :inicio AND sc.fechaApertura <= :fin ORDER BY sc.fechaApertura DESC")
     List<SesionCaja> findSesionesCerradasPorPeriodo(@Param("inicio") LocalDateTime inicio, @Param("fin") LocalDateTime fin);
 }

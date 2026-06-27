@@ -65,7 +65,19 @@ public class CajaServiceImpl implements CajaService {
         sesionCaja.setUsuarioApertura(usuario);
         sesionCaja.setEstado("ABIERTA");
 
-        return sesionCajaRepository.save(sesionCaja);
+        SesionCaja sesionGuardada = sesionCajaRepository.save(sesionCaja);
+
+        // Si se proporcionó un monto inicial, registrarlo como traspaso desde la sesión anterior
+        if (montoInicial != null && montoInicial.compareTo(BigDecimal.ZERO) > 0) {
+            Optional<SesionCaja> ultimaSesionCerrada = sesionCajaRepository.findFirstByEstadoOrderByFechaCierreDesc("CERRADA");
+            if (ultimaSesionCerrada.isPresent()) {
+                SesionCaja sesionAnterior = ultimaSesionCerrada.get();
+                sesionAnterior.setSaldoTraspasado(montoInicial);
+                sesionCajaRepository.save(sesionAnterior);
+            }
+        }
+
+        return sesionGuardada;
     }
 
     @Override
@@ -111,7 +123,14 @@ public class CajaServiceImpl implements CajaService {
 
         sesion.setEstado("CERRADA");
 
-        return sesionCajaRepository.save(sesion);
+        SesionCaja sesionCerrada = sesionCajaRepository.save(sesion);
+
+        // Calcular y guardar el saldo traspasado para la próxima sesión
+        BigDecimal saldoTraspasado = calcularMontoEsperado(sesion.getId());
+        sesionCerrada.setSaldoTraspasado(saldoTraspasado);
+        sesionCajaRepository.save(sesionCerrada);
+
+        return sesionCerrada;
     }
 
     @Override
@@ -721,6 +740,55 @@ public class CajaServiceImpl implements CajaService {
         log.sort((a, b) -> b.getFecha().compareTo(a.getFecha()));
         
         return log;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.math.BigDecimal obtenerSaldoParaApertura() {
+        // Buscar la última sesión cerrada ordenada por fecha de cierre descendente
+        return sesionCajaRepository
+            .findTopByEstadoOrderByFechaCierreDesc("CERRADA")
+            .map(sesion -> {
+                // Si la sesión tiene saldo traspasado definido, usar ese
+                if (sesion.getSaldoTraspasado() != null) {
+                    return sesion.getSaldoTraspasado();
+                }
+                // Sino, usar el monto declarado por el cajero
+                if (sesion.getMontoCierreDeclarado() != null) {
+                    return sesion.getMontoCierreDeclarado();
+                }
+                return BigDecimal.ZERO;
+            })
+            .orElse(BigDecimal.ZERO); // primera vez que se abre la caja
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean debeAlertarCierre(SesionCaja sesion) {
+        if (sesion == null || "CERRADA".equals(sesion.getEstado())) {
+            return false;
+        }
+        int horaActual = LocalDateTime.now().getHour();
+        return horaActual >= 20; // 8 PM o más
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean haySesionDelDiaAnteriorSinCerrar() {
+        return sesionCajaRepository.findByEstado("ABIERTA")
+            .map(sesion -> {
+                LocalDate fechaApertura = sesion.getFechaApertura().toLocalDate();
+                LocalDate hoy = LocalDate.now();
+                // Si la sesión se abrió antes de hoy, está sin cerrar
+                return fechaApertura.isBefore(hoy);
+            })
+            .orElse(false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Optional<SesionCaja> obtenerUltimaSesionCerrada() {
+        return sesionCajaRepository.findTopByEstadoOrderByFechaCierreDesc("CERRADA");
     }
 
     // Método auxiliar para calcular el monto esperado en caja

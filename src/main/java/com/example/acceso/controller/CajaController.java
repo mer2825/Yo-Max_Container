@@ -49,9 +49,16 @@ public class CajaController {
             ResumenSesionActivaDTO resumen = cajaService.obtenerResumenSesionActiva();
             model.addAttribute("resumen", resumen);
             model.addAttribute("sesionActiva", sesionActiva.get());
+            model.addAttribute("hayAlertaCierre", cajaService.debeAlertarCierre(sesionActiva.get()));
             return "caja-monitor";
         } else {
-            // No hay sesión abierta, mostrar formulario de apertura
+            // No hay sesión abierta, mostrar formulario de apertura con saldo propuesto
+            BigDecimal saldoPropuesto = cajaService.obtenerSaldoParaApertura();
+            SesionCaja ultimaCerrada = cajaService.obtenerUltimaSesionCerrada().orElse(null);
+
+            model.addAttribute("saldoPropuesto", saldoPropuesto);
+            model.addAttribute("ultimaCerrada", ultimaCerrada);
+            model.addAttribute("hayAlertaDiaSinCerrar", cajaService.haySesionDelDiaAnteriorSinCerrar());
             return "caja-apertura";
         }
     }
