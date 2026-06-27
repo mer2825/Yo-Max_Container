@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Caja - Excel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<div class="container-fluid" style="padding-top: 2rem;">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">
+                    <i class="bi bi-file-excel me-2"></i>Reporte de Caja en Excel
+                </h2>
+                <a th:href="@{/caja/reporte}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-2"></i>Volver
+                </a>
+            </div>
+            <hr class="mt-2">
+        </div>
+    </div>
+
+    <div th:if="${reporte != null}">
+        <!-- Encabezado del reporte -->
+        <div class="row mb-4">
+            <div class="col-12 text-center">
+                <h3>Reporte de Caja por Período</h3>
+                <p class="text-muted" th:text="'Del ' + ${#temporals.format(reporte.desde, 'dd/MM/yyyy') + ' al ' + #temporals.format(reporte.hasta, 'dd/MM/yyyy')}">
+                    Del 01/01/2026 al 31/12/2026
+                </p>
+            </div>
+        </div>
+
+        <!-- Resumen del período -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <p class="text-muted mb-1 small">Total del Período</p>
+                        <h4 class="mb-0 fw-bold text-primary" th:text="'S/ ' + ${#numbers.formatDecimal(reporte.totalPeriodo, 0, 2)}">S/ 0.00</h4>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <p class="text-muted mb-1 small">Ticket Promedio</p>
+                        <h4 class="mb-0 fw-bold text-warning" th:text="'S/ ' + ${#numbers.formatDecimal(reporte.ticketPromedio, 0, 2)}">S/ 0.00</h4>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <p class="text-muted mb-1 small">Total Sesiones</p>
+                        <h4 class="mb-0 fw-bold text-info" th:text="${reporte.totalSesiones}">0</h4>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <p class="text-muted mb-1 small">Mejor Día</p>
+                        <h4 class="mb-0 fw-bold text-success" th:text="${reporte.mejorDia != null ? #temporals.format(reporte.mejorDia, 'dd/MM/yyyy') : 'N/A'}">N/A</h4>
+                        <small class="text-muted" th:text="'S/ ' + ${#numbers.formatDecimal(reporte.mejorDiaTotal, 0, 2)}">S/ 0.00</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ventas por método de pago -->
+        <div class="row g-3 mb-4">
+            <div class="col-lg-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h5 class="mb-0">
+                            <i class="bi bi-pie-chart me-2"></i>Ventas por Método de Pago
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Método de Pago</th>
+                                        <th class="text-end">Monto</th>
+                                        <th class="text-end">Porcentaje</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="entry : ${reporte.ventasPorMetodoPago}">
+                                        <td th:text="${entry.key}">EFECTIVO</td>
+                                        <td class="text-end fw-semibold" th:text="'S/ ' + ${#numbers.formatDecimal(entry.value, 0, 2)}">S/ 0.00</td>
+                                        <td class="text-end" th:text="${#numbers.formatDecimal((entry.value / reporte.totalPeriodo) * 100, 0, 1)} + '%'">0%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resumen por día -->
+        <div class="row g-3 mb-4">
+            <div class="col-lg-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h5 class="mb-0">
+                            <i class="bi bi-calendar-week me-2"></i>Resumen por Día
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th class="text-end">Total Ventas</th>
+                                        <th class="text-end">Transacciones</th>
+                                        <th class="text-end">Ticket Promedio</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="dia : ${reporte.resumenPorDia}">
+                                        <td th:text="${#temporals.format(dia.fecha, 'dd/MM/yyyy')}">25/06/2026</td>
+                                        <td class="text-end fw-semibold" th:text="'S/ ' + ${#numbers.formatDecimal(dia.totalVentas, 0, 2)}">S/ 0.00</td>
+                                        <td class="text-end" th:text="${dia.numeroTransacciones}">0</td>
+                                        <td class="text-end" th:text="'S/ ' + ${#numbers.formatDecimal(dia.ticketPromedio, 0, 2)}">S/ 0.00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top 5 productos más vendidos -->
+        <div class="row g-3 mb-4" th:if="${reporte.top5Productos != null && !reporte.top5Productos.isEmpty()}">
+            <div class="col-lg-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h5 class="mb-0">
+                            <i class="bi bi-trophy me-2"></i>Top 5 Productos Más Vendidos
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Producto</th>
+                                        <th class="text-end">Unidades Vendidas</th>
+                                        <th class="text-end">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="prod, iter : ${reporte.top5Productos}">
+                                        <td th:text="${iter.count}">1</td>
+                                        <td th:text="${prod.nombreProducto}">Producto</td>
+                                        <td class="text-end" th:text="${prod.unidadesVendidas}">0</td>
+                                        <td class="text-end fw-semibold" th:text="'S/ ' + ${#numbers.formatDecimal(prod.totalDinero, 0, 2)}">S/ 0.00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pie de página -->
+        <div class="row mt-5">
+            <div class="col-12 text-center text-muted">
+                <p class="small">Reporte generado el <span th:text="${#temporals.format(T(java.time.LocalDateTime).now(), 'dd/MM/yyyy HH:mm')}">26/06/2026 10:00</span></p>
+            </div>
+        </div>
+    </div>
+
+    <div th:if="${reporte == null && desde != null && hasta != null}" class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>No se encontraron ventas en el período seleccionado.
+    </div>
+</div>
+
+</body>
+</html>

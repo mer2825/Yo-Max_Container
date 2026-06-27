@@ -1,0 +1,4 @@
+- [ ] Editar `CajaController` para implementar flujo 3-step con sesión: confirmar/revisar/finalizar
+- [ ] Reemplazar completamente `templates/caja-cierre.html` con flujo scroll continuo + JS (mostrar/ocultar motivo) y tablas de cálculo
+- [ ] Ajustar bindings con el nuevo `CierreResumenDTO` (evitar null usando Elvis)
+- [ ] Ejecutar `mvn -q test` para asegurar compilación (los tests existentes pueden fallar por tema ajeno)

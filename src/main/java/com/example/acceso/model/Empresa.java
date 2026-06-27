@@ -23,6 +23,30 @@ public class Empresa {
     @Column(length = 100)
     private String email;
 
+    @Column(length = 11)
+    private String rucEmpresa;
+
+    @Column(length = 255)
+    private String razonSocialEmpresa;
+
+    @Column(length = 255)
+    private String direccionEmpresa;
+
+    @Column(length = 20, columnDefinition = "varchar(20) default 'B001'")
+    private String serieBoleta = "B001";
+
+    @Column(length = 20, columnDefinition = "varchar(20) default 'F001'")
+    private String serieFactura = "F001";
+
+    @Column(columnDefinition = "integer default 1")
+    private Integer correlativoBoleta = 1;
+
+    @Column(columnDefinition = "integer default 1")
+    private Integer correlativoFactura = 1;
+
+    @Column(length = 20, columnDefinition = "varchar(20) default 'demo'")
+    private String nubefactAmbiente = "demo";
+
     @Column(length = 255)
     private String logoUrl;
 
@@ -95,6 +119,70 @@ public class Empresa {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getRucEmpresa() {
+        return rucEmpresa;
+    }
+
+    public void setRucEmpresa(String rucEmpresa) {
+        this.rucEmpresa = rucEmpresa;
+    }
+
+    public String getRazonSocialEmpresa() {
+        return razonSocialEmpresa;
+    }
+
+    public void setRazonSocialEmpresa(String razonSocialEmpresa) {
+        this.razonSocialEmpresa = razonSocialEmpresa;
+    }
+
+    public String getDireccionEmpresa() {
+        return direccionEmpresa;
+    }
+
+    public void setDireccionEmpresa(String direccionEmpresa) {
+        this.direccionEmpresa = direccionEmpresa;
+    }
+
+    public String getSerieBoleta() {
+        return serieBoleta;
+    }
+
+    public void setSerieBoleta(String serieBoleta) {
+        this.serieBoleta = serieBoleta;
+    }
+
+    public String getSerieFactura() {
+        return serieFactura;
+    }
+
+    public void setSerieFactura(String serieFactura) {
+        this.serieFactura = serieFactura;
+    }
+
+    public Integer getCorrelativoBoleta() {
+        return correlativoBoleta;
+    }
+
+    public void setCorrelativoBoleta(Integer correlativoBoleta) {
+        this.correlativoBoleta = correlativoBoleta;
+    }
+
+    public Integer getCorrelativoFactura() {
+        return correlativoFactura;
+    }
+
+    public void setCorrelativoFactura(Integer correlativoFactura) {
+        this.correlativoFactura = correlativoFactura;
+    }
+
+    public String getNubefactAmbiente() {
+        return nubefactAmbiente;
+    }
+
+    public void setNubefactAmbiente(String nubefactAmbiente) {
+        this.nubefactAmbiente = nubefactAmbiente;
     }
 
     public String getLogoUrl() {

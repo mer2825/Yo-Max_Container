@@ -143,8 +143,8 @@ WHERE NOT EXISTS (
 );
 
 -- EMPRESA
-INSERT INTO empresa (nombre, direccion, telefono, email, logo_url, nosotros, numero_yape, titular_yape)
-SELECT nombre, direccion, telefono, email, logo_url, nosotros, numero_yape, titular_yape
+INSERT INTO empresa (nombre, direccion, telefono, email, logo_url, nosotros, numero_yape, titular_yape, ruc_empresa, razon_social_empresa, direccion_empresa, serie_boleta, serie_factura, correlativo_boleta, correlativo_factura, nubefact_ambiente)
+SELECT nombre, direccion, telefono, email, logo_url, nosotros, numero_yape, titular_yape, ruc_empresa, razon_social_empresa, direccion_empresa, serie_boleta, serie_factura, correlativo_boleta, correlativo_factura, nubefact_ambiente
 FROM (VALUES
   ('Tienda de Importaciones Yo''Max',
   '963 Monseñor Francisco Gonzales, Ferreñafe, Pueblo Nuevo',
@@ -153,8 +153,16 @@ FROM (VALUES
   '/static/uploads/logo.png',
   'Yo''Max es tu tienda de importaciones favorita, ofreciendo productos de alta calidad traídos de las mejores marcas internacionales. Nos especializamos en juguetes, accesorios, regalos, electrónica, ropa y artículos para el hogar que transforman cualquier espacio en algo especial.',
   '918 823 760 ',
-  'YoMax Importaciones')
-) AS v(nombre, direccion, telefono, email, logo_url, nosotros, numero_yape, titular_yape)
+  'YoMax Importaciones',
+  '20123456789',
+  'YoMax Importaciones S.A.C.',
+  '963 Monseñor Francisco Gonzales, Ferreñafe, Pueblo Nuevo',
+  'B001',
+  'F001',
+  1,
+  1,
+  'demo')
+) AS v(nombre, direccion, telefono, email, logo_url, nosotros, numero_yape, titular_yape, ruc_empresa, razon_social_empresa, direccion_empresa, serie_boleta, serie_factura, correlativo_boleta, correlativo_factura, nubefact_ambiente)
 WHERE NOT EXISTS (
   SELECT 1 FROM empresa e WHERE e.nombre = v.nombre
 );

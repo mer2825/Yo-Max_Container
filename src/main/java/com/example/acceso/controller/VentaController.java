@@ -3,8 +3,11 @@ package com.example.acceso.controller;
 import com.example.acceso.model.*;
 import com.example.acceso.service.*;
 import com.example.acceso.dto.ProductoMasVendidoDTO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -15,23 +18,30 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/ventas")
 public class VentaController {
 
+    private static final Logger logger = LoggerFactory.getLogger(VentaController.class);
+
     private final VentaService ventaService;
     private final ProductoService productoService;
     private final CategoriaService categoriaService;
     private final EmpresaService empresaService;
+    private final CajaService cajaService;
+    private final com.example.acceso.repository.VentaRepository ventaRepository;
 
     @Autowired
-    public VentaController(VentaService ventaService, ProductoService productoService, CategoriaService categoriaService, EmpresaService empresaService) {
+    public VentaController(VentaService ventaService, ProductoService productoService, CategoriaService categoriaService, EmpresaService empresaService, CajaService cajaService, com.example.acceso.repository.VentaRepository ventaRepository) {
         this.ventaService = ventaService;
         this.productoService = productoService;
         this.categoriaService = categoriaService;
         this.empresaService = empresaService;
+        this.cajaService = cajaService;
+        this.ventaRepository = ventaRepository;
     }
 
     @GetMapping("/listar")
@@ -68,18 +78,43 @@ public class VentaController {
     @PostMapping("/api/guardar")
     @ResponseBody
     public ResponseEntity<?> guardarVenta(@RequestBody Venta venta) {
+        Venta ventaCreada = null;
         try {
-            Venta ventaCreada = ventaService.crearVenta(venta);
+            ventaCreada = ventaService.crearVenta(venta);
+            
+            // Vincular la venta a la sesión de caja activa si existe
+            Optional<com.example.acceso.model.SesionCaja> sesionActiva = cajaService.obtenerSesionActiva();
+            if (sesionActiva.isPresent()) {
+                ventaCreada.setSesionCaja(sesionActiva.get());
+                ventaCreada = ventaRepository.save(ventaCreada); // Guardar la relación con la sesión de caja
+            }
+            
+            Venta ventaProcesada = ventaService.procesarComprobanteElectronico(ventaCreada);
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("message", "Venta registrada con éxito");
-            response.put("ventaId", ventaCreada.getId());
+            response.put("ventaId", ventaProcesada.getId());
+            response.put("numeroVenta", ventaProcesada.getNumeroVenta());
+            response.put("estadoSunat", ventaProcesada.getEstadoSunat());
+            response.put("message", "Venta registrada con éxito.");
+
+            if ("aceptado".equalsIgnoreCase(ventaProcesada.getEstadoSunat())) {
+                response.put("pdfUrl", ventaProcesada.getPdfUrl());
+                response.put("xmlUrl", ventaProcesada.getXmlUrl());
+            } else {
+                response.put("errorMessage", ventaProcesada.getNota() != null ? ventaProcesada.getNota() : "Ocurrió un error al emitir el comprobante.");
+            }
+
             return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
+            logger.error("Error al guardar venta", e);
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
-            response.put("message", e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            response.put("message", "Error interno al procesar la venta: " + e.getMessage());
+            if (ventaCreada != null) {
+                response.put("ventaId", ventaCreada.getId());
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 

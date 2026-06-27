@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Sesión de Caja #<span th:text="${sesion.id}">123</span></title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            font-size: 12px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+        .header p {
+            color: #666;
+            font-size: 11px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .info-box {
+            border: 1px solid #ddd;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .info-box label {
+            font-weight: bold;
+            color: #666;
+            font-size: 10px;
+            display: block;
+            margin-bottom: 3px;
+        }
+        .info-box value {
+            font-size: 12px;
+            font-weight: 600;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        th {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 11px;
+        }
+        td {
+            border: 1px solid #dee2e6;
+            padding: 6px 8px;
+            font-size: 11px;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        .badge-success {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+        .badge-warning {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+        .badge-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+        }
+        .total-row {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Reporte de Sesión de Caja #<span th:text="${sesion.id}">123</span></h1>
+        <p>Generado el <span th:text="${#temporals.format(T(java.time.LocalDateTime).now(), 'dd/MM/yyyy HH:mm')}">26/06/2026 11:00</span> por <span th:text="${usuarioGenerador}">Usuario</span></p>
+    </div>
+
+    <!-- SECCIÓN 1: Información de la Sesión -->
+    <div class="section-title">📌 Resumen de la Sesión</div>
+    <div class="info-grid">
+        <div class="info-box">
+            <label>N° Sesión</label>
+            <value th:text="${sesion.id}">#123</value>
+        </div>
+        <div class="info-box">
+            <label>Estado</label>
+            <value>
+                <span th:classappend="${sesion.estado == 'CERRADA'} ? 'badge-success' : 'badge-warning'"
+                      th:text="${sesion.estado}">CERRADA</span>
+            </value>
+        </div>
+        <div class="info-box">
+            <label>Fecha Apertura</label>
+            <value th:text="${#temporals.format(sesion.fechaApertura, 'dd/MM/yyyy HH:mm')}">26/06/2026 08:00</value>
+        </div>
+        <div class="info-box">
+            <label>Fecha Cierre</label>
+            <value th:text="${sesion.fechaCierre != null ? #temporals.format(sesion.fechaCierre, 'dd/MM/yyyy HH:mm') : 'Sesión activa'}">26/06/2026 18:00</value>
+        </div>
+        <div class="info-box">
+            <label>Cajero Apertura</label>
+            <value th:text="${sesion.usuarioApertura != null ? sesion.usuarioApertura.nombre : 'N/A'}">Juan Pérez</value>
+        </div>
+        <div class="info-box">
+            <label>Cajero Cierre</label>
+            <value th:text="${sesion.usuarioCierre != null ? sesion.usuarioCierre.nombre : '-'}">María López</value>
+        </div>
+        <div class="info-box">
+            <label>Fondo Inicial</label>
+            <value th:text="'S/ ' + ${#numbers.formatDecimal(sesion.montoInicial, 0, 2)}">S/ 100.00</value>
+        </div>
+        <div class="info-box">
+            <label>Total Ventas</label>
+            <value th:text="'S/ ' + ${#numbers.formatDecimal(sesion.montoCierreEsperado != null ? sesion.montoCierreEsperado : 0, 0, 2)}">S/ 0.00</value>
+        </div>
+        <div class="info-box">
+            <label>Efectivo Esperado</label>
+            <value th:text="'S/ ' + ${#numbers.formatDecimal(sesion.montoCierreEsperado != null ? sesion.montoCierreEsperado : 0, 0, 2)}">S/ 0.00</value>
+        </div>
+        <div class="info-box">
+            <label>Efectivo Declarado</label>
+            <value th:text="'S/ ' + ${#numbers.formatDecimal(sesion.montoCierreDeclarado != null ? sesion.montoCierreDeclarado : 0, 0, 2)}">S/ 0.00</value>
+        </div>
+        <div class="info-box">
+            <label>Diferencia</label>
+            <value th:classappend="${sesion.diferencia < 0} ? 'text-danger' : 'text-success'"
+                   th:text="'S/ ' + ${#numbers.formatDecimal(sesion.diferencia, 0, 2)}">S/ 0.00</value>
+        </div>
+    </div>
+
+    <!-- SECCIÓN 2: Resumen por Método de Pago -->
+    <div class="section-title">💳 Resumen por Método de Pago</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Método de Pago</th>
+                <th class="text-end">Total</th>
+                <th class="text-end">% del Total</th>
+                <th class="text-end">Transacciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="entry : ${detalle.ventasPorMetodoPago}">
+                <td th:text="${entry.key}">EFECTIVO</td>
+                <td class="text-end" th:text="'S/ ' + ${#numbers.formatDecimal(entry.value, 0, 2)}">S/ 0.00</td>
+                <td class="text-end">
+                    <span th:if="${detalle.totalVentas > 0}"
+                          th:text="${#numbers.formatDecimal((entry.value / detalle.totalVentas) * 100, 0, 1)} + '%'">0%</span>
+                </td>
+                <td class="text-end" th:text="${entry.value.cantidad}">0</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(detalle.ventasPorMetodoPago)}">
+                <td colspan="4" class="text-center text-muted">No hay ventas registradas</td>
+            </tr>
+            <tr class="total-row" th:if="${#lists.size(detalle.ventasPorMetodoPago) > 0}">
+                <td><strong>Total</strong></td>
+                <td class="text-end"><strong th:text="'S/ ' + ${#numbers.formatDecimal(detalle.totalVentas, 0, 2)}">S/ 0.00</strong></td>
+                <td class="text-end"><strong>100%</strong></td>
+                <td class="text-end"><strong th:text="${#lists.size(detalle.ventas)}">0</strong></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- SECCIÓN 3: Log de Auditoría -->
+    <div class="section-title">📋 Movimientos de la Sesión</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Fecha/Hora</th>
+                <th>Evento</th>
+                <th>Descripción</th>
+                <th>Usuario</th>
+                <th class="text-end">Monto</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="evento : ${logAuditoria}">
+                <td th:text="${#temporals.format(evento.fecha, 'dd/MM/yyyy HH:mm')}">26/06/2026 10:30</td>
+                <td>
+                    <span th:classappend="${evento.tipo == 'APERTURA_CAJA'} ? 'badge-success' : 
+                                         ${evento.tipo == 'VENTA_EFECTIVO'} ? 'badge-success' : 
+                                         ${evento.tipo == 'VENTA_OTRO_MEDIO'} ? 'badge-warning' : 
+                                         ${evento.tipo == 'RETIRO_MANUAL'} ? 'badge-danger' : 'badge-warning'"
+                          th:text="${evento.nombre}">Venta en Efectivo</span>
+                </td>
+                <td>
+                    <span th:text="${evento.descripcion}">Descripción</span>
+                    <small th:if="${evento.detalleAdicional != null}" class="d-block">
+                        <span th:text="${evento.detalleAdicional}">Info adicional</span>
+                    </small>
+                </td>
+                <td th:text="${evento.usuario}">Juan Pérez</td>
+                <td class="text-end">
+                    <span th:if="${evento.monto != null}"
+                          th:classappend="${evento.tipo == 'RETIRO_MANUAL'} ? 'text-danger' : 'text-success'"
+                          th:text="${evento.tipo == 'RETIRO_MANUAL' ? '− S/ ' + ${#numbers.formatDecimal(evento.monto, 0, 2)} : '+ S/ ' + ${#numbers.formatDecimal(evento.monto, 0, 2)})}">
+                        + S/ 0.00
+                    </span>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(logAuditoria)}">
+                <td colspan="5" class="text-center text-muted">No hay movimientos registrados</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <p>Este documento es un reporte generado automáticamente por el sistema de caja.</p>
+        <p>Los movimientos registrados no pueden ser modificados ni eliminados.</p>
+        <p th:if="${usuarioGenerador}">Generado por: <span th:text="${usuarioGenerador}">Usuario</span></p>
+    </div>
+</body>
+</html>

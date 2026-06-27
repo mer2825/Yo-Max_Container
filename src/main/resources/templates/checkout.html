@@ -455,12 +455,12 @@
                     <label for="telefonoCliente" class="form-label">Teléfono de Contacto <span class="text-danger">*</span></label>
                     <input type="tel" class="form-control" id="telefonoCliente" required
                            th:value="${usuarioLogueado != null ? usuarioLogueado.telefono : ''}"
-                           placeholder="Número de teléfono (9 dígitos)"
-                           pattern="[0-9]{9}"
-                           title="El teléfono debe tener 9 dígitos"
+                           placeholder="Número de celular (9 dígitos, empezando con 9)"
+                           pattern="9[0-9]{8}"
+                           title="Ingresa un número de celular peruano válido (9 dígitos, empezando con 9)"
                            maxlength="9"
                            oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-                    <div id="telefonoError" class="text-danger" style="font-size: 0.875rem; margin-top: 0.25rem; display: none;">El teléfono debe tener exactamente 9 dígitos numéricos</div>
+                    <div id="telefonoError" class="text-danger" style="font-size: 0.875rem; margin-top: 0.25rem; display: none;">Ingresa un número de celular peruano válido (9 dígitos, empezando con 9)</div>
                 </div>
 
                 <div class="mb-3">

@@ -23,7 +23,39 @@ $(document).ready(function() {
             columns: [
                 { data: 'id' }, { data: 'numeroVenta' }, { data: 'nombreCliente' },
                 { data: 'fechaVenta', render: data => new Date(data).toLocaleString('es-PE') },
-                { data: 'metodoPago' }, { data: 'tipoComprobante' },
+                { data: 'metodoPago' },
+                {
+                    data: 'tipoComprobante', render: data => {
+                        const tipo = data ? data.toLowerCase() : '';
+                        if (tipo.includes('boleta')) return '<span class="badge bg-success">Boleta</span>';
+                        if (tipo.includes('factura')) return '<span class="badge bg-primary">Factura</span>';
+                        if (tipo.includes('nota')) return '<span class="badge bg-secondary">Nota de Venta</span>';
+                        return `<span class="badge bg-secondary">${data || 'N/A'}</span>`;
+                    }
+                },
+                { data: 'serieCorrelativo', render: data => data ? data : '-' },
+                {
+                    data: 'estadoSunat', render: data => {
+                        if (!data) return '-';
+                        const estado = data.toLowerCase();
+                        if (estado === 'aceptado') return '<span class="badge bg-success">Aceptado</span>';
+                        if (estado === 'rechazado') return '<span class="badge bg-danger">Rechazado</span>';
+                        return '<span class="badge bg-warning text-dark">Pendiente</span>';
+                    }
+                },
+                {
+                    data: null, orderable: false, searchable: false,
+                    render: (data, type, row) => {
+                        let html = '';
+                        if (row.pdfUrl) {
+                            html += `<a href="${row.pdfUrl}" target="_blank" class="me-2 text-decoration-none" title="Descargar PDF"><i class="bi bi-file-earmark-pdf-fill text-danger"></i></a>`;
+                        }
+                        if (row.xmlUrl) {
+                            html += `<a href="${row.xmlUrl}" target="_blank" class="text-decoration-none" title="Descargar XML"><i class="bi bi-file-earmark-code-fill text-primary"></i></a>`;
+                        }
+                        return html || '-';
+                    }
+                },
                 { data: 'descuento', render: data => `S/ ${parseFloat(data).toFixed(2)}` },
                 { data: 'total', render: data => `S/ ${parseFloat(data).toFixed(2)}` },
                 { data: 'nota' },

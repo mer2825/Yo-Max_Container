@@ -126,6 +126,16 @@ public class InventarioController {
 
             return productoService.obtenerProductoPorId(productoId)
                     .map(producto -> {
+                        // Validar stock actual para salidas
+                        if ("SALIDA".equals(tipoMovimiento)) {
+                            Integer stockActual = producto.getStock();
+                            if (cantidad > stockActual) {
+                                response.put("success", false);
+                                response.put("message", "Solo hay " + stockActual + " unidades disponibles. No se puede retirar " + cantidad + ".");
+                                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
+                            }
+                        }
+
                         // Actualizar stock del producto
                         producto.setStock(stockResultante);
                         if (stockMinimo != null) {

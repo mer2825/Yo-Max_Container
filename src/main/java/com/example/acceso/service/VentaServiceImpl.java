@@ -2,12 +2,15 @@ package com.example.acceso.service;
 
 import com.example.acceso.model.Cliente;
 import com.example.acceso.model.DetalleVenta;
+import com.example.acceso.model.Empresa;
 import com.example.acceso.model.Producto;
 import com.example.acceso.model.Venta;
 import com.example.acceso.repository.ClienteRepository;
 import com.example.acceso.repository.ProductoRepository;
 import com.example.acceso.repository.VentaRepository;
 import com.example.acceso.dto.ProductoMasVendidoDTO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +23,7 @@ import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,20 +33,32 @@ import java.util.stream.Collectors;
 @Service
 public class VentaServiceImpl implements VentaService {
 
+    private static final Logger logger = LoggerFactory.getLogger(VentaServiceImpl.class);
+
     private final VentaRepository ventaRepository;
     private final ProductoRepository productoRepository;
     private final ClienteRepository clienteRepository;
+    private final EmpresaService empresaService;
+    private final ApisunatService apisunatService;
 
     @Autowired
-    public VentaServiceImpl(VentaRepository ventaRepository, ProductoRepository productoRepository, ClienteRepository clienteRepository) {
+    public VentaServiceImpl(VentaRepository ventaRepository,
+                            ProductoRepository productoRepository,
+                            ClienteRepository clienteRepository,
+                            EmpresaService empresaService,
+                            ApisunatService apisunatService) {
         this.ventaRepository = ventaRepository;
         this.productoRepository = productoRepository;
         this.clienteRepository = clienteRepository;
+        this.empresaService = empresaService;
+        this.apisunatService = apisunatService;
     }
 
     @Override
     @Transactional
     public Venta crearVenta(Venta venta) {
+        venta.setTipoComprobante(normalizeTipoComprobante(venta.getTipoComprobante()));
+
         // Lógica para manejar el cliente en ventas web
         if ("web".equals(venta.getOrigen())) {
             // ...
@@ -53,7 +69,9 @@ public class VentaServiceImpl implements VentaService {
 
         // --- Lógica de cálculo y guardado ---
         BigDecimal subtotalCalculado = BigDecimal.ZERO;
-        for (DetalleVenta detalle : venta.getDetalles()) {
+        List<DetalleVenta> detalles = venta.getDetalles() != null ? venta.getDetalles() : new ArrayList<>();
+        venta.setDetalles(detalles); // Asegurar que la lista se asigne a la venta
+        for (DetalleVenta detalle : detalles) {
             Producto producto = productoRepository.findById(detalle.getProducto().getId())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + detalle.getProducto().getId()));
             
@@ -95,7 +113,28 @@ public class VentaServiceImpl implements VentaService {
         venta.setNumeroVenta(numeroVenta);
         venta.setFechaVenta(LocalDateTime.now());
 
+        if ("Boleta".equalsIgnoreCase(venta.getTipoComprobante()) || "Factura".equalsIgnoreCase(venta.getTipoComprobante())) {
+            venta.setEstadoSunat("pendiente");
+        }
+
         return ventaRepository.save(venta);
+    }
+
+    private String normalizeTipoComprobante(String tipoComprobante) {
+        if (tipoComprobante == null) {
+            return null;
+        }
+        String normalized = tipoComprobante.trim().toLowerCase();
+        if (normalized.contains("boleta")) {
+            return "Boleta";
+        }
+        if (normalized.contains("factura")) {
+            return "Factura";
+        }
+        if (normalized.contains("nota")) {
+            return "Nota de Venta";
+        }
+        return tipoComprobante;
     }
 
     private String generarNumeroVenta(String tipoComprobante) {
@@ -132,6 +171,88 @@ public class VentaServiceImpl implements VentaService {
         }
 
         return String.format("%s%s-%04d", prefijo, mes, correlativo);
+    }
+
+    @Transactional
+    public Venta procesarComprobanteElectronico(Venta venta) {
+        if (venta == null || venta.getTipoComprobante() == null) {
+            return venta;
+        }
+
+        String tipoComprobante = normalizeTipoComprobante(venta.getTipoComprobante());
+        venta.setTipoComprobante(tipoComprobante);
+        Empresa empresa = empresaService.getEmpresaInfo();
+        ApisunatService.ApisunatResult resultado;
+        String serie;
+        int correlativo;
+
+        if ("Boleta".equalsIgnoreCase(tipoComprobante)) {
+            serie = empresa.getSerieBoleta();
+            // Obtener último correlativo de APISUNAT
+            Integer lastCorrelativo = apisunatService.getLastDocument("03", serie);
+            correlativo = (lastCorrelativo != null) ? lastCorrelativo + 1 : (empresa.getCorrelativoBoleta() != null ? empresa.getCorrelativoBoleta() : 1);
+            resultado = apisunatService.emitirBoleta(venta, empresa, serie, correlativo);
+        } else if ("Factura".equalsIgnoreCase(tipoComprobante)) {
+            serie = empresa.getSerieFactura();
+            // Obtener último correlativo de APISUNAT
+            Integer lastCorrelativo = apisunatService.getLastDocument("01", serie);
+            correlativo = (lastCorrelativo != null) ? lastCorrelativo + 1 : (empresa.getCorrelativoFactura() != null ? empresa.getCorrelativoFactura() : 1);
+            resultado = apisunatService.emitirFactura(venta, empresa, serie, correlativo);
+        } else {
+            return venta;
+        }
+
+        // Sólo asignar serie/correlativo y URIs si el servicio devolvió información
+        String status = resultado.getStatus();
+        if (status == null) {
+            status = "EXCEPCION";
+        }
+
+        if ("ACEPTADO".equalsIgnoreCase(status) || "PENDIENTE".equalsIgnoreCase(status)) {
+            venta.setSerieCorrelativo(serie + "-" + correlativo);
+            venta.setPdfUrl(resultado.getPdfUrl());
+            venta.setXmlUrl(resultado.getXmlUrl());
+            venta.setHashCdr(resultado.getHashCdr());
+            venta.setCdrSunat(resultado.getRawResponse());
+            venta.setNubefactId(resultado.getDocumentId());
+        } else if ("RECHAZADO".equalsIgnoreCase(status)) {
+            venta.setSerieCorrelativo(serie + "-" + correlativo);
+            venta.setCdrSunat(resultado.getRawResponse());
+            venta.setNubefactId(resultado.getDocumentId());
+        } else {
+            // En caso de excepción dejamos los campos relacionados a SUNAT sin asignar o con detalle
+            venta.setCdrSunat(resultado.getRawResponse());
+            venta.setNubefactId(resultado.getDocumentId());
+        }
+
+        if ("ACEPTADO".equalsIgnoreCase(status)) {
+            venta.setEstadoSunat("aceptado");
+            if ("Boleta".equalsIgnoreCase(tipoComprobante)) {
+                empresa.setCorrelativoBoleta(correlativo + 1);
+            } else {
+                empresa.setCorrelativoFactura(correlativo + 1);
+            }
+            empresaService.saveEmpresa(empresa);
+        } else if ("PENDIENTE".equalsIgnoreCase(status)) {
+            venta.setEstadoSunat("pendiente");
+            venta.setNota("SUNAT pendiente: " + (resultado.getDocumentId() != null ? resultado.getDocumentId() : "sin documento"));
+            // Guardar las URLs del PDF y XML aunque esté pendiente
+            venta.setPdfUrl(resultado.getPdfUrl());
+            venta.setXmlUrl(resultado.getXmlUrl());
+        } else if ("RECHAZADO".equalsIgnoreCase(status)) {
+            venta.setEstadoSunat("rechazado");
+            venta.setNota("SUNAT rechazado: " + (resultado.getErrorCode() != null ? resultado.getErrorCode() : "sin código"));
+            if ("Boleta".equalsIgnoreCase(tipoComprobante)) {
+                empresa.setCorrelativoBoleta(correlativo + 1);
+            } else {
+                empresa.setCorrelativoFactura(correlativo + 1);
+            }
+            empresaService.saveEmpresa(empresa);
+        } else {
+            venta.setEstadoSunat("error");
+            venta.setNota("SUNAT excepción: " + (resultado.getErrorCode() != null ? resultado.getErrorCode() : "sin detalle"));
+        }
+        return ventaRepository.save(venta);
     }
 
     @Override
@@ -184,8 +305,9 @@ public class VentaServiceImpl implements VentaService {
         ventaRepository.findById(id).ifPresent(venta -> {
             // Si la venta no estaba ya eliminada (estado 2), procedemos a devolver stock
             if (venta.getEstado() != 2) {
+                List<DetalleVenta> detalles = venta.getDetalles() != null ? venta.getDetalles() : new ArrayList<>();
                 // Devolver stock de cada producto en la venta
-                for (DetalleVenta detalle : venta.getDetalles()) {
+                for (DetalleVenta detalle : detalles) {
                     Producto producto = detalle.getProducto();
                     if (producto != null) {
                         int nuevoStock = producto.getStock() + detalle.getCantidad();
@@ -207,7 +329,8 @@ public class VentaServiceImpl implements VentaService {
                 .orElseThrow(() -> new RuntimeException("Venta no encontrada con id: " + id));
 
         // Devolver stock de la venta original
-        for (DetalleVenta detalleExistente : ventaExistente.getDetalles()) {
+        List<DetalleVenta> detallesExistentes = ventaExistente.getDetalles() != null ? ventaExistente.getDetalles() : new ArrayList<>();
+        for (DetalleVenta detalleExistente : detallesExistentes) {
             Producto producto = detalleExistente.getProducto();
             producto.setStock(producto.getStock() + detalleExistente.getCantidad());
             productoRepository.save(producto);
@@ -228,10 +351,12 @@ public class VentaServiceImpl implements VentaService {
         ventaExistente.setNota(nota);
 
         // Limpiar detalles antiguos y calcular nuevos
-        ventaExistente.getDetalles().clear();
+        detallesExistentes.clear();
+        ventaExistente.setDetalles(detallesExistentes);
         BigDecimal subtotalCalculado = BigDecimal.ZERO;
 
-        for (DetalleVenta detalleNuevo : ventaActualizada.getDetalles()) {
+        List<DetalleVenta> detallesNuevos = ventaActualizada.getDetalles() != null ? ventaActualizada.getDetalles() : new ArrayList<>();
+        for (DetalleVenta detalleNuevo : detallesNuevos) {
             Producto producto = productoRepository.findById(detalleNuevo.getProducto().getId())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + detalleNuevo.getProducto().getId()));
 
@@ -249,7 +374,7 @@ public class VentaServiceImpl implements VentaService {
             productoRepository.save(producto);
 
             detalleNuevo.setVenta(ventaExistente);
-            ventaExistente.getDetalles().add(detalleNuevo);
+            detallesExistentes.add(detalleNuevo);
         }
 
         ventaExistente.setSubtotal(subtotalCalculado);
@@ -289,7 +414,11 @@ public class VentaServiceImpl implements VentaService {
         }
         map.put("fechaVenta", venta.getFechaVenta() != null ? venta.getFechaVenta() : null);
         map.put("metodoPago", venta.getMetodoPago() != null ? venta.getMetodoPago() : "N/A");
-        map.put("tipoComprobante", venta.getTipoComprobante() != null ? venta.getTipoComprobante() : "N/A");
+        map.put("tipoComprobante", venta.getTipoComprobante() != null ? venta.getTipoComprobante() : "Nota de Venta");
+        map.put("serieCorrelativo", venta.getSerieCorrelativo() != null ? venta.getSerieCorrelativo() : "");
+        map.put("estadoSunat", venta.getEstadoSunat() != null ? venta.getEstadoSunat() : "");
+        map.put("pdfUrl", venta.getPdfUrl());
+        map.put("xmlUrl", venta.getXmlUrl());
         map.put("descuento", venta.getDescuento() != null ? venta.getDescuento() : BigDecimal.ZERO);
         map.put("total", venta.getTotal() != null ? venta.getTotal() : BigDecimal.ZERO);
         map.put("estado", venta.getEstado() != null ? venta.getEstado() : 1);
@@ -311,7 +440,8 @@ public class VentaServiceImpl implements VentaService {
             ventaMap.put("cliente", clienteMap);
         }
 
-        List<Map<String, Object>> detallesList = venta.getDetalles().stream().map(detalle -> {
+        List<DetalleVenta> detalles = venta.getDetalles() != null ? venta.getDetalles() : new ArrayList<>();
+        List<Map<String, Object>> detallesList = detalles.stream().map(detalle -> {
             Map<String, Object> detalleMap = new HashMap<>();
             detalleMap.put("cantidad", detalle.getCantidad());
             detalleMap.put("precioUnitario", detalle.getPrecioUnitario());
@@ -440,7 +570,8 @@ public class VentaServiceImpl implements VentaService {
             throw new RuntimeException("La venta no está pendiente de procesamiento.");
         }
 
-        for (DetalleVenta detalle : venta.getDetalles()) {
+        List<DetalleVenta> detalles = venta.getDetalles() != null ? venta.getDetalles() : new ArrayList<>();
+        for (DetalleVenta detalle : detalles) {
             Producto producto = productoRepository.findById(detalle.getProducto().getId())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + detalle.getProducto().getId()));
             int nuevoStock = producto.getStock() - detalle.getCantidad();

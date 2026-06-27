@@ -181,13 +181,44 @@
                         <div class="card-body">
                             <h5 class="card-title">Comprobante y Cliente</h5>
                             <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label for="tipoComprobanteVenta" class="form-label">Tipo de Comprobante</label>
-                                    <select id="tipoComprobanteVenta" class="form-select">
-                                        <option value="Nota de Venta">Nota de Venta</option>
-                                        <option value="Boleta">Boleta</option>
-                                    </select>
-                                 </div>
+                                <div class="col-12">
+                                    <label class="form-label">Tipo de Comprobante</label>
+                                    <div class="d-flex flex-column flex-sm-row gap-3 mb-3">
+                                        <button type="button" class="btn btn-outline-secondary shadow-sm flex-fill text-start comprobante-card" data-tipo="boleta">
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                <i class="bi bi-ticket-perforated fs-3"></i>
+                                                <div>
+                                                    <div class="fw-bold">Boleta de Venta</div>
+                                                    <small class="text-muted">Para personas naturales con DNI</small>
+                                                </div>
+                                            </div>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary shadow-sm flex-fill text-start comprobante-card" data-tipo="factura">
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                <i class="bi bi-file-earmark-text fs-3"></i>
+                                                <div>
+                                                    <div class="fw-bold">Factura</div>
+                                                    <small class="text-muted">Para empresas con RUC</small>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    </div>
+                                    <input type="hidden" id="tipoComprobanteVenta" value="nota_venta">
+                                    <div class="row g-2 align-items-end">
+                                        <div class="col-auto">
+                                            <div class="form-floating">
+                                                <select id="tipoComprobanteSecundario" class="form-select form-select-sm">
+                                                    <option value="">Uso interno</option>
+                                                    <option value="nota_venta">Nota de Venta</option>
+                                                </select>
+                                                <label for="tipoComprobanteSecundario">Uso interno</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <span class="text-muted small">Selecciona Nota de Venta solo para registro interno sin validez tributaria.</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -195,29 +226,34 @@
                     <!-- Sección de Búsqueda de Cliente -->
                     <div class="card shadow-sm mb-4" id="seccionCliente" style="display: none;">
                         <div class="card-body">
-                            <h5 class="card-title">Buscar Cliente</h5>
+                            <h5 class="card-title">Datos del Cliente</h5>
                             <div class="row g-2">
-                                <div class="col-md-3">
-                                    <label for="tipoDocumento" class="form-label">Tipo Doc.</label>
-                                    <select id="tipoDocumento" class="form-select">
-                                        <option value="dni">DNI</option>
-                                        <option value="ruc">RUC</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="numeroDocumento" class="form-label">Nro. Documento</label>
+                                <div class="col-md-8">
+                                    <label id="labelNumeroDocumento" for="numeroDocumento" class="form-label">DNI del cliente</label>
                                     <div class="input-group">
                                         <input type="text" id="numeroDocumento" class="form-control" placeholder="Número de documento...">
                                         <button class="btn btn-outline-secondary" type="button" id="btnBuscarCliente">Buscar</button>
                                     </div>
+                                    <div id="documentoAyuda" class="form-text text-muted">DNI opcional para ventas menores a S/ 700 (consumidor final).</div>
                                 </div>
-                                <div class="col-md-3 d-flex align-items-end">
+                                <div class="col-md-4 d-flex align-items-end">
                                     <button class="btn btn-secondary w-100" type="button" id="btnLimpiarCliente">Limpiar</button>
                                 </div>
                             </div>
+                            <div class="row g-3 mt-3">
+                                <div class="col-12">
+                                    <label for="clienteNombreInput" class="form-label">Nombre / Razón Social</label>
+                                    <input type="text" id="clienteNombreInput" class="form-control" placeholder="Nombre del cliente...">
+                                </div>
+                                <div class="col-12">
+                                    <label for="clienteDireccionInput" class="form-label">Dirección Fiscal</label>
+                                    <input type="text" id="clienteDireccionInput" class="form-control" placeholder="Dirección...">
+                                </div>
+                            </div>
                             <div class="mt-3">
-                                <p class="mb-1"><strong>Cliente:</strong> <span id="nombreCliente">Consumidor Final</span></p>
+                                <p class="mb-1"><strong>Cliente asignado:</strong> <span id="nombreCliente">Consumidor Final</span></p>
                                 <input type="hidden" id="clienteId">
+                                <input type="hidden" id="tipoDocumento" value="dni">
                             </div>
                         </div>
                     </div>
@@ -274,9 +310,10 @@
                                                     <button type="button" class="btn btn-primary btn-sm w-100 btn-agregar" th:data-product-id="${producto.id}">+ Agregar</button>
                                                     <div class="input-group input-group-sm quantity-controls mt-2 d-none">
                                                         <button type="button" class="btn btn-outline-secondary btn-decrease" th:data-product-id="${producto.id}">−</button>
-                                                        <input type="number" class="form-control text-center product-qty" value="1" min="1" onkeydown="return event.keyCode !== 69 && event.keyCode !== 189 && event.keyCode !== 190" oninput="this.value = Math.abs(this.value.replace(/[^0-9]/g, '')) || 1">
+                                                        <input type="number" class="form-control text-center product-qty" value="1" min="1" th:data-stock-disponible="${producto.stock}" onkeydown="return event.keyCode !== 69 && event.keyCode !== 189 && event.keyCode !== 190" oninput="this.value = Math.abs(this.value.replace(/[^0-9]/g, '')) || 1">
                                                         <button type="button" class="btn btn-outline-secondary btn-increase" th:data-product-id="${producto.id}">+</button>
                                                     </div>
+                                                    <small class="text-muted stock-disponible-text mt-1 d-none">Disponible: <span th:text="${producto.stock}"></span> unidades</small>
                                                 </div>
                                             </div>
                                         </div>
@@ -310,8 +347,16 @@
                             </div>
                             <div id="venta-summary" class="mt-3 d-none">
                                 <div class="d-flex justify-content-between mb-2">
-                                    <span class="fw-bold">Subtotal:</span>
+                                    <span class="fw-bold">Subtotal (sin IGV):</span>
                                     <span id="venta-subtotal">S/ 0.00</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="fw-bold">IGV 18%:</span>
+                                    <span id="venta-igv">S/ 0.00</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-3">
+                                    <span class="fw-bold">Total a pagar:</span>
+                                    <span id="venta-total-resumen" class="text-success fw-bold">S/ 0.00</span>
                                 </div>
                                 <div class="input-group mb-3">
                                     <select class="form-select" id="tipoDescuento" style="max-width: 130px;">

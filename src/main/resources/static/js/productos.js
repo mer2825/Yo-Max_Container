@@ -26,6 +26,7 @@ $(document).ready(function() {
     productoModal = new bootstrap.Modal(document.getElementById('productoModal'));
     loadCategories();
     setupEventListeners();
+    setupFormValidation();
 
     function initializeDataTable() {
         if (dataTable) dataTable.destroy();
@@ -88,6 +89,18 @@ $(document).ready(function() {
         $('#galeria-imagenes').on('click', '.btn-delete-img', handleDeleteImagen);
         $('#imagenFile').on('change', handleFileSelectionAndPreview);
         $('#galeria-preview').on('click', '.btn-remove-preview', handleRemovePreview);
+        
+        // Validaciones con debounce
+        setupValidationWithDebounce('#nombre', validateNombre, 500);
+        setupValidationWithDebounce('#precio', validatePrecio, 500);
+        setupValidationWithDebounce('#stock', validateStock, 500);
+        setupValidationWithDebounce('#stockMinimo', validateStockMinimo, 500);
+        
+        // Actualizar contador de caracteres del nombre
+        $('#nombre').on('input', function() {
+            const length = $(this).val().length;
+            $('#nombre-char-count').text(length);
+        });
     }
 
     function loadCategories() {
@@ -116,15 +129,23 @@ $(document).ready(function() {
                 if (!deleteResponse.ok) throw new Error('Error al eliminar imágenes marcadas.');
             }
 
+            const productoId = $('#id').val();
+            const isEdit = productoId && productoId !== '';
+            
             const productoData = {
-                id: $('#id').val() || null,
+                id: productoId || null,
                 nombre: $('#nombre').val(),
                 descripcion: $('#descripcion').val(),
-                precio: $('#precio').val(),
-                stock: $('#stock').val(),
-                stockMinimo: $('#stockMinimo').val(),
                 categoria: { id: $('#id_categoria').val() }
             };
+
+            // Solo enviar precio, stock y stockMinimo si es un nuevo producto
+            // En edición, estos campos no se modifican desde gestión de productos
+            if (!isEdit) {
+                productoData.precio = $('#precio').val();
+                productoData.stock = $('#stock').val();
+                productoData.stockMinimo = $('#stockMinimo').val();
+            }
 
             const saveResponse = await fetch(ENDPOINTS.save, {
                 method: 'POST',
@@ -137,12 +158,12 @@ $(document).ready(function() {
                 throw new Error(saveResult.message || 'Error al guardar el producto.');
             }
 
-            const productoId = saveResult.producto.id;
+            const savedProductoId = saveResult.producto.id;
             const filesToUpload = newFiles.filter(f => f !== null);
 
             if (filesToUpload.length > 0) {
                 const formData = new FormData();
-                formData.append('id', productoId);
+                formData.append('id', savedProductoId);
                 filesToUpload.forEach(file => formData.append('files', file));
 
                 const uploadResponse = await fetch(ENDPOINTS.uploadImages, { method: 'POST', body: formData });
@@ -392,5 +413,124 @@ $(document).ready(function() {
         $('#notification-container').append(toast);
         const bsToast = new bootstrap.Toast(toast[0], { delay: 5000 });
         bsToast.show();
+    }
+
+    // Funciones de validación con debounce
+    function setupValidationWithDebounce(selector, validationFn, debounceTime) {
+        let timeout;
+        $(selector).on('input', function() {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                validationFn($(this));
+                updateFormState();
+            }, debounceTime);
+        });
+    }
+
+    function validateNombre($input) {
+        const value = $input.val().trim();
+        const $error = $('#nombre-error');
+        
+        if (value === '') {
+            $input.addClass('is-invalid').removeClass('is-valid');
+            $error.text('El nombre del producto es obligatorio.');
+            return false;
+        }
+        
+        if (value.length < 3) {
+            $input.addClass('is-invalid').removeClass('is-valid');
+            $error.text('El nombre debe tener al menos 3 caracteres.');
+            return false;
+        }
+        
+        $input.removeClass('is-invalid').addClass('is-valid');
+        $error.text('');
+        return true;
+    }
+
+    function validatePrecio($input) {
+        const value = parseFloat($input.val());
+        const $error = $('#precio-error');
+        
+        if (isNaN(value) || value <= 0) {
+            $input.addClass('is-invalid').removeClass('is-valid');
+            $error.text('El precio debe ser mayor a S/ 0.00.');
+            return false;
+        }
+        
+        if (value > 9999.99) {
+            $input.addClass('is-invalid').removeClass('is-valid');
+            $error.text('El precio máximo permitido es S/ 9,999.99.');
+            return false;
+        }
+        
+        $input.removeClass('is-invalid').addClass('is-valid');
+        $error.text('');
+        return true;
+    }
+
+    function validateStock($input) {
+        const value = parseInt($input.val());
+        const $error = $('#stock-error');
+        
+        if (isNaN(value) || value < 0) {
+            $input.addClass('is-invalid').removeClass('is-valid');
+            $error.text('El stock no puede ser negativo.');
+            return false;
+        }
+        
+        if (value > 9999) {
+            $input.addClass('is-invalid').removeClass('is-valid');
+            $error.text('El stock máximo es 9,999 unidades.');
+            return false;
+        }
+        
+        $input.removeClass('is-invalid').addClass('is-valid');
+        $error.text('');
+        return true;
+    }
+
+    function validateStockMinimo($input) {
+        const value = parseInt($input.val());
+        const $error = $('#stockMinimo-error');
+        
+        if (isNaN(value) || value < 0) {
+            $input.addClass('is-invalid').removeClass('is-valid');
+            $error.text('El stock mínimo no puede ser negativo.');
+            return false;
+        }
+        
+        if (value > 999) {
+            $input.addClass('is-invalid').removeClass('is-valid');
+            $error.text('El stock mínimo de alerta no puede superar 999.');
+            return false;
+        }
+        
+        $input.removeClass('is-invalid').addClass('is-valid');
+        $error.text('');
+        return true;
+    }
+
+    function setupFormValidation() {
+        // Validar todos los campos al abrir el modal
+        $('#productoModal').on('shown.bs.modal', function() {
+            updateFormState();
+        });
+    }
+
+    function updateFormState() {
+        const nombreValid = validateNombre($('#nombre'));
+        const precioValid = validatePrecio($('#precio'));
+        const stockValid = validateStock($('#stock'));
+        const stockMinimoValid = validateStockMinimo($('#stockMinimo'));
+        
+        const allValid = nombreValid && precioValid && stockValid && stockMinimoValid;
+        const $submitBtn = $('#formProducto').find('button[type="submit"]');
+        
+        if (allValid) {
+            $submitBtn.prop('disabled', false).css('opacity', '1');
+        } else {
+            $submitBtn.prop('disabled', true).css('opacity', '0.5');
+        }
     }
 });

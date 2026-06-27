@@ -75,6 +75,44 @@
                             </div>
                         </div>
 
+                        <div class="card mb-4 border-secondary">
+                            <div class="card-body">
+                                <h5 class="card-title">Configuración de Facturación Electrónica</h5>
+                                <div class="mb-3">
+                                    <label for="rucEmpresa" class="form-label">RUC de la empresa</label>
+                                    <input type="text" class="form-control" id="rucEmpresa" th:field="*{rucEmpresa}" placeholder="RUC de la empresa" maxlength="11">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="razonSocialEmpresa" class="form-label">Razón Social</label>
+                                    <input type="text" class="form-control" id="razonSocialEmpresa" th:field="*{razonSocialEmpresa}" placeholder="Razón social de la empresa">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="direccionEmpresa" class="form-label">Dirección Fiscal</label>
+                                    <input type="text" class="form-control" id="direccionEmpresa" th:field="*{direccionEmpresa}" placeholder="Dirección fiscal de la empresa">
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="serieBoleta" class="form-label">Serie de Boleta</label>
+                                        <input type="text" class="form-control" id="serieBoleta" th:field="*{serieBoleta}" placeholder="B001">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="serieFactura" class="form-label">Serie de Factura</label>
+                                        <input type="text" class="form-control" id="serieFactura" th:field="*{serieFactura}" placeholder="F001">
+                                    </div>
+                                </div>
+                                <div class="mb-3 mt-3">
+                                    <label for="nubefactAmbiente" class="form-label">Ambiente</label>
+                                    <select class="form-select" id="nubefactAmbiente" th:field="*{nubefactAmbiente}">
+                                        <option value="demo" th:selected="${empresa.nubefactAmbiente == null or empresa.nubefactAmbiente == 'demo'}">Demo</option>
+                                        <option value="produccion" th:selected="${empresa.nubefactAmbiente == 'produccion'}">Producción</option>
+                                    </select>
+                                    <small class="form-text text-muted">El token APISUNAT se configura directamente en Railway como variable de entorno y no se muestra aquí.</small>
+                                </div>
+                                <button type="button" id="btnTestApisunatConnection" class="btn btn-outline-primary">Probar conexión con APISUNAT</button>
+                                <div id="testConexionResult" class="mt-3"></div>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <label for="productosDestacados" class="form-label">Productos Destacados para el Carrusel</label>
                             <select class="form-select" id="productosDestacados" multiple="multiple">

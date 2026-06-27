@@ -82,6 +82,14 @@
                         </a>
                     </li>
 
+                    <!-- Monitor de Caja -->
+                    <li class="nav-item">
+                        <a class="nav-link" th:classappend="${activeUri.contains('/caja') ? 'active' : ''}" th:href="@{/caja}">
+                            <i class="bi bi-cash-register me-1"></i> Monitor de Caja
+                            <span th:if="${sesionCajaAbierta}" class="badge bg-success ms-2">Abierta</span>
+                        </a>
+                    </li>
+
                     <!-- Clientes -->
                     <li class="nav-item" th:if="${session.usuarioLogueado.perfil.opciones.?[ruta == '/clientes/listar'].size() > 0}">
                         <a class="nav-link" th:classappend="${activeUri.contains('/clientes') ? 'active' : ''}" th:href="@{/clientes/listar}">

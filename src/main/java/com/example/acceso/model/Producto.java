@@ -1,7 +1,9 @@
 package com.example.acceso.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -24,8 +26,8 @@ public class Producto extends Auditable {
     private Categoria categoria;
 
     @NotBlank(message = "El nombre del producto es obligatorio")
-    @Size(min = 2, max = 150, message = "El nombre debe tener entre 2 y 150 caracteres")
-    @Column(nullable = false, length = 150)
+    @Size(min = 3, max = 100, message = "El nombre debe tener entre 3 y 100 caracteres")
+    @Column(nullable = false, length = 100)
     private String nombre;
 
     @Size(max = 1000, message = "La descripción no debe exceder los 1000 caracteres")
@@ -33,17 +35,20 @@ public class Producto extends Auditable {
     private String descripcion;
 
     @NotNull(message = "El precio es obligatorio")
-    @DecimalMin(value = "0.01", inclusive = true, message = "El precio debe ser mayor a cero")
+    @DecimalMin(value = "0.01", inclusive = true, message = "El precio debe ser mayor a S/ 0.00")
+    @DecimalMax(value = "9999.99", inclusive = true, message = "El precio máximo permitido es S/ 9,999.99")
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal precio;
 
     @NotNull(message = "El stock es obligatorio")
     @Min(value = 0, message = "El stock no puede ser negativo")
+    @Max(value = 9999, message = "El stock máximo es 9,999 unidades")
     @Column(nullable = false)
     private Integer stock;
 
     @NotNull(message = "El stock mínimo es obligatorio")
     @Min(value = 0, message = "El stock mínimo no puede ser negativo")
+    @Max(value = 999, message = "El stock mínimo de alerta no puede superar 999")
     @Column(nullable = false)
     private Integer stockMinimo;
 

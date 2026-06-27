@@ -5,12 +5,14 @@ import com.example.acceso.model.Opcion;
 import com.example.acceso.model.Perfil;
 import com.example.acceso.service.OpcionService;
 import com.example.acceso.service.PerfilService;
+import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.servlet.http.HttpSession;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -71,9 +73,20 @@ public class PerfilController {
 
     @PostMapping("/api/guardar")
     @ResponseBody
-    public ResponseEntity<?> guardarPerfil(@RequestBody Perfil perfil, HttpSession session) {
+    public ResponseEntity<?> guardarPerfil(@Valid @RequestBody Perfil perfil, BindingResult bindingResult, HttpSession session) {
         if (!esAdministrador(session)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success", false, "message", "Acceso denegado. Solo administradores pueden realizar esta acción."));
+        }
+
+        // Validar errores de campo
+        if (bindingResult.hasErrors()) {
+            Map<String, String> errores = new HashMap<>();
+            bindingResult.getFieldErrors().forEach(error -> errores.put(error.getField(), error.getDefaultMessage()));
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Datos de perfil inválidos");
+            response.put("errors", errores);
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
         }
 
         // Prohibir la modificación del perfil Administrador

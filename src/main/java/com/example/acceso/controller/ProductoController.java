@@ -92,7 +92,7 @@ public class ProductoController {
             response.put("success", false);
             response.put("message", "Datos de producto inválidos");
             response.put("errors", errores);
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
         }
         try {
             Producto productoGuardado = productoService.guardarProducto(producto);

@@ -18,8 +18,7 @@ public interface VentaService {
     Optional<Venta> cambiarEstadoVenta(Long id);
     void eliminarVenta(Long id);
     void actualizarVenta(Long id, Venta ventaActualizada);
-    Optional<Map<String, Object>> obtenerVentaDetalladaPorId(Long id);
-
+    Optional<Map<String, Object>> obtenerVentaDetalladaPorId(Long id);    Venta procesarComprobanteElectronico(Venta venta);
     // Métodos para el Dashboard
     long obtenerNumeroVentasDiarias();
     BigDecimal obtenerTotalVentasDiarias();

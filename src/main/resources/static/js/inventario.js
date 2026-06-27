@@ -131,6 +131,8 @@ $(document).ready(function() {
         "language": {
             "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
         },
+        "pageLength": 50,
+        "lengthMenu": [10, 25, 50, 100, -1],
         "columnDefs": [
             { "orderable": false, "targets": [0, 5] } // Deshabilitar ordenación
         ],
@@ -305,6 +307,7 @@ $(document).ready(function() {
                 $('#salidaStockActual').text(currentStock);
                 $('#salidaMaximo').text(currentStock);
                 $('#salidaCantidad').attr('max', currentStock);
+                $('#salidaCantidad').attr('data-stock-actual', currentStock);
                 actualizarPreviewSalida();
                 break;
             case 'AJUSTE':
@@ -317,10 +320,19 @@ $(document).ready(function() {
         $('#btnConfirmarMovimiento').prop('disabled', false);
     });
 
-    // Eventos para actualización de previews
-    $('#ingresoCantidad').on('input', actualizarPreviewIngreso);
-    $('#salidaCantidad').on('input', actualizarPreviewSalida);
-    $('#ajusteStockReal').on('input', actualizarPreviewAjuste);
+    // Eventos para actualización de previews con validaciones
+    $('#ingresoCantidad').on('input', function() {
+        validarIngresoCantidad($(this));
+        actualizarPreviewIngreso();
+    });
+    $('#salidaCantidad').on('input', function() {
+        validarSalidaCantidad($(this));
+        actualizarPreviewSalida();
+    });
+    $('#ajusteStockReal').on('input', function() {
+        validarAjusteStockReal($(this));
+        actualizarPreviewAjuste();
+    });
 
     function actualizarPreviewIngreso() {
         var currentStock = parseInt($('#modalStockActual').text(), 10);
@@ -344,6 +356,81 @@ $(document).ready(function() {
         var diferencia = stockReal - currentStock;
         $('#ajusteDiferencia').text(Math.abs(diferencia));
         $('#ajusteSigno').text(diferencia >= 0 ? '+' : '-');
+        
+        // Cambiar color según si aumenta o disminuye
+        var $diferenciaContainer = $('#ajusteDiferencia').closest('.bg-warning');
+        if (diferencia > 0) {
+            $diferenciaContainer.removeClass('bg-warning').addClass('bg-success bg-opacity-10');
+        } else if (diferencia < 0) {
+            $diferenciaContainer.removeClass('bg-warning').addClass('bg-danger bg-opacity-10');
+        } else {
+            $diferenciaContainer.removeClass('bg-success bg-danger bg-opacity-10').addClass('bg-warning');
+        }
+    }
+
+    // Funciones de validación para movimientos de inventario
+    function validarIngresoCantidad($input) {
+        var value = parseInt($input.val(), 10);
+        var $error = $('#ingresoCantidad-error');
+        
+        if (isNaN(value) || value <= 0) {
+            $input.addClass('is-invalid').removeClass('is-valid');
+            $error.text('Debes ingresar al menos 1 unidad.');
+            return false;
+        }
+        
+        if (value > 999) {
+            $input.addClass('is-invalid').removeClass('is-valid');
+            $error.text('Máximo 999 unidades por movimiento.');
+            return false;
+        }
+        
+        $input.removeClass('is-invalid').addClass('is-valid');
+        $error.text('');
+        return true;
+    }
+
+    function validarSalidaCantidad($input) {
+        var value = parseInt($input.val(), 10);
+        var stockActual = parseInt($input.data('stock-actual'), 10) || 0;
+        var $error = $('#salidaCantidad-error');
+        
+        if (isNaN(value) || value <= 0) {
+            $input.addClass('is-invalid').removeClass('is-valid');
+            $error.text('Debes retirar al menos 1 unidad.');
+            return false;
+        }
+        
+        if (value > stockActual) {
+            $input.addClass('is-invalid').removeClass('is-valid');
+            $error.text('Solo hay ' + stockActual + ' unidades disponibles.');
+            return false;
+        }
+        
+        $input.removeClass('is-invalid').addClass('is-valid');
+        $error.text('');
+        return true;
+    }
+
+    function validarAjusteStockReal($input) {
+        var value = parseInt($input.val(), 10);
+        var $error = $('#ajusteStockReal-error');
+        
+        if (isNaN(value) || value < 0) {
+            $input.addClass('is-invalid').removeClass('is-valid');
+            $error.text('El stock no puede ser negativo.');
+            return false;
+        }
+        
+        if (value > 9999) {
+            $input.addClass('is-invalid').removeClass('is-valid');
+            $error.text('El stock máximo es 9,999 unidades.');
+            return false;
+        }
+        
+        $input.removeClass('is-invalid').addClass('is-valid');
+        $error.text('');
+        return true;
     }
 
     // Función para mostrar mensajes inline
