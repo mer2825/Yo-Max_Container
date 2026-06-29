@@ -20,7 +20,7 @@
                     <i class="bi bi-file-earmark-text me-2"></i>Detalle de Sesión #<span th:text="${sesion.id}">123</span>
                 </h2>
                 <div>
-                    <button type="button" class="btn btn-outline-primary me-2" th:onclick="'window.open(\'/caja/historial/' + ${sesion.id} + '/pdf\', \'_blank\')'">
+                    <button type="button" class="btn btn-outline-primary me-2" th:onclick="'window.open(\'/caja/historial/' + ${sesion.id} + '/pdf/download\', \'_blank\')'">
                         <i class="bi bi-file-earmark-pdf me-2"></i>Exportar PDF
                     </button>
                     <a th:href="@{/caja/historial}" class="btn btn-secondary">

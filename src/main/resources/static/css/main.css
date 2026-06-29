@@ -70,11 +70,16 @@ body {
 .navbar {
     padding: 0.5rem 0.9rem;
     min-height: 54px;
+    height: var(--navbar-height);
     z-index: 10000 !important; /* Alto, pero menor que los modales */
-    position: fixed; /* Cambiado a fixed para asegurar que siempre esté arriba */
+    position: fixed; /* Asegura que siempre esté arriba */
     top: 0;
     left: 0;
     right: 0;
+
+    display: flex;
+    align-items: center;
+
     background: #ffffff;
     box-shadow: 0 2px 10px rgba(0,0,0,0.05);
 }
@@ -82,18 +87,30 @@ body {
 .navbar-brand {
     display: flex;
     align-items: center;
+    height: 100%;
     color: var(--ym-dark) !important;
     font-weight: 700;
     font-size: 0.9rem;
+    margin: 0;
 }
 
 .navbar .nav-link {
     color: var(--ym-dark) !important;
     font-weight: 500;
     font-size: 0.9rem;
+
+    /* Evita que el contenido/badge cambie la altura real y "deforme" botones */
+    line-height: 1.1;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+
     margin: 0 0.15rem;
     border-radius: 6px;
     transition: background-color 0.2s ease;
+
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
 }
 
 .navbar .nav-link:hover {
@@ -137,7 +154,11 @@ body {
     :root {
         --navbar-height: 60px;
     }
-    
+
+    .navbar {
+        height: var(--navbar-height);
+    }
+
     .navbar-collapse {
         background: #ffffff;
         border-top: 1px solid rgba(255, 42, 166, 0.12);
@@ -145,6 +166,11 @@ body {
         padding: 1rem;
         border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    /* En mobile, permitimos algo de flex pero evitamos "wrap" raro */
+    .navbar .nav-link {
+        white-space: normal;
     }
 }
 
@@ -166,4 +192,222 @@ body {
 
 .hover-bg-light:hover {
     background-color: #f8f9fa !important;
+}
+
+/* --- Estilos específicos para Monitor de Caja --- */
+.monitor-card {
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 42, 166, 0.08);
+}
+
+.monitor-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(255, 42, 166, 0.15);
+}
+
+.monitor-stat-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    font-size: 1.5rem;
+}
+
+.monitor-stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.monitor-stat-label {
+    font-size: 0.85rem;
+    color: #6c757d;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.monitor-stat-sublabel {
+    font-size: 0.75rem;
+    color: #adb5bd;
+}
+
+/* Filtros del log de auditoría */
+.filtro-chip {
+    border-radius: 20px;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: 1.5px solid;
+}
+
+.filtro-chip:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.filtro-chip.active {
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* Items del log de auditoría */
+.log-auditoria-item {
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+.log-auditoria-item:hover {
+    background-color: #f8f9fa;
+    border-left-color: var(--ym-pink);
+    transform: translateX(4px);
+}
+
+.log-auditoria-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.log-auditoria-badge {
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    min-width: 100px;
+    text-align: center;
+}
+
+/* Botones de acción */
+.btn-monitor {
+    border-radius: 10px;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.btn-monitor:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+}
+
+.btn-monitor:active {
+    transform: translateY(0);
+}
+
+/* Alerta de cierre */
+.alerta-cierre {
+    background: linear-gradient(135deg, #faeeda 0%, #fef3e2 100%);
+    border: 1px solid #e4b063;
+    border-radius: 12px;
+    animation: pulse-alert 2s ease-in-out infinite;
+}
+
+@keyframes pulse-alert {
+    0%, 100% {
+        box-shadow: 0 2px 8px rgba(228, 176, 99, 0.2);
+    }
+    50% {
+        box-shadow: 0 4px 16px rgba(228, 176, 99, 0.4);
+    }
+}
+
+.alerta-cierre-icon {
+    font-size: 1.75rem;
+    animation: rotate-icon 3s ease-in-out infinite;
+}
+
+@keyframes rotate-icon {
+    0%, 100% {
+        transform: rotate(0deg);
+    }
+    25% {
+        transform: rotate(-10deg);
+    }
+    75% {
+        transform: rotate(10deg);
+    }
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+    .monitor-stat-value {
+        font-size: 1.5rem;
+    }
+    
+    .monitor-stat-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.25rem;
+    }
+    
+    .log-auditoria-item {
+        padding: 0.75rem !important;
+    }
+    
+    .log-auditoria-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 1rem;
+    }
+}
+
+/* Mejora de cards en general */
+.card-header {
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    background: linear-gradient(to right, #ffffff, #fafafa);
+}
+
+/* Badge de sesión activa */
+.badge-sesion-activa {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+    animation: glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+    0%, 100% {
+        box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+    }
+    50% {
+        box-shadow: 0 4px 16px rgba(40, 167, 69, 0.5);
+    }
+}
+
+/* Mejora de botones de filtro */
+.btn-outline-primary.active {
+    background: var(--ym-pink);
+    border-color: var(--ym-pink);
+    color: white;
+}
+
+.btn-outline-success.active {
+    background: #28a745;
+    border-color: #28a745;
+    color: white;
+}
+
+.btn-outline-warning.active {
+    background: #ffc107;
+    border-color: #ffc107;
+    color: #212529;
+}
+
+.btn-outline-danger.active {
+    background: #dc3545;
+    border-color: #dc3545;
+    color: white;
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -66,12 +67,20 @@ public class Venta {
     @Column(nullable = false)
     private Integer estado = 1; // 0: Inactivo, 1: Activo, 2: Eliminado (soft delete), 3: Pendiente de Procesar (Venta Web)
 
+    // null = sin NC, "PARCIAL" = NC parcial emitida, "TOTAL" = NC total emitida / anulada
+    @Column(name = "estado_nota_credito", length = 20)
+    private String estadoNotaCredito;
+
     @Column(nullable = false, length = 20)
     private String origen = "pos"; // pos, web
 
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JsonManagedReference
     private List<DetalleVenta> detalles;
+
+    @OneToMany(mappedBy = "venta", fetch = FetchType.LAZY)
+    @JsonManagedReference
+    private List<NotasCredito> notasCredito = new ArrayList<>();
 
     @Column(length = 20)
     private String pdfKey;
@@ -234,6 +243,14 @@ public class Venta {
         this.estado = estado;
     }
 
+    public String getEstadoNotaCredito() {
+        return estadoNotaCredito;
+    }
+
+    public void setEstadoNotaCredito(String estadoNotaCredito) {
+        this.estadoNotaCredito = estadoNotaCredito;
+    }
+
     public String getOrigen() {
         return origen;
     }
@@ -256,5 +273,13 @@ public class Venta {
 
     public void setSesionCaja(SesionCaja sesionCaja) {
         this.sesionCaja = sesionCaja;
+    }
+
+    public List<NotasCredito> getNotasCredito() {
+        return notasCredito;
+    }
+
+    public void setNotasCredito(List<NotasCredito> notasCredito) {
+        this.notasCredito = notasCredito;
     }
 }

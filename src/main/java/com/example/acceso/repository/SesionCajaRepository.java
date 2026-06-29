@@ -29,4 +29,6 @@ public interface SesionCajaRepository extends JpaRepository<SesionCaja, Long> {
 
     @Query("SELECT sc FROM SesionCaja sc WHERE sc.estado = 'CERRADA' AND sc.fechaApertura >= :inicio AND sc.fechaApertura <= :fin ORDER BY sc.fechaApertura DESC")
     List<SesionCaja> findSesionesCerradasPorPeriodo(@Param("inicio") LocalDateTime inicio, @Param("fin") LocalDateTime fin);
+
+    List<SesionCaja> findByFechaAperturaBetweenOrderByFechaAperturaDesc(LocalDateTime desde, LocalDateTime hasta);
 }

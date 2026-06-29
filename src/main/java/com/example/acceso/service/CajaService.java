@@ -19,6 +19,7 @@ public interface CajaService {
     ResumenSesionActivaDTO obtenerResumenSesionActiva();
     ReportePeriodoDTO obtenerReportePeriodo(LocalDate desde, LocalDate hasta);
     java.util.Optional<SesionCaja> obtenerSesionActiva();
+    boolean haySesionActiva();
     java.util.List<SesionCaja> obtenerSesionesCerradasPorPeriodo(LocalDateTime inicio, LocalDateTime fin);
     java.util.List<SesionCaja> obtenerTodasLasSesionesCerradas();
     java.util.Optional<SesionCaja> obtenerSesionPorId(Long id);
@@ -27,6 +28,7 @@ public interface CajaService {
     java.util.List<EventoAuditoriaDTO> obtenerLogAuditoriaSesion(Long sesionId);
     java.util.List<SesionCaja> obtenerHistorialSesiones(LocalDate desde, LocalDate hasta, String filtroArqueo);
     java.util.List<MovimientoLogDTO> construirLogSesion(Long sesionId);
+    java.util.List<MovimientoLogDTO> construirLogPorPeriodo(LocalDateTime desde, LocalDateTime hasta);
 
     CierreResumenDTO obtenerResumenParaCierre();
 

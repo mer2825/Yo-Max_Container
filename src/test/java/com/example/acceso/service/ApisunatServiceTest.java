@@ -46,7 +46,9 @@ class ApisunatServiceTest {
         assertTrue(body.containsKey("fileName"));
         assertTrue(body.containsKey("documentBody"));
         assertTrue(body.get("documentBody") instanceof Map);
-        assertEquals("03", ((Map<?, ?>) body.get("documentBody")).get("tipoDocumento"));
+        Map<?, ?> documentBody = (Map<?, ?>) body.get("documentBody");
+        assertTrue(documentBody.containsKey("cbc:InvoiceTypeCode"));
+        assertEquals("03", ((Map<?, ?>) documentBody.get("cbc:InvoiceTypeCode")).get("_text"));
         assertEquals("juan@test.com", body.get("customerEmail"));
         assertTrue(body.get("fileName").toString().startsWith("20567890123-"));
     }

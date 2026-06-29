@@ -1,4 +1,5 @@
-- [ ] Editar `CajaController` para implementar flujo 3-step con sesión: confirmar/revisar/finalizar
-- [ ] Reemplazar completamente `templates/caja-cierre.html` con flujo scroll continuo + JS (mostrar/ocultar motivo) y tablas de cálculo
-- [ ] Ajustar bindings con el nuevo `CierreResumenDTO` (evitar null usando Elvis)
-- [ ] Ejecutar `mvn -q test` para asegurar compilación (los tests existentes pueden fallar por tema ajeno)
+- [ ] Revisar y corregir flujo de “Emitir nota de crédito”
+- [ ] Implementar método en VentaService para aplicar NC sin recalcular/limpiar detalles de la venta original
+- [ ] Actualizar NotaCreditoController para usar el nuevo método en lugar de actualizarVenta(id, venta)
+- [ ] Ajustar devolución de stock por ítems (parcial) y/o total según tipoNota
+- [ ] Ejecutar pruebas/compilar con Maven y validar que la venta no queda en total 0 cuando la NC es parcial

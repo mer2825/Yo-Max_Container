@@ -25,56 +25,56 @@
 
     <!-- Banner de alerta de cierre -->
     <th:block th:if="${hayAlertaCierre}">
-        <div style="background:#faeeda;border:1px solid #e4b063;border-radius:10px;
-                    padding:12px 16px;display:flex;align-items:center;gap:12px;
-                    margin-bottom:16px;">
-            <span style="font-size:22px">⏰</span>
-            <div style="flex:1">
-                <div style="font-size:11px;font-weight:500;color:#7a4c0d">
-                    Recuerda cerrar la caja antes de salir
+        <div class="alerta-cierre p-3 mb-4">
+            <div class="d-flex align-items-center gap-3">
+                <span class="alerta-cierre-icon">⏰</span>
+                <div class="flex-grow-1">
+                    <div class="fw-semibold" style="color:#7a4c0d; font-size: 0.9rem;">
+                        Recuerda cerrar la caja antes de salir
+                    </div>
+                    <div style="color:#a86a1a; font-size: 0.8rem;">
+                        Son las
+                        <span th:text="${#temporals.format(#temporals.createNow(), 'hh:mm a')}" class="fw-semibold"></span>
+                        · La sesión lleva
+                        <span th:text="${resumen.duracion}" class="fw-semibold"></span>
+                        abierta
+                    </div>
                 </div>
-                <div style="font-size:10px;color:#a86a1a">
-                    Son las
-                    <span th:text="${#temporals.format(#temporals.createNow(), 'hh:mm a')}"></span>
-                    · La sesión lleva
-                    <span th:text="${resumen.duracion}"></span>
-                    abierta
-                </div>
+                <a href="/caja/cerrar"
+                   class="btn btn-sm fw-semibold"
+                   style="background:#7a4c0d;color:white;border:none;border-radius:6px;padding:6px 14px;font-size:0.8rem;text-decoration:none;">
+                    Cerrar caja
+                </a>
             </div>
-            <a href="/caja/cerrar"
-               style="background:#7a4c0d;color:white;border:none;border-radius:6px;
-                      padding:6px 12px;font-size:10px;text-decoration:none;">
-                Cerrar caja
-            </a>
         </div>
     </th:block>
 
-    <div class="row mb-3">
+    <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
-                <h2 class="mb-0">
-                    <i class="bi bi-display me-2"></i>Monitor de Caja
+                <h2 class="mb-0 fw-bold">
+                    <i class="bi bi-display me-2" style="color: var(--ym-pink);"></i>Monitor de Caja
                 </h2>
-                <span class="badge bg-success fs-6">
+                <span class="badge badge-sesion-activa">
                     <i class="bi bi-circle-fill me-1"></i>Sesión Activa
                 </span>
             </div>
-            <hr class="mt-2">
+            <hr class="mt-3" style="border-color: rgba(255, 42, 166, 0.1);">
         </div>
     </div>
 
     <div class="row g-3 mb-4">
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm h-100">
+            <div class="card monitor-card h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="text-muted mb-1 small">Total ventas del día</p>
-                            <h4 class="mb-0 fw-bold text-success" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.totalVentas, 0, 2)}">S/ 0.00</h4>
-                            <small class="text-muted">Todos los métodos</small>
+                        <div class="flex-grow-1">
+                            <p class="monitor-stat-label mb-2">Total ventas del día</p>
+                            <h3 class="monitor-stat-value mb-1 text-success" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.totalVentas, 0, 2)}">S/ 0.00</h3>
+                            <small class="monitor-stat-sublabel">Todos los métodos</small>
                         </div>
-                        <div class="bg-success bg-opacity-10 rounded-circle p-3">
-                            <i class="bi bi-currency-dollar text-success" style="font-size: 1.5rem;"></i>
+                        <div class="monitor-stat-icon bg-success bg-opacity-10">
+                            <i class="bi bi-currency-dollar text-success"></i>
                         </div>
                     </div>
                 </div>
@@ -82,16 +82,16 @@
         </div>
 
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm h-100">
+            <div class="card monitor-card h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="text-muted mb-1 small">Solo efectivo</p>
-                            <h4 class="mb-0 fw-bold text-success" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.soloEfectivo, 0, 2)}">S/ 0.00</h4>
-                            <small class="text-muted">Lo que realmente entró a caja</small>
+                        <div class="flex-grow-1">
+                            <p class="monitor-stat-label mb-2">Solo efectivo</p>
+                            <h3 class="monitor-stat-value mb-1 text-success" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.soloEfectivo, 0, 2)}">S/ 0.00</h3>
+                            <small class="monitor-stat-sublabel">Lo que realmente entró a caja</small>
                         </div>
-                        <div class="bg-success bg-opacity-10 rounded-circle p-3">
-                            <i class="bi bi-cash text-success" style="font-size: 1.5rem;"></i>
+                        <div class="monitor-stat-icon bg-success bg-opacity-10">
+                            <i class="bi bi-cash text-success"></i>
                         </div>
                     </div>
                 </div>
@@ -99,16 +99,16 @@
         </div>
 
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm h-100">
+            <div class="card monitor-card h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="text-muted mb-1 small">Yape / otros métodos</p>
-                            <h4 class="mb-0 fw-bold text-warning" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.otrosMedios, 0, 2)}">S/ 0.00</h4>
-                            <small class="text-muted">No impacta caja física</small>
+                        <div class="flex-grow-1">
+                            <p class="monitor-stat-label mb-2">Yape / otros métodos</p>
+                            <h3 class="monitor-stat-value mb-1 text-warning" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.otrosMedios, 0, 2)}">S/ 0.00</h3>
+                            <small class="monitor-stat-sublabel">No impacta caja física</small>
                         </div>
-                        <div class="bg-warning bg-opacity-10 rounded-circle p-3">
-                            <i class="bi bi-phone text-warning" style="font-size: 1.5rem;"></i>
+                        <div class="monitor-stat-icon bg-warning bg-opacity-10">
+                            <i class="bi bi-phone text-warning"></i>
                         </div>
                     </div>
                 </div>
@@ -116,16 +116,16 @@
         </div>
 
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm h-100">
+            <div class="card monitor-card h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="text-muted mb-1 small">Efectivo en caja ahora</p>
-                            <h4 class="mb-0 fw-bold text-dark" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.efectivoEnCaja, 0, 2)}">S/ 0.00</h4>
-                            <small class="text-muted">Fondo + ventas + movimientos</small>
+                        <div class="flex-grow-1">
+                            <p class="monitor-stat-label mb-2">Efectivo en caja ahora</p>
+                            <h3 class="monitor-stat-value mb-1 text-dark" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.efectivoEnCaja, 0, 2)}">S/ 0.00</h3>
+                            <small class="monitor-stat-sublabel">Fondo + ventas + movimientos</small>
                         </div>
-                        <div class="bg-dark bg-opacity-10 rounded-circle p-3">
-                            <i class="bi bi-safe text-dark" style="font-size: 1.5rem;"></i>
+                        <div class="monitor-stat-icon bg-dark bg-opacity-10">
+                            <i class="bi bi-safe text-dark"></i>
                         </div>
                     </div>
                 </div>
@@ -133,20 +133,54 @@
         </div>
     </div>
 
-    <div class="row g-3 mb-3">
+    <div class="row g-3 mb-4">
         <div class="col-12">
-            <div class="card border-0 shadow-sm">
+            <div class="card monitor-card">
                 <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0">
-                        <i class="bi bi-gear me-2"></i>Acciones de Caja
+                    <h5 class="mb-0 fw-semibold">
+                        <i class="bi bi-calendar-range me-2" style="color: var(--ym-pink);"></i>Filtro de Movimientos por Período
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="d-flex gap-2 flex-wrap">
-                        <button type="button" class="btn btn-outline-primary btn-lg" data-bs-toggle="modal" data-bs-target="#movimientoModal">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label for="fechaDesde" class="form-label fw-semibold">Fecha Desde</label>
+                            <input type="date" class="form-control" id="fechaDesde" name="fechaDesde">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="fechaHasta" class="form-label fw-semibold">Fecha Hasta</label>
+                            <input type="date" class="form-control" id="fechaHasta" name="fechaHasta">
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-primary w-100" id="btnFiltrarPeriodo">
+                                <i class="bi bi-funnel me-2"></i>Filtrar Movimientos
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnLimpiarFiltro">
+                            <i class="bi bi-x-circle me-1"></i>Limpiar filtro (ver sesión actual)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="card monitor-card">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0 fw-semibold">
+                        <i class="bi bi-gear me-2" style="color: var(--ym-pink);"></i>Acciones de Caja
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-3 flex-wrap">
+                        <button type="button" class="btn btn-primary btn-monitor" data-bs-toggle="modal" data-bs-target="#movimientoModal">
                             <i class="bi bi-arrow-left-right me-2"></i>Registrar Movimiento
                         </button>
-                        <a th:href="@{/caja/cerrar}" class="btn btn-danger btn-lg">
+                        <a th:href="@{/caja/cerrar}" class="btn btn-danger btn-monitor">
                             <i class="bi bi-lock me-2"></i>Cerrar Caja
                         </a>
                     </div>
@@ -156,7 +190,7 @@
     </div>
 
     <div class="row g-3">
-        <div class="col-lg-12">
+        <div class="col-lg-7">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-0 py-3">
                     <div class="d-flex justify-content-between align-items-center">
@@ -173,7 +207,7 @@
                     <div class="mb-3">
                         <div class="btn-group" role="group">
                             <button type="button" class="btn btn-outline-primary btn-sm filtro-chip active" data-filtro="TODOS">
-                                Todo
+                                <i class="bi bi-funnel me-1"></i>Todo
                             </button>
                             <button type="button" class="btn btn-outline-success btn-sm filtro-chip" data-filtro="VENTA_EFECTIVO">
                                 <i class="bi bi-cart me-1"></i>Solo ventas
@@ -192,7 +226,7 @@
 
                     <!-- Lista de eventos -->
                     <div class="list-group" id="logAuditoriaList">
-                        <div class="text-center py-4">
+                        <div class="text-center py-5">
                             <div class="spinner-border text-primary" role="status">
                                 <span class="visually-hidden">Cargando...</span>
                             </div>
@@ -255,8 +289,13 @@ let categoriaSeleccionada = null;
 let logAuditoriaCompleto = [];
 let filtroActual = 'TODOS';
 
-// Inicializar todo cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', function() {
+    // Variables para filtro de período
+    let filtroPeriodoActivo = false;
+    let fechaDesdeFiltro = null;
+    let fechaHastaFiltro = null;
+
+    // Inicializar todo cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', function() {
     // ===== Inicialización del Modal de Movimiento =====
     const movimientoModal = document.getElementById('movimientoModal');
     if (movimientoModal) {
@@ -276,7 +315,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 catMov.disabled = true;
             }
             const monMov = document.getElementById('montoMovimiento');
-            if (monMov) monMov.disabled = true;
+            if (monMov) {
+                monMov.disabled = true;
+                monMov.value = '';
+            }
             const descMov = document.getElementById('descripcionMovimiento');
             if (descMov) {
                 descMov.disabled = true;
@@ -324,11 +366,18 @@ document.addEventListener('DOMContentLoaded', function() {
             // Actualizar categorías
             actualizarCategorias(tipoSeleccionado);
             
-            // Habilitar categoría
+            // Habilitar categoría y monto
             const catMov = document.getElementById('categoriaMovimiento');
             if (catMov) catMov.disabled = false;
             const catErr = document.getElementById('categoriaError');
             if (catErr) catErr.textContent = '';
+            
+            // Habilitar campo de monto al seleccionar tipo de movimiento
+            const monMov = document.getElementById('montoMovimiento');
+            if (monMov) {
+                monMov.disabled = false;
+                monMov.focus();
+            }
         });
     });
 
@@ -348,6 +397,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (descMov) {
                     if (categoria) descMov.placeholder = categoria.placeholder;
                     descMov.disabled = false;
+                    descMov.focus();
                 }
             } else {
                 const descMov = document.getElementById('descripcionMovimiento');
@@ -430,6 +480,43 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Recargar log cada 30 segundos
     setInterval(cargarLogAuditoria, 30000);
+
+    // ===== Filtro de Período =====
+    const btnFiltrar = document.getElementById('btnFiltrarPeriodo');
+    if (btnFiltrar) {
+        btnFiltrar.addEventListener('click', function() {
+            const fechaDesde = document.getElementById('fechaDesde').value;
+            const fechaHasta = document.getElementById('fechaHasta').value;
+            
+            if (!fechaDesde || !fechaHasta) {
+                alert('Por favor seleccione ambas fechas');
+                return;
+            }
+            
+            if (fechaDesde > fechaHasta) {
+                alert('La fecha desde no puede ser mayor que la fecha hasta');
+                return;
+            }
+            
+            filtroPeriodoActivo = true;
+            fechaDesdeFiltro = fechaDesde;
+            fechaHastaFiltro = fechaHasta;
+            
+            cargarLogAuditoria();
+        });
+    }
+
+    const btnLimpiar = document.getElementById('btnLimpiarFiltro');
+    if (btnLimpiar) {
+        btnLimpiar.addEventListener('click', function() {
+            filtroPeriodoActivo = false;
+            fechaDesdeFiltro = null;
+            fechaHastaFiltro = null;
+            document.getElementById('fechaDesde').value = '';
+            document.getElementById('fechaHasta').value = '';
+            cargarLogAuditoria();
+        });
+    }
 });
 
 // Actualizar dropdown de categorías
@@ -480,7 +567,14 @@ function validarFormulario() {
 
 // Cargar log de auditoría usando el DTO unificado
 function cargarLogAuditoria() {
-    fetch('/caja/api/sesion-actual/log')
+    let url = '/caja/api/sesion-actual/log';
+    
+    // Si hay filtro de período activo, usar el endpoint de período
+    if (filtroPeriodoActivo && fechaDesdeFiltro && fechaHastaFiltro) {
+        url = `/caja/api/movimientos/periodo?desde=${fechaDesdeFiltro}&hasta=${fechaHastaFiltro}`;
+    }
+    
+    fetch(url)
         .then(response => {
             if (!response.ok) {
                 throw new Error('HTTP ' + response.status);
@@ -566,11 +660,13 @@ function renderizarEventos(eventos) {
         else if (evento.tipo === 'CIERRE') { icono = 'bi-lock'; colorIcono = 'text-secondary'; }
         
         html += `
-            <div class="list-group-item list-group-item-action">
+            <div class="list-group-item list-group-item-action log-auditoria-item">
                 <div class="d-flex w-100 justify-content-between align-items-center">
-                    <div class="d-flex align-items-center">
-                        <i class="bi ${icono} ${colorIcono} me-3" style="font-size: 1.5rem;"></i>
-                        <div>
+                    <div class="d-flex align-items-center flex-grow-1">
+                        <div class="log-auditoria-icon bg-${esRetiro ? 'danger' : (esApertura ? 'secondary' : 'success')} bg-opacity-10 me-3">
+                            <i class="bi ${icono} ${colorIcono}"></i>
+                        </div>
+                        <div class="flex-grow-1">
                             <h6 class="mb-1 fw-semibold">${evento.tipo.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</h6>
                             <p class="mb-1 text-muted small">${evento.descripcion}</p>
                             <small class="text-muted">
@@ -581,8 +677,8 @@ function renderizarEventos(eventos) {
                             ${!evento.impactaEfectivo ? `<br><small class="text-warning"><i class="bi bi-info-circle me-1"></i>No impacta efectivo</small>` : ''}
                         </div>
                     </div>
-                    ${montoFormateado ? `<div class="text-end">
-                        <span class="badge ${badgeColor} fs-6">
+                    ${montoFormateado ? `<div class="ms-3">
+                        <span class="badge log-auditoria-badge ${badgeColor}">
                             ${signoMonto} ${montoFormateado}
                         </span>
                     </div>` : ''}

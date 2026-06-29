@@ -13,6 +13,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpSession;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -56,6 +58,15 @@ public class VentaController {
                 .collect(Collectors.groupingBy(Producto::getCategoria));
 
         model.addAttribute("productosPorCategoria", productosPorCategoria);
+
+        // Cambio 2: Verificar estado de caja y pasarlo al modelo
+        boolean cajaAbierta = cajaService.haySesionActiva();
+        model.addAttribute("cajaAbierta", cajaAbierta);
+        if (!cajaAbierta) {
+            BigDecimal saldoPropuesto = cajaService.obtenerSaldoParaApertura();
+            model.addAttribute("saldoPropuesto", saldoPropuesto);
+        }
+
         return "nueva-venta";
     }
 
@@ -78,6 +89,13 @@ public class VentaController {
     @PostMapping("/api/guardar")
     @ResponseBody
     public ResponseEntity<?> guardarVenta(@RequestBody Venta venta) {
+        // Cambio 3: Bloquear si no hay caja abierta
+        if (!cajaService.haySesionActiva()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "caja_cerrada",
+                    "mensaje", "No hay caja abierta. Abre la caja antes de registrar ventas."));
+        }
+
         Venta ventaCreada = null;
         try {
             ventaCreada = ventaService.crearVenta(venta);
@@ -190,9 +208,9 @@ public class VentaController {
 
     @GetMapping("/imprimir/{id}")
     public String imprimirBoleta(@PathVariable Long id, Model model) {
-        return ventaService.obtenerVentaPorId(id)
-                .map(venta -> {
-                    model.addAttribute("venta", venta);
+        return ventaService.obtenerVentaDetalladaPorId(id)
+                .map(ventaMap -> {
+                    model.addAttribute("venta", ventaMap);
                     model.addAttribute("empresa", empresaService.getEmpresaInfo());
                     return "boleta";
                 })
@@ -207,6 +225,58 @@ public class VentaController {
     public ResponseEntity<List<ProductoMasVendidoDTO>> getTop5ProductosMasVendidosDeLaSemana() {
         List<ProductoMasVendidoDTO> topProductos = ventaService.obtenerTop5ProductosMasVendidosDeLaSemana();
         return ResponseEntity.ok(topProductos);
+    }
+
+    @GetMapping("/api/verificar-caja")
+    @ResponseBody
+    public ResponseEntity<?> verificarCaja(HttpSession session) {
+        boolean haySesion = cajaService.haySesionActiva();
+        Map<String, Object> response = new HashMap<>();
+        response.put("haySesionActiva", haySesion);
+        
+        if (!haySesion) {
+            // Sugerir saldo de apertura desde la última sesión cerrada
+            BigDecimal saldoSugerido = cajaService.obtenerSaldoParaApertura();
+            response.put("saldoSugerido", saldoSugerido);
+            response.put("mensaje", "No hay una sesión de caja abierta. Debe abrir caja antes de realizar ventas.");
+        }
+        
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/api/abrir-caja-rapida")
+    @ResponseBody
+    public ResponseEntity<?> abrirCajaRapida(@RequestParam BigDecimal montoInicial,
+                                              HttpSession session) {
+        try {
+            Usuario usuario = (Usuario) session.getAttribute("usuarioLogueado");
+            if (usuario == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "Debe iniciar sesión para abrir caja.");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+            
+            // Validar que no haya sesión abierta
+            if (cajaService.haySesionActiva()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "Ya existe una sesión de caja abierta.");
+                return ResponseEntity.badRequest().body(error);
+            }
+            
+            cajaService.abrirCaja(montoInicial, usuario.getId());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Caja abierta correctamente con S/ " + montoInicial.setScale(2, java.math.RoundingMode.HALF_UP));
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Error al abrir caja: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
     }
 
     @GetMapping("/api/debug/ventas-hoy")

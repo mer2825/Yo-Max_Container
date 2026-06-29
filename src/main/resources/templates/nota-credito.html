@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nota de Crédito</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header bg-warning">
+                <h2>📋 Emitir Nota de Crédito</h2>
+            </div>
+            <div class="card-body">
+                <div th:if="${venta != null}">
+                    <h4>Datos del Comprobante Original</h4>
+                    <table class="table table-bordered">
+                        <tr>
+                            <th>N° Venta</th>
+                            <td th:text="${venta['numeroVenta']}">-</td>
+                        </tr>
+                        <tr>
+                            <th>Cliente</th>
+                            <td th:text="${venta['cliente'] != null ? venta['cliente']['nombre'] : 'N/A'}">-</td>
+                        </tr>
+                        <tr>
+                            <th>Total</th>
+                            <td th:text="${'S/ ' + venta['total']}">-</td>
+                        </tr>
+                        <tr>
+                            <th>Tipo</th>
+                            <td th:text="${venta['tipoComprobante']}">-</td>
+                        </tr>
+                    </table>
+
+                    <th:block th:if="${esPendiente}">
+                      <div style="background:#faeeda;border:1px solid #e4b063;border-radius:8px;
+                                  padding:10px 14px;font-size:13px;color:#7a4c0d;
+                                  margin-bottom:16px;display:flex;gap:10px;">
+                        <span>⚠</span>
+                        <span>El comprobante original aún está <strong>pendiente</strong> de confirmación
+                        por SUNAT. Puedes emitir la NC igualmente, pero considera esperar
+                        a que SUNAT lo acepte.</span>
+                      </div>
+                    </th:block>
+
+                    <h4 class="mt-4">Datos de la Nota de Crédito</h4>
+                    <form th:action="@{/ventas/nota-credito/{id}(id=${venta['id']})}" method="post" id="formNotaCredito">
+                        <div th:if="${_csrf != null}">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="tipoNota" class="form-label">Tipo de Nota de Crédito</label>
+                            <select class="form-select" id="tipoNota" name="tipoNota" required onchange="actualizarComportamiento(this.value)">
+                                <option value="">Seleccione...</option>
+                                <th:block th:each="tipo : ${tiposNC}">
+                                    <option th:value="${tipo.codigo}" th:text="${tipo.descripcion}"></option>
+                                </th:block>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="motivo" class="form-label">Motivo</label>
+                            <textarea class="form-control" id="motivo" name="motivo" rows="3" required></textarea>
+                        </div>
+
+                        <h3>Productos a incluir en la nota de crédito</h3>
+                        <p style="font-size:12px;color:#666">
+                          Marca los productos que se devuelven e indica la cantidad.
+                          Para anulación total, se seleccionarán todos automáticamente.
+                        </p>
+
+                        <div class="table-responsive">
+                          <table id="tabla-items" style="width:100%;border-collapse:collapse;border:1px solid #ddd">
+                            <thead style="background:#f5f5f5">
+                              <tr>
+                                <th style="padding:8px;border:1px solid #ddd">Seleccionar</th>
+                                <th style="padding:8px;border:1px solid #ddd">Producto</th>
+                                <th style="padding:8px;border:1px solid #ddd">Cant. original</th>
+                                <th style="padding:8px;border:1px solid #ddd">Cant. a devolver</th>
+                                <th style="padding:8px;border:1px solid #ddd">Precio unit.</th>
+                                <th style="padding:8px;border:1px solid #ddd">Subtotal</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr th:each="detalle, iter : ${detalles}"
+                                  th:attr="data-idx=${iter.index}"
+                                  th:data-precio="${detalle.precioUnitario}">
+                                <td style="padding:8px;border:1px solid #ddd;text-align:center">
+                                  <input type="checkbox"
+                                         th:id="'check-' + ${iter.index}"
+                                         th:value="${iter.index}"
+                                         th:attr="data-idx=${iter.index}"
+                                         class="item-check"
+                                         aria-label="Seleccionar producto">
+                                  <input type="hidden"
+                                         th:name="'items[' + ${detalle.id} + '].id'"
+                                         th:value="${detalle.id}">
+                                  <input type="hidden"
+                                         th:name="'items[' + ${detalle.id} + '].precio'"
+                                         th:value="${detalle.precioUnitario}">
+                                </td>
+                                <td th:text="${detalle.producto.nombre}" style="padding:8px;border:1px solid #ddd"></td>
+                                <td th:text="${detalle.cantidad}" style="padding:8px;border:1px solid #ddd;text-align:center"></td>
+                                <td style="padding:8px;border:1px solid #ddd;text-align:center">
+                                  <input type="number"
+                                         th:id="'cant-' + ${iter.index}"
+                                         th:name="'items[' + ${detalle.id} + '].cantidad'"
+                                         th:max="${detalle.cantidad}"
+                                         min="0" value="0"
+                                         th:attr="data-idx=${iter.index}"
+                                         class="cant-input"
+                                         style="width:60px"
+                                         disabled>
+                                </td>
+                                <td th:text="${'S/ ' + detalle.precioUnitario}" style="padding:8px;border:1px solid #ddd;text-align:right"></td>
+                                <td id="'sub-' + ${iter.index}" style="padding:8px;border:1px solid #ddd;text-align:right">S/ 0.00</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div style="text-align:right;margin-top:10px;font-size:16px;font-weight:bold">
+                          Total a acreditar: <span id="total-nc" style="color:#e91e8c">S/ 0.00</span>
+                        </div>
+
+                        <div class="alert alert-info" id="infoItems" style="display:none;margin-top:15px;">
+                            <strong>Información:</strong> 
+                            <span id="cantidadItemsSeleccionados">0</span> ítem(s) seleccionado(s) para devolver
+                        </div>
+
+                        <div class="d-flex gap-2 mt-3">
+                            <button type="submit" class="btn btn-primary" id="btnEmitir">
+                                <i class="bi bi-file-earmark-pdf"></i> Emitir Nota de Crédito
+                            </button>
+                            <a th:href="@{/ventas/listar}" class="btn btn-secondary">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+                <div th:if="${venta == null}">
+                    <div class="alert alert-danger">
+                        <h4>Error</h4>
+                        <p th:text="${errorMessage}">Venta no encontrada</p>
+                        <a th:href="@{/ventas/listar}" class="btn btn-primary">Volver al listado</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ─── Utilidades ───────────────────────────────────────────────
+        function getFila(idx) {
+            return document.querySelector('#tabla-items tbody tr[data-idx="' + idx + '"]');
+        }
+
+        function getCantInput(idx) {
+            return document.querySelector('#cant-' + idx) || document.querySelector('input[name="items[' + idx + '].cantidad"]');
+        }
+
+        function recalcularSubtotalFila(idx) {
+            const fila  = getFila(idx);
+            const input = document.querySelector('#cant-' + idx);
+
+            if (!fila || !input) return;
+
+            const precio = parseFloat(fila.getAttribute('data-precio')) || 0;
+            const cant = parseInt(input.value, 10) || 0;
+            const sub = precio * cant;
+
+            const celdaSub = document.querySelector('#sub-' + idx);
+            if (celdaSub) celdaSub.textContent = 'S/ ' + sub.toFixed(2);
+
+            recalcularTotal();
+        }
+
+        function recalcularTotal() {
+            let total = 0;
+
+            document.querySelectorAll('td[id^="sub-"]').forEach(function(celda) {
+                const text = (celda.textContent || '').replace('S/', '').trim();
+                const val = parseFloat(text.replace(',', '')) || 0;
+                total += val;
+            });
+
+            document.getElementById('total-nc').textContent =
+                'S/ ' + total.toFixed(2);
+
+            // cantidadItemsSeleccionados
+            let itemsSeleccionados = 0;
+            document.querySelectorAll('.item-check:checked').forEach(function(cb) {
+                const idx = cb.getAttribute('data-idx');
+                const inp = document.getElementById('cant-' + idx);
+                const cant = parseInt(inp?.value || '0', 10);
+                if (cant > 0) itemsSeleccionados++;
+            });
+
+            document.getElementById('cantidadItemsSeleccionados').textContent = itemsSeleccionados;
+            document.getElementById('infoItems').style.display = itemsSeleccionados > 0 ? 'block' : 'none';
+        }
+
+        // ─── Evento: cambio en checkbox ───────────────────────────────
+        document.querySelectorAll('.item-check').forEach(function(cb) {
+            cb.addEventListener('change', function() {
+                const idx = this.getAttribute('data-idx');
+                const input = document.getElementById('cant-' + idx);
+                if (!input) return;
+
+                if (this.checked) {
+                    input.disabled = false;
+
+                    if (parseInt(input.value, 10) === 0) {
+                        input.value = 1; // mínimo útil
+                    }
+                } else {
+                    input.disabled = true;
+                    input.value = 0;
+                }
+                recalcularSubtotalFila(idx);
+            });
+        });
+
+        // ─── Evento: cambio en cantidad ───────────────────────────────
+        document.querySelectorAll('.cant-input').forEach(function(input) {
+            input.addEventListener('input', function() {
+                const idx = this.getAttribute('data-idx');
+                const max = parseInt(this.getAttribute('max'), 10) || 0;
+
+                let v = parseInt(this.value, 10);
+                if (Number.isNaN(v)) v = 0;
+
+                if (v > max) v = max;
+                if (v < 0) v = 0;
+
+                this.value = v;
+                recalcularSubtotalFila(idx);
+            });
+        });
+
+        // ─── Evento: cambio en tipo de NC ────────────────────────────
+        document.getElementById('tipoNota').addEventListener('change', function() {
+            const tipo = this.value;
+
+            // Según lo que pediste:
+            // - Solo permite editar cantidades para 07
+            // - Para otros tipos (01/02/06/09) se mantiene lectura
+            const es07 = (tipo === '07');
+            const esTotal = ['01', '06', '02'].includes(tipo); // si quieres forzar todo en algunos totales
+
+            document.querySelectorAll('#tabla-items tbody tr').forEach(function(fila) {
+                const idx = fila.getAttribute('data-idx');
+                const cb = fila.querySelector('.item-check');
+                const input = document.getElementById('cant-' + idx);
+
+                if (!cb || !input) return;
+
+                if (esTotal && !es07) {
+                    cb.checked = true;
+                    input.disabled = true;
+                    input.value = input.max || 0;
+                } else if (es07) {
+                    // 07: edición parcial
+                    cb.checked = false;
+                    input.disabled = false;
+                    input.value = 0;
+
+                    const subCell = document.getElementById('sub-' + idx);
+                    if (subCell) subCell.textContent = 'S/ 0.00';
+                } else {
+                    // otros: solo lectura (reset)
+                    cb.checked = false;
+                    input.disabled = true;
+                    input.value = 0;
+
+                    const subCell = document.getElementById('sub-' + idx);
+                    if (subCell) subCell.textContent = 'S/ 0.00';
+                }
+
+                recalcularSubtotalFila(idx);
+            });
+
+            recalcularTotal();
+        });
+
+        // ─── Validación antes de enviar ───────────────────────────────
+        document.getElementById('formNotaCredito').addEventListener('submit', function(e) {
+            const tipoNota = document.getElementById('tipoNota').value;
+            const motivo = document.getElementById('motivo').value.trim();
+
+            if (!tipoNota) {
+                e.preventDefault();
+                alert('Debe seleccionar el tipo de nota de crédito');
+                return;
+            }
+            if (!motivo) {
+                e.preventDefault();
+                alert('Debe ingresar el motivo de la devolución');
+                return;
+            }
+
+            // Habilitar todos los campos cantidad para que se envíen en el formulario
+            document.querySelectorAll('.cant-input').forEach(function(input) {
+                input.disabled = false;
+            });
+
+            const hayItems = Array.from(document.querySelectorAll('.item-check:checked'))
+                .some(function(cb) {
+                    const idx = cb.getAttribute('data-idx');
+                    const inp = document.getElementById('cant-' + idx);
+                    return parseInt(inp?.value || '0', 10) > 0;
+                });
+
+            if (!hayItems) {
+                e.preventDefault();
+                alert('Debes seleccionar al menos un producto con cantidad mayor a 0 para emitir la nota de crédito.');
+                return;
+            }
+
+            const total = document.getElementById('total-nc').textContent;
+            const tipoEl = document.getElementById('tipoNota');
+            const tipoTexto = tipoEl.options[tipoEl.selectedIndex]?.text || '';
+
+            const ok = confirm(
+                '¿Confirmas emitir la nota de crédito?\n\n' +
+                'Tipo: ' + tipoTexto + '\n' +
+                'Total a acreditar: ' + total + '\n\n' +
+                'Esta acción no se puede deshacer.'
+            );
+            if (!ok) e.preventDefault();
+        });
+
+        // Inicializar estados (por si el usuario abre la página y cambia rápido)
+        recalcularTotal();
+    </script>
+</body>
+</html>

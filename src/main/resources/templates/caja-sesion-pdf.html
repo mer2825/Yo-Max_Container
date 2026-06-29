@@ -165,8 +165,8 @@
         </div>
         <div class="info-box">
             <label>Diferencia</label>
-            <value th:classappend="${sesion.diferencia < 0} ? 'text-danger' : 'text-success'"
-                   th:text="'S/ ' + ${#numbers.formatDecimal(sesion.diferencia, 0, 2)}">S/ 0.00</value>
+            <value th:classappend="${sesion.diferencia != null and sesion.diferencia < 0} ? 'text-danger' : 'text-success'"
+                   th:text="'S/ ' + ${#numbers.formatDecimal(sesion.diferencia != null ? sesion.diferencia : 0, 0, 2)}">S/ 0.00</value>
         </div>
     </div>
 
@@ -186,10 +186,10 @@
                 <td th:text="${entry.key}">EFECTIVO</td>
                 <td class="text-end" th:text="'S/ ' + ${#numbers.formatDecimal(entry.value, 0, 2)}">S/ 0.00</td>
                 <td class="text-end">
-                    <span th:if="${detalle.totalVentas > 0}"
+                    <span th:if="${detalle.totalVentas != null && detalle.totalVentas.compareTo(T(java.math.BigDecimal.ZERO)) > 0}"
                           th:text="${#numbers.formatDecimal((entry.value / detalle.totalVentas) * 100, 0, 1)} + '%'">0%</span>
                 </td>
-                <td class="text-end" th:text="${entry.value.cantidad}">0</td>
+                <td class="text-end">-</td>
             </tr>
             <tr th:if="${#lists.isEmpty(detalle.ventasPorMetodoPago)}">
                 <td colspan="4" class="text-center text-muted">No hay ventas registradas</td>
@@ -198,7 +198,7 @@
                 <td><strong>Total</strong></td>
                 <td class="text-end"><strong th:text="'S/ ' + ${#numbers.formatDecimal(detalle.totalVentas, 0, 2)}">S/ 0.00</strong></td>
                 <td class="text-end"><strong>100%</strong></td>
-                <td class="text-end"><strong th:text="${#lists.size(detalle.ventas)}">0</strong></td>
+                <td class="text-end"><strong th:text="${detalle.ventas != null ? #lists.size(detalle.ventas) : 0}">0</strong></td>
             </tr>
         </tbody>
     </table>
@@ -235,7 +235,7 @@
                 <td class="text-end">
                     <span th:if="${evento.monto != null}"
                           th:classappend="${evento.tipo == 'RETIRO_MANUAL'} ? 'text-danger' : 'text-success'"
-                          th:text="${evento.tipo == 'RETIRO_MANUAL' ? '− S/ ' + ${#numbers.formatDecimal(evento.monto, 0, 2)} : '+ S/ ' + ${#numbers.formatDecimal(evento.monto, 0, 2)})}">
+                          th:text="${evento.tipo == 'RETIRO_MANUAL' ? '− S/ ' + ${#numbers.formatDecimal(evento.monto, 0, 2)} : '+ S/ ' + ${#numbers.formatDecimal(evento.monto, 0, 2)}}">
                         + S/ 0.00
                     </span>
                 </td>

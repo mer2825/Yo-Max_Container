@@ -178,16 +178,17 @@
                     <form th:action="@{/caja/cerrar}" method="post" id="form-arqueo">
                         <div class="mb-4">
                             <label for="montoDeclarado" class="form-label fw-semibold">Monto declarado (S/)</label>
-                            <input type="number"
-                                   class="form-control form-control-lg"
-                                   id="montoDeclarado"
-                                   name="montoDeclarado"
-                                   step="0.01"
-                                   min="0"
-                                   required
-                                   oninput="this.dispatchEvent(new Event('input', {bubbles:true}))"
-                                   placeholder="0.00"
-                                   autofocus>
+                        <input type="number"
+                               class="form-control form-control-lg"
+                               id="montoDeclarado"
+                               name="montoDeclarado"
+                               step="0.01"
+                               min="0"
+                               max="9999"
+                               required
+                               oninput="this.dispatchEvent(new Event('input', {bubbles:true}))"
+                               placeholder="0.00"
+                               autofocus>
                             <div class="form-text">Ingrese el monto total de efectivo físico contado</div>
                         </div>
 
@@ -236,49 +237,58 @@
     </div>
 
     <!-- === Paso final: se muestra en /caja/cerrar/revisar === -->
-    <div th:if="${montoDeclaradoSesion != null}" class="row mb-3">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-0 py-3">
+    <!-- Sticky para que el bloque de "Finalizar" no quede abajo al volver/recargar y sea más fácil de seguir. -->
+    <div th:if="${montoDeclaradoSesion != null}"
+         class="position-fixed start-0 end-0 bottom-0"
+         style="z-index: 1050; padding: 0 1rem 1rem;">
+        <div class="card border-0 shadow-lg">
+            <div class="card-header bg-white border-0 py-3">
+                <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
                     <h5 class="mb-0">
                         <i class="bi bi-eye me-2"></i>Resumen final y confirmación
                     </h5>
+                    <a th:href="@{/caja/cerrar}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-pencil-square me-1"></i>Volver a editar
+                    </a>
                 </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <div class="p-3 bg-light rounded">
-                                <small class="text-muted">Declarado</small>
-                                <div class="fw-bold"
-                                     th:text="${'S/ ' + (montoDeclaradoSesion != null ? #numbers.formatDecimal(montoDeclaradoSesion, 1, 'COMMA', 2, 'POINT') : '0.00')}">S/ 0.00</div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="p-3 bg-light rounded">
-                                <small class="text-muted">Motivo</small>
-                                <div class="fw-semibold" th:text="${motivoDiferenciaSesion != null ? motivoDiferenciaSesion : '-'}">-</div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="p-3 bg-light rounded">
-                                <small class="text-muted">Movimientos</small>
-                                <div class="fw-semibold" th:text="${resumen?.cantidadMovimientos != null ? resumen.cantidadMovimientos : 0}">0</div>
-                            </div>
-                        </div>
-                    </div>
+            </div>
 
-                    <div class="mt-3 d-grid gap-2">
-                        <form th:action="@{/caja/cerrar/finalizar}" method="post">
-                            <button type="submit" class="btn btn-success btn-lg">
-                                Finalizar cierre de caja
-                            </button>
-                        </form>
-                        <a th:href="@{/caja/cerrar}" class="btn btn-outline-secondary">Volver a editar</a>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="p-3 bg-light rounded">
+                            <small class="text-muted">Declarado</small>
+                            <div class="fw-bold"
+                                 th:text="${'S/ ' + (montoDeclaradoSesion != null ? #numbers.formatDecimal(montoDeclaradoSesion, 1, 'COMMA', 2, 'POINT') : '0.00')}">S/ 0.00</div>
+                        </div>
                     </div>
+                    <div class="col-md-4">
+                        <div class="p-3 bg-light rounded">
+                            <small class="text-muted">Motivo</small>
+                            <div class="fw-semibold" th:text="${motivoDiferenciaSesion != null ? motivoDiferenciaSesion : '-'}">-</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 bg-light rounded">
+                            <small class="text-muted">Movimientos</small>
+                            <div class="fw-semibold" th:text="${resumen?.cantidadMovimientos != null ? resumen.cantidadMovimientos : 0}">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3 d-grid gap-2">
+                    <form th:action="@{/caja/cerrar/finalizar}" method="post">
+                        <button type="submit" class="btn btn-success btn-lg w-100">
+                            Finalizar cierre de caja
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Espaciado para que el sticky no tape el contenido inferior -->
+    <div th:if="${montoDeclaradoSesion != null}" style="height: 140px;"></div>
 
 </div>
 

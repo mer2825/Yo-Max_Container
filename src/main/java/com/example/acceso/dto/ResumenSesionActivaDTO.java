@@ -15,6 +15,7 @@ public class ResumenSesionActivaDTO {
     private BigDecimal ticketPromedio;
     private BigDecimal efectivoEnCaja;
     private Map<String, BigDecimal> ventasPorMetodoPago;
+    private String duracion;
 
     public ResumenSesionActivaDTO() {
     }
@@ -22,7 +23,7 @@ public class ResumenSesionActivaDTO {
     public ResumenSesionActivaDTO(Long sesionId, LocalDateTime fechaApertura, BigDecimal montoInicial,
                                    BigDecimal totalVentas, BigDecimal soloEfectivo, BigDecimal otrosMedios,
                                    Long numeroTransacciones, BigDecimal ticketPromedio, BigDecimal efectivoEnCaja,
-                                   Map<String, BigDecimal> ventasPorMetodoPago) {
+                                   Map<String, BigDecimal> ventasPorMetodoPago, String duracion) {
         this.sesionId = sesionId;
         this.fechaApertura = fechaApertura;
         this.montoInicial = montoInicial;
@@ -33,6 +34,7 @@ public class ResumenSesionActivaDTO {
         this.ticketPromedio = ticketPromedio;
         this.efectivoEnCaja = efectivoEnCaja;
         this.ventasPorMetodoPago = ventasPorMetodoPago;
+        this.duracion = duracion;
     }
 
     // Getters y Setters
@@ -114,5 +116,13 @@ public class ResumenSesionActivaDTO {
 
     public void setVentasPorMetodoPago(Map<String, BigDecimal> ventasPorMetodoPago) {
         this.ventasPorMetodoPago = ventasPorMetodoPago;
+    }
+
+    public String getDuracion() {
+        return duracion;
+    }
+
+    public void setDuracion(String duracion) {
+        this.duracion = duracion;
     }
 }

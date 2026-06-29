@@ -7,10 +7,12 @@ import com.example.acceso.dto.ReportePeriodoDTO;
 import com.example.acceso.dto.ResumenDiaDTO;
 import com.example.acceso.dto.ResumenSesionActivaDTO;
 import com.example.acceso.model.MovimientoCaja;
+import com.example.acceso.model.NotasCredito;
 import com.example.acceso.model.SesionCaja;
 import com.example.acceso.model.Usuario;
 import com.example.acceso.model.Venta;
 import com.example.acceso.repository.MovimientoCajaRepository;
+import com.example.acceso.repository.NotasCreditoRepository;
 import com.example.acceso.repository.SesionCajaRepository;
 import com.example.acceso.repository.UsuarioRepository;
 import com.example.acceso.repository.VentaRepository;
@@ -34,15 +36,18 @@ public class CajaServiceImpl implements CajaService {
     private final VentaRepository ventaRepository;
     private final MovimientoCajaRepository movimientoCajaRepository;
     private final UsuarioRepository usuarioRepository;
+    private final NotasCreditoRepository notasCreditoRepository;
 
     public CajaServiceImpl(SesionCajaRepository sesionCajaRepository,
                            VentaRepository ventaRepository,
                            MovimientoCajaRepository movimientoCajaRepository,
-                           UsuarioRepository usuarioRepository) {
+                           UsuarioRepository usuarioRepository,
+                           NotasCreditoRepository notasCreditoRepository) {
         this.sesionCajaRepository = sesionCajaRepository;
         this.ventaRepository = ventaRepository;
         this.movimientoCajaRepository = movimientoCajaRepository;
         this.usuarioRepository = usuarioRepository;
+        this.notasCreditoRepository = notasCreditoRepository;
     }
 
     @Override
@@ -273,6 +278,11 @@ public class CajaServiceImpl implements CajaService {
             .add(movimientoCajaRepository.sumIngresosBySesionId(sesion.getId()) != null ? movimientoCajaRepository.sumIngresosBySesionId(sesion.getId()) : BigDecimal.ZERO)
             .subtract(movimientoCajaRepository.sumRetirosBySesionId(sesion.getId()) != null ? movimientoCajaRepository.sumRetirosBySesionId(sesion.getId()) : BigDecimal.ZERO);
 
+        // Calcular duración de la sesión
+        LocalDateTime fechaApertura = sesion.getFechaApertura() != null ? sesion.getFechaApertura() : LocalDateTime.now();
+        long minutosAbierta = java.time.Duration.between(fechaApertura, LocalDateTime.now()).toMinutes();
+        String duracion = String.format("%dh %02dmin", minutosAbierta / 60, minutosAbierta % 60);
+
         // Crear y retornar el DTO
         ResumenSesionActivaDTO dto = new ResumenSesionActivaDTO();
         dto.setSesionId(sesion.getId());
@@ -285,6 +295,7 @@ public class CajaServiceImpl implements CajaService {
         dto.setTicketPromedio(ticketPromedio);
         dto.setEfectivoEnCaja(efectivoEnCaja);
         dto.setVentasPorMetodoPago(ventasPorMetodoPagoMap);
+        dto.setDuracion(duracion);
 
         return dto;
     }
@@ -293,6 +304,12 @@ public class CajaServiceImpl implements CajaService {
     @Transactional(readOnly = true)
     public java.util.Optional<SesionCaja> obtenerSesionActiva() {
         return sesionCajaRepository.findByEstado("ABIERTA");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean haySesionActiva() {
+        return sesionCajaRepository.findByEstado("ABIERTA").isPresent();
     }
 
     @Override
@@ -558,6 +575,40 @@ public class CajaServiceImpl implements CajaService {
             }
         }
         
+        // Obtener notas de crédito de la sesión
+        List<NotasCredito> notasCredito = notasCreditoRepository.findByVenta_SesionCaja_Id(sesion.getId());
+        
+        for (NotasCredito nc : notasCredito) {
+            String usuario = nc.getEmitidaPorUsuario() != null ? nc.getEmitidaPorUsuario().getNombre() : "Sistema";
+            String descripcionTipo = nc.getDescripcionTipo() != null ? nc.getDescripcionTipo() : nc.getTipoNota();
+            String comprobante = nc.getSerieCorrelativo() != null ? nc.getSerieCorrelativo() : "NC-" + nc.getId();
+            
+            // Determinar si impacta efectivo basado en el método de pago de la venta original
+            boolean impactaEfectivo = false;
+            String detalleAdicional = "Afecta venta: " + (nc.getVenta() != null && nc.getVenta().getSerieCorrelativo() != null ? 
+                nc.getVenta().getSerieCorrelativo() : "N° " + (nc.getVenta() != null ? nc.getVenta().getId() : "N/A"));
+            
+            if (nc.getVenta() != null && "EFECTIVO".equalsIgnoreCase(nc.getVenta().getMetodoPago())) {
+                impactaEfectivo = true;
+                detalleAdicional = "Devolución en efectivo - " + detalleAdicional;
+            } else {
+                detalleAdicional = "No impacta efectivo - " + detalleAdicional;
+            }
+            
+            EventoAuditoriaDTO evento = new EventoAuditoriaDTO(
+                EventoAuditoriaDTO.TipoEvento.NOTA_CREDITO,
+                "Nota de Crédito",
+                descripcionTipo + " - " + nc.getMotivo() + " | Comprobante: " + comprobante,
+                usuario,
+                nc.getFechaEmision(),
+                nc.getTotalAcreditado(),
+                "bi-arrow-counterclockwise",
+                impactaEfectivo ? "text-danger" : "text-warning",
+                detalleAdicional
+            );
+            eventos.add(evento);
+        }
+        
         // Ordenar por fecha descendente (más reciente primero)
         eventos.sort((a, b) -> b.getFecha().compareTo(a.getFecha()));
         
@@ -668,6 +719,40 @@ public class CajaServiceImpl implements CajaService {
             }
         }
         
+        // Obtener notas de crédito de la sesión
+        List<NotasCredito> notasCredito = notasCreditoRepository.findByVenta_SesionCaja_Id(sesion.getId());
+        
+        for (NotasCredito nc : notasCredito) {
+            String usuario = nc.getEmitidaPorUsuario() != null ? nc.getEmitidaPorUsuario().getNombre() : "Sistema";
+            String descripcionTipo = nc.getDescripcionTipo() != null ? nc.getDescripcionTipo() : nc.getTipoNota();
+            String comprobante = nc.getSerieCorrelativo() != null ? nc.getSerieCorrelativo() : "NC-" + nc.getId();
+            
+            // Determinar si impacta efectivo basado en el método de pago de la venta original
+            boolean impactaEfectivo = false;
+            String detalleAdicional = "Afecta venta: " + (nc.getVenta() != null && nc.getVenta().getSerieCorrelativo() != null ? 
+                nc.getVenta().getSerieCorrelativo() : "N° " + (nc.getVenta() != null ? nc.getVenta().getId() : "N/A"));
+            
+            if (nc.getVenta() != null && "EFECTIVO".equalsIgnoreCase(nc.getVenta().getMetodoPago())) {
+                impactaEfectivo = true;
+                detalleAdicional = "Devolución en efectivo - " + detalleAdicional;
+            } else {
+                detalleAdicional = "No impacta efectivo - " + detalleAdicional;
+            }
+            
+            EventoAuditoriaDTO evento = new EventoAuditoriaDTO(
+                EventoAuditoriaDTO.TipoEvento.NOTA_CREDITO,
+                "Nota de Crédito",
+                descripcionTipo + " - " + nc.getMotivo() + " | Comprobante: " + comprobante,
+                usuario,
+                nc.getFechaEmision(),
+                nc.getTotalAcreditado(),
+                "bi-arrow-counterclockwise",
+                impactaEfectivo ? "text-danger" : "text-warning",
+                detalleAdicional
+            );
+            eventos.add(evento);
+        }
+        
         // Ordenar por fecha descendente (más reciente primero)
         eventos.sort((a, b) -> b.getFecha().compareTo(a.getFecha()));
         
@@ -728,12 +813,193 @@ public class CajaServiceImpl implements CajaService {
             }
         }
         
+        // Obtener notas de crédito de la sesión
+        List<NotasCredito> notasCredito = notasCreditoRepository.findByVenta_SesionCaja_Id(sesion.getId());
+        
+        for (NotasCredito nc : notasCredito) {
+            String usuario = nc.getEmitidaPorUsuario() != null ? nc.getEmitidaPorUsuario().getNombre() : "Sistema";
+            String descripcionTipo = nc.getDescripcionTipo() != null ? nc.getDescripcionTipo() : nc.getTipoNota();
+            String comprobante = nc.getSerieCorrelativo() != null ? nc.getSerieCorrelativo() : "NC-" + nc.getId();
+            
+            log.add(new MovimientoLogDTO("NOTA_CREDITO", 
+                    descripcionTipo + " - " + nc.getMotivo() + " | Comprobante: " + comprobante,
+                    nc.getTotalAcreditado(), "−", false, null, "NOTA_CREDITO", usuario, nc.getFechaEmision()));
+        }
+        
         // Evento de cierre si existe
         if (sesion.getFechaCierre() != null) {
             String usuarioCierre = sesion.getUsuarioCierre() != null ? sesion.getUsuarioCierre().getNombre() : "Sistema";
             log.add(new MovimientoLogDTO("CIERRE", "Cierre de caja - Efectivo declarado: S/ " + 
                     (sesion.getMontoCierreDeclarado() != null ? sesion.getMontoCierreDeclarado() : "0"),
                     sesion.getMontoCierreDeclarado(), "=", true, null, null, usuarioCierre, sesion.getFechaCierre()));
+        }
+        
+        // Ordenar por fecha descendente (más reciente primero)
+        log.sort((a, b) -> b.getFecha().compareTo(a.getFecha()));
+        
+        return log;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<MovimientoLogDTO> construirLogPorPeriodo(LocalDateTime desde, LocalDateTime hasta) {
+        java.util.List<MovimientoLogDTO> log = new java.util.ArrayList<>();
+        
+        // Obtener todas las sesiones cerradas en el período
+        List<SesionCaja> sesiones = sesionCajaRepository.findSesionesCerradasPorPeriodo(desde, hasta);
+        
+        // También buscar sesiones abiertas que hayan iniciado en el período
+        Optional<SesionCaja> sesionAbierta = sesionCajaRepository.findByEstado("ABIERTA");
+        
+        for (SesionCaja sesion : sesiones) {
+            // Evento de apertura (solo si está dentro del rango)
+            if (sesion.getFechaApertura() != null && 
+                !sesion.getFechaApertura().isBefore(desde) && 
+                !sesion.getFechaApertura().isAfter(hasta)) {
+                String usuarioApertura = sesion.getUsuarioApertura() != null ? sesion.getUsuarioApertura().getNombre() : "Sistema";
+                log.add(new MovimientoLogDTO("APERTURA", "Fondo inicial registrado", sesion.getMontoInicial(),
+                        "+", true, null, null, usuarioApertura, sesion.getFechaApertura()));
+            }
+            
+            // Obtener ventas de la sesión filtradas por fecha
+            List<Venta> ventas = ventaRepository.findBySesionCajaId(sesion.getId());
+            for (Venta venta : ventas) {
+                if (venta.getFechaVenta() != null && 
+                    !venta.getFechaVenta().isBefore(desde) && 
+                    !venta.getFechaVenta().isAfter(hasta)) {
+                    String metodoPago = venta.getMetodoPago();
+                    String usuario = "Cliente";
+                    if (venta.getCliente() != null && venta.getCliente().getNombre() != null) {
+                        usuario = venta.getCliente().getNombre();
+                    }
+                    String comprobante = venta.getSerieCorrelativo() != null ? venta.getSerieCorrelativo() : "N° " + venta.getId();
+                    
+                    if ("EFECTIVO".equalsIgnoreCase(metodoPago)) {
+                        log.add(new MovimientoLogDTO("VENTA_EFECTIVO", "Comprobante: " + comprobante,
+                                venta.getTotal(), "+", true, metodoPago, null, usuario, venta.getFechaVenta()));
+                    } else {
+                        log.add(new MovimientoLogDTO("VENTA_OTRO", "Comprobante: " + comprobante + " (" + metodoPago + ")",
+                                venta.getTotal(), "+", false, metodoPago, null, usuario, venta.getFechaVenta()));
+                    }
+                }
+            }
+            
+            // Obtener movimientos manuales filtrados por fecha
+            List<MovimientoCaja> movimientos = movimientoCajaRepository.findBySesionIdOrderByFechaDesc(sesion.getId());
+            for (MovimientoCaja movimiento : movimientos) {
+                if (movimiento.getFecha() != null && 
+                    !movimiento.getFecha().isBefore(desde) && 
+                    !movimiento.getFecha().isAfter(hasta)) {
+                    String usuario = movimiento.getUsuario() != null ? movimiento.getUsuario().getNombre() : "Sistema";
+                    String categoria = movimiento.getCategoria() != null ? movimiento.getCategoria() : "Sin categoría";
+                    
+                    if ("RETIRO".equalsIgnoreCase(movimiento.getTipo())) {
+                        log.add(new MovimientoLogDTO("RETIRO", categoria + " - " + movimiento.getMotivo(),
+                                movimiento.getMonto(), "−", true, null, categoria, usuario, movimiento.getFecha()));
+                    } else if ("INGRESO".equalsIgnoreCase(movimiento.getTipo())) {
+                        log.add(new MovimientoLogDTO("INGRESO", categoria + " - " + movimiento.getMotivo(),
+                                movimiento.getMonto(), "+", true, null, categoria, usuario, movimiento.getFecha()));
+                    }
+                }
+            }
+            
+            // Obtener notas de crédito de la sesión filtradas por fecha
+            List<NotasCredito> notasCredito = notasCreditoRepository.findByVenta_SesionCaja_Id(sesion.getId());
+            for (NotasCredito nc : notasCredito) {
+                if (nc.getFechaEmision() != null && 
+                    !nc.getFechaEmision().isBefore(desde) && 
+                    !nc.getFechaEmision().isAfter(hasta)) {
+                    String usuario = nc.getEmitidaPorUsuario() != null ? nc.getEmitidaPorUsuario().getNombre() : "Sistema";
+                    String descripcionTipo = nc.getDescripcionTipo() != null ? nc.getDescripcionTipo() : nc.getTipoNota();
+                    String comprobante = nc.getSerieCorrelativo() != null ? nc.getSerieCorrelativo() : "NC-" + nc.getId();
+                    
+                    log.add(new MovimientoLogDTO("NOTA_CREDITO", 
+                            descripcionTipo + " - " + nc.getMotivo() + " | Comprobante: " + comprobante,
+                            nc.getTotalAcreditado(), "−", false, null, "NOTA_CREDITO", usuario, nc.getFechaEmision()));
+                }
+            }
+            
+            // Evento de cierre (solo si está dentro del rango)
+            if (sesion.getFechaCierre() != null && 
+                !sesion.getFechaCierre().isBefore(desde) && 
+                !sesion.getFechaCierre().isAfter(hasta)) {
+                String usuarioCierre = sesion.getUsuarioCierre() != null ? sesion.getUsuarioCierre().getNombre() : "Sistema";
+                log.add(new MovimientoLogDTO("CIERRE", "Cierre de caja - Efectivo declarado: S/ " + 
+                        (sesion.getMontoCierreDeclarado() != null ? sesion.getMontoCierreDeclarado() : "0"),
+                        sesion.getMontoCierreDeclarado(), "=", true, null, null, usuarioCierre, sesion.getFechaCierre()));
+            }
+        }
+        
+        // Incluir sesión abierta si aplica
+        if (sesionAbierta.isPresent()) {
+            SesionCaja sesion = sesionAbierta.get();
+            
+            // Evento de apertura
+            if (sesion.getFechaApertura() != null && 
+                !sesion.getFechaApertura().isBefore(desde) && 
+                !sesion.getFechaApertura().isAfter(hasta)) {
+                String usuarioApertura = sesion.getUsuarioApertura() != null ? sesion.getUsuarioApertura().getNombre() : "Sistema";
+                log.add(new MovimientoLogDTO("APERTURA", "Fondo inicial registrado", sesion.getMontoInicial(),
+                        "+", true, null, null, usuarioApertura, sesion.getFechaApertura()));
+            }
+            
+            // Obtener ventas de la sesión filtradas por fecha
+            List<Venta> ventas = ventaRepository.findBySesionCajaId(sesion.getId());
+            for (Venta venta : ventas) {
+                if (venta.getFechaVenta() != null && 
+                    !venta.getFechaVenta().isBefore(desde) && 
+                    !venta.getFechaVenta().isAfter(hasta)) {
+                    String metodoPago = venta.getMetodoPago();
+                    String usuario = "Cliente";
+                    if (venta.getCliente() != null && venta.getCliente().getNombre() != null) {
+                        usuario = venta.getCliente().getNombre();
+                    }
+                    String comprobante = venta.getSerieCorrelativo() != null ? venta.getSerieCorrelativo() : "N° " + venta.getId();
+                    
+                    if ("EFECTIVO".equalsIgnoreCase(metodoPago)) {
+                        log.add(new MovimientoLogDTO("VENTA_EFECTIVO", "Comprobante: " + comprobante,
+                                venta.getTotal(), "+", true, metodoPago, null, usuario, venta.getFechaVenta()));
+                    } else {
+                        log.add(new MovimientoLogDTO("VENTA_OTRO", "Comprobante: " + comprobante + " (" + metodoPago + ")",
+                                venta.getTotal(), "+", false, metodoPago, null, usuario, venta.getFechaVenta()));
+                    }
+                }
+            }
+            
+            // Obtener movimientos manuales filtrados por fecha
+            List<MovimientoCaja> movimientos = movimientoCajaRepository.findBySesionIdOrderByFechaDesc(sesion.getId());
+            for (MovimientoCaja movimiento : movimientos) {
+                if (movimiento.getFecha() != null && 
+                    !movimiento.getFecha().isBefore(desde) && 
+                    !movimiento.getFecha().isAfter(hasta)) {
+                    String usuario = movimiento.getUsuario() != null ? movimiento.getUsuario().getNombre() : "Sistema";
+                    String categoria = movimiento.getCategoria() != null ? movimiento.getCategoria() : "Sin categoría";
+                    
+                    if ("RETIRO".equalsIgnoreCase(movimiento.getTipo())) {
+                        log.add(new MovimientoLogDTO("RETIRO", categoria + " - " + movimiento.getMotivo(),
+                                movimiento.getMonto(), "−", true, null, categoria, usuario, movimiento.getFecha()));
+                    } else if ("INGRESO".equalsIgnoreCase(movimiento.getTipo())) {
+                        log.add(new MovimientoLogDTO("INGRESO", categoria + " - " + movimiento.getMotivo(),
+                                movimiento.getMonto(), "+", true, null, categoria, usuario, movimiento.getFecha()));
+                    }
+                }
+            }
+            
+            // Obtener notas de crédito de la sesión filtradas por fecha
+            List<NotasCredito> notasCredito = notasCreditoRepository.findByVenta_SesionCaja_Id(sesion.getId());
+            for (NotasCredito nc : notasCredito) {
+                if (nc.getFechaEmision() != null && 
+                    !nc.getFechaEmision().isBefore(desde) && 
+                    !nc.getFechaEmision().isAfter(hasta)) {
+                    String usuario = nc.getEmitidaPorUsuario() != null ? nc.getEmitidaPorUsuario().getNombre() : "Sistema";
+                    String descripcionTipo = nc.getDescripcionTipo() != null ? nc.getDescripcionTipo() : nc.getTipoNota();
+                    String comprobante = nc.getSerieCorrelativo() != null ? nc.getSerieCorrelativo() : "NC-" + nc.getId();
+                    
+                    log.add(new MovimientoLogDTO("NOTA_CREDITO", 
+                            descripcionTipo + " - " + nc.getMotivo() + " | Comprobante: " + comprobante,
+                            nc.getTotalAcreditado(), "−", false, null, "NOTA_CREDITO", usuario, nc.getFechaEmision()));
+                }
+            }
         }
         
         // Ordenar por fecha descendente (más reciente primero)

@@ -20,6 +20,18 @@ $(document).ready(function() {
             responsive: true,
             processing: true,
             ajax: { url: url, dataSrc: 'data' },
+            rowCallback: function(row, data) {
+                // Cambio 7: Color de fila según estado NC
+                const estadoNC = data.estadoNotaCredito;
+                if (estadoNC) {
+                    if (estadoNC.toUpperCase() === 'TOTAL') {
+                        $(row).addClass('fila-nc-total');
+                    } else if (estadoNC.toUpperCase() === 'PARCIAL') {
+                        $(row).addClass('fila-nc-parcial');
+                    }
+                }
+                return row;
+            },
             columns: [
                 { data: 'id' }, { data: 'numeroVenta' }, { data: 'nombreCliente' },
                 { data: 'fechaVenta', render: data => new Date(data).toLocaleString('es-PE') },
@@ -48,24 +60,134 @@ $(document).ready(function() {
                     render: (data, type, row) => {
                         let html = '';
                         if (row.pdfUrl) {
-                            html += `<a href="${row.pdfUrl}" target="_blank" class="me-2 text-decoration-none" title="Descargar PDF"><i class="bi bi-file-earmark-pdf-fill text-danger"></i></a>`;
+                            html += `<a href="${row.pdfUrl}" target="_blank" class="me-1 text-decoration-none" title="PDF Original" style="display:inline-flex;align-items:center;gap:2px;background:#fcebeb;color:#a32d2d;border-radius:4px;padding:3px 6px;font-size:9px"><i class="bi bi-file-earmark-pdf-fill"></i> PDF</a>`;
                         }
                         if (row.xmlUrl) {
-                            html += `<a href="${row.xmlUrl}" target="_blank" class="text-decoration-none" title="Descargar XML"><i class="bi bi-file-earmark-code-fill text-primary"></i></a>`;
+                            html += `<a href="${row.xmlUrl}" target="_blank" class="me-1 text-decoration-none" title="XML Original" style="display:inline-flex;align-items:center;gap:2px;background:#e8f0fe;color:#1a56db;border-radius:4px;padding:3px 6px;font-size:9px"><i class="bi bi-file-earmark-code-fill"></i> XML</a>`;
+                        }
+                        // Agregar botones de NC si existe
+                        if (row.estadoNotaCredito && row.ncPdfUrl) {
+                            html += `<a href="${row.ncPdfUrl}" target="_blank" class="text-decoration-none" title="PDF Nota de Crédito" style="display:inline-flex;align-items:center;gap:2px;background:#fce4f3;color:#a3006b;border-radius:4px;padding:3px 6px;font-size:9px"><i class="bi bi-file-earmark-pdf-fill"></i> NC</a>`;
                         }
                         return html || '-';
                     }
                 },
                 { data: 'descuento', render: data => `S/ ${parseFloat(data).toFixed(2)}` },
-                { data: 'total', render: data => `S/ ${parseFloat(data).toFixed(2)}` },
+                {
+                    data: null, orderable: false, searchable: false,
+                    render: (data, type, row) => {
+                        const estadoNC = row.estadoNotaCredito;
+                        const total = parseFloat(row.total).toFixed(2);
+                        const isTotal = estadoNC && estadoNC.toUpperCase() === 'TOTAL';
+
+                        let totalHtml = '';
+                        if (isTotal) {
+                            totalHtml = `<span style="text-decoration:line-through;color:#aaa">S/ ${total}</span>`;
+                        } else {
+                            totalHtml = `S/ ${total}`;
+                        }
+
+                        // Monto acreditado si hay NC
+                        if (estadoNC && row.ncPdfUrl) {
+                            const totalAcreditado = row.ncTotalAcreditado ? parseFloat(row.ncTotalAcreditado).toFixed(2) : parseFloat(row.total).toFixed(2);
+                            totalHtml += `<div style="font-size:9px;color:#a32d2d;margin-top:2px">NC: −S/ ${totalAcreditado}</div>`;
+                        }
+
+                        return totalHtml;
+                    }
+                },
                 { data: 'nota' },
                 {
                     data: null, orderable: false, searchable: false,
-                    render: (data, type, row) => `
-                        <button class="btn btn-sm btn-info action-edit" data-id="${row.id}" title="Editar Venta"><i class="bi bi-pencil-fill"></i></button>
-                        <button class="btn btn-sm btn-danger action-delete" data-id="${row.id}" title="Anular Venta"><i class="bi bi-trash-fill"></i></button>
-                        <a href="/ventas/imprimir/${row.id}" target="_blank" class="btn btn-sm btn-primary" title="Imprimir Boleta"><i class="bi bi-printer-fill"></i></a>
-                    `
+                    render: (data, type, row) => {
+                        const estadoNC = row.estadoNotaCredito;
+                        const ncSerieCorrelativo = row.ncSerieCorrelativo;
+                        const ncPdfUrl = row.ncPdfUrl;
+
+                        if (!estadoNC) {
+                            return '<span class="text-muted">-</span>';
+                        }
+
+                        const isTotal = estadoNC.toUpperCase() === 'TOTAL';
+                        const isParcial = estadoNC.toUpperCase() === 'PARCIAL';
+
+                        if (isTotal) {
+                            const badge = '<span class="badge bg-secondary">NC Total</span>';
+                            if (ncPdfUrl) {
+                                return `${badge} <a href="${ncPdfUrl}" target="_blank" class="ms-1" title="Ver PDF NC"><i class="bi bi-file-earmark-pdf-fill text-danger"></i></a>`;
+                            }
+                            return badge;
+                        }
+
+                        if (isParcial) {
+                            const badge = '<span class="badge bg-warning text-dark">NC Parcial</span>';
+                            if (ncPdfUrl) {
+                                return `${badge} <a href="${ncPdfUrl}" target="_blank" class="ms-1" title="Ver PDF NC"><i class="bi bi-file-earmark-pdf-fill text-danger"></i></a>`;
+                            }
+                            return badge;
+                        }
+
+                        return `<span class="badge bg-info">${estadoNC}</span>`;
+                    }
+                },
+                {
+                    data: null, orderable: false, searchable: false,
+                    render: (data, type, row) => {
+                        const tipo = (row.tipoComprobante || '').toLowerCase();
+                        const estadoNC = row.estadoNotaCredito;
+                        const estadoSunat = (row.estadoSunat || '').toLowerCase();
+                        const isNotaVenta = tipo.includes('nota_venta') || tipo.includes('nota de venta');
+                        const isParcial = estadoNC && estadoNC.toUpperCase() === 'PARCIAL';
+                        const isTotal = estadoNC && estadoNC.toUpperCase() === 'TOTAL';
+                        const isRechazado = estadoSunat === 'rechazado';
+
+                        // Para Notas de Venta: editar y anular normalmente
+                        if (isNotaVenta) {
+                            return `
+                                <button class="btn btn-sm btn-info action-edit" data-id="${row.id}" title="Editar Venta"><i class="bi bi-pencil-fill"></i></button>
+                                <button class="btn btn-sm btn-danger action-delete" data-id="${row.id}" title="Anular Venta"><i class="bi bi-trash-fill"></i></button>
+                                <a href="/ventas/imprimir/${row.id}" target="_blank" class="btn btn-sm btn-primary" title="Imprimir" style="margin-left:3px"><i class="bi bi-printer-fill"></i></a>
+                            `;
+                        }
+
+                        // Para Boletas/Facturas con NC Total: todo deshabilitado
+                        if (isTotal) {
+                            const verNcLink = row.ncPdfUrl ? 
+                                `<a href="/ventas/nota-credito/${row.id}/ver" target="_blank" class="btn btn-sm btn-success" title="Ver NC" style="margin-left:3px"><i class="bi bi-printer-fill"></i></a>` : '';
+                            return `
+                                <span style="background:#e0e0e0;color:#999;border-radius:4px;padding:4px 7px;font-size:9px;cursor:not-allowed" title="No editable">✏</span>
+                                <span style="background:#e0e0e0;color:#999;border-radius:4px;padding:4px 7px;font-size:9px;cursor:not-allowed;margin-left:3px" title="NC total emitida">NC emitida</span>
+                                ${verNcLink}
+                            `;
+                        }
+
+                        // Para Boletas/Facturas con NC Parcial: mostrar "Ver NC"
+                        if (isParcial) {
+                            const verNcLink = row.ncPdfUrl ? 
+                                `<a href="/ventas/nota-credito/${row.id}/ver" target="_blank" class="btn btn-sm" style="background:#fce4f3;color:#a3006b;border-radius:4px;padding:4px 7px;font-size:9px;text-decoration:none;margin-left:3px" title="Ver NC">Ver NC</a>` : '';
+                            return `
+                                <span style="background:#e0e0e0;color:#999;border-radius:4px;padding:4px 7px;font-size:9px;cursor:not-allowed" title="No editable — tiene NC parcial">✏</span>
+                                <a href="/ventas/nota-credito/${row.id}" class="btn btn-sm" style="background:#f0ad4e;color:#000;border-radius:4px;padding:4px 7px;font-size:9px;text-decoration:none;margin-left:3px" title="Emitir NC adicional">📋 NC Parcial</a>
+                                ${verNcLink}
+                                <a href="/ventas/imprimir/${row.id}" target="_blank" class="btn btn-sm btn-primary" title="Imprimir" style="margin-left:3px"><i class="bi bi-printer-fill"></i></a>
+                            `;
+                        }
+
+                        // Para Boletas/Facturas sin NC y no rechazadas: botón de emitir NC
+                        if (!isRechazado) {
+                            return `
+                                <span style="background:#e0e0e0;color:#999;border-radius:4px;padding:4px 7px;font-size:9px;cursor:not-allowed" title="No editable — comprobante emitido a SUNAT">✏</span>
+                                <a href="/ventas/nota-credito/${row.id}" class="btn btn-sm" style="background:#d63384;color:#fff;border-radius:4px;padding:4px 7px;font-size:9px;text-decoration:none;margin-left:3px" title="Emitir Nota de Crédito">📋 Emitir NC</a>
+                                <a href="/ventas/imprimir/${row.id}" target="_blank" class="btn btn-sm btn-primary" title="Imprimir" style="margin-left:3px"><i class="bi bi-printer-fill"></i></a>
+                            `;
+                        }
+
+                        // Para Boletas/Facturas rechazadas: solo imprimir
+                        return `
+                            <span style="background:#e0e0e0;color:#999;border-radius:4px;padding:4px 7px;font-size:9px;cursor:not-allowed" title="Comprobante rechazado">✏</span>
+                            <a href="/ventas/imprimir/${row.id}" target="_blank" class="btn btn-sm btn-primary" title="Imprimir" style="margin-left:3px"><i class="bi bi-printer-fill"></i></a>
+                        `;
+                    }
                 }
             ],
             language: { url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" },

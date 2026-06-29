@@ -54,6 +54,9 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
 
     List<Venta> findBySesionCajaId(Long sesionCajaId);
 
+    @Query("SELECT DISTINCT v FROM Venta v LEFT JOIN FETCH v.notasCredito WHERE v.estado != 2 ORDER BY v.id DESC")
+    List<Venta> findAllWithNotasCredito();
+
     @Query("SELECT v.metodoPago, SUM(v.total) FROM Venta v WHERE v.sesionCaja.id = :sesionId AND v.fechaVenta >= :inicio AND v.fechaVenta <= :fin GROUP BY v.metodoPago")
     List<Object[]> obtenerVentasPorMetodoPagoEnSesion(@Param("sesionId") Long sesionId, @Param("inicio") LocalDateTime inicio, @Param("fin") LocalDateTime fin);
 
@@ -79,4 +82,9 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
             "ORDER BY unidades_vendidas DESC " +
             "LIMIT 5", nativeQuery = true)
     List<Object[]> findTop5ProductosMasVendidosPorPeriodo(@Param("inicio") LocalDateTime inicio, @Param("fin") LocalDateTime fin);
+
+    @Query("SELECT DISTINCT d.producto.id FROM DetalleVenta d " +
+           "WHERE d.venta.fechaVenta >= :fecha")
+    List<Long> findProductoIdsVendidosDespues(
+        @Param("fecha") LocalDateTime fecha);
 }

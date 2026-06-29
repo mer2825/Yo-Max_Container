@@ -62,8 +62,40 @@ CREATE TABLE IF NOT EXISTS movimientos_caja (
   CONSTRAINT fk_movimiento_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 );
 
+-- Migración aditiva para flujo de Notas de Crédito
+CREATE TABLE IF NOT EXISTS notas_credito (
+  id BIGSERIAL PRIMARY KEY,
+  venta_id BIGINT NOT NULL,
+  tipo_nota VARCHAR(10) NOT NULL, -- códigos SUNAT: 01, 06, 07, 09
+  descripcion_tipo VARCHAR(255),
+  motivo VARCHAR(1000) NOT NULL,
+  serie VARCHAR(20),
+  correlativo INTEGER,
+  serie_correlativo VARCHAR(50),
+  total_acreditado DECIMAL(10,2),
+  estado_sunat VARCHAR(50) NOT NULL DEFAULT 'pendiente', -- pendiente, aceptado, rechazado
+  nubefact_id VARCHAR(255),
+  pdf_url VARCHAR(255),
+  xml_url VARCHAR(255),
+  hash_cdr VARCHAR(255),
+  fecha_emision TIMESTAMP,
+  emitida_por_usuario_id BIGINT,
+  raw_response TEXT,
+  CONSTRAINT fk_nc_venta FOREIGN KEY (venta_id) REFERENCES ventas(id),
+  CONSTRAINT fk_nc_emitida_usuario FOREIGN KEY (emitida_por_usuario_id) REFERENCES usuarios(id)
+);
+
 -- Columna sesion_caja_id en tabla ventas
 -- Nota: La restricción de clave foránea se debe crear manualmente después de que la tabla ventas tenga datos
 -- o ejecutar: ALTER TABLE ventas ADD CONSTRAINT fk_venta_sesion_caja FOREIGN KEY (sesion_caja_id) REFERENCES sesiones_caja(id);
 ALTER TABLE ventas
   ADD COLUMN IF NOT EXISTS sesion_caja_id BIGINT;
+
+-- Columna para mostrar el estado de Nota de Crédito en el listado de ventas
+ALTER TABLE ventas
+  ADD COLUMN IF NOT EXISTS estado_nota_credito VARCHAR(20);
+
+-- Correlativos para Notas de Crédito (boleta / factura)
+ALTER TABLE empresa
+  ADD COLUMN IF NOT EXISTS correlativo_nota_credito_boleta INTEGER DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS correlativo_nota_credito_factura INTEGER DEFAULT 1;

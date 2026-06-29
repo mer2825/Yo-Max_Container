@@ -44,6 +44,13 @@ public class Empresa {
     @Column(columnDefinition = "integer default 1")
     private Integer correlativoFactura = 1;
 
+    // Correlativos de Notas de Crédito (boleta / factura)
+    @Column(columnDefinition = "integer default 1")
+    private Integer correlativoNotaCreditoBoleta = 1;
+
+    @Column(columnDefinition = "integer default 1")
+    private Integer correlativoNotaCreditoFactura = 1;
+
     @Column(length = 20, columnDefinition = "varchar(20) default 'demo'")
     private String nubefactAmbiente = "demo";
 
@@ -175,6 +182,22 @@ public class Empresa {
 
     public void setCorrelativoFactura(Integer correlativoFactura) {
         this.correlativoFactura = correlativoFactura;
+    }
+
+    public Integer getCorrelativoNotaCreditoBoleta() {
+        return correlativoNotaCreditoBoleta;
+    }
+
+    public void setCorrelativoNotaCreditoBoleta(Integer correlativoNotaCreditoBoleta) {
+        this.correlativoNotaCreditoBoleta = correlativoNotaCreditoBoleta;
+    }
+
+    public Integer getCorrelativoNotaCreditoFactura() {
+        return correlativoNotaCreditoFactura;
+    }
+
+    public void setCorrelativoNotaCreditoFactura(Integer correlativoNotaCreditoFactura) {
+        this.correlativoNotaCreditoFactura = correlativoNotaCreditoFactura;
     }
 
     public String getNubefactAmbiente() {

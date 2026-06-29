@@ -9,7 +9,8 @@ public class EventoAuditoriaDTO {
         VENTA_EFECTIVO,
         VENTA_OTRO_MEDIO,
         RETIRO_MANUAL,
-        INGRESO_MANUAL
+        INGRESO_MANUAL,
+        NOTA_CREDITO
     }
     
     private TipoEvento tipo;

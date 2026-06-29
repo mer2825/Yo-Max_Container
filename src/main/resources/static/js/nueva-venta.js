@@ -1,13 +1,115 @@
 ﻿$(document).ready(function() {
     let carrito = [];
     let productosCargados = {};
+    let uiInicializada = false;
+    let listenersInstalados = false;
 
-    cargarProductos();
-    setupEventListeners();
-    updateFormularioUI();
-    renderizarCarrito();
-    updateProgressSteps();
-    aplicarValidacionDocumento();
+    function initVentaUI() {
+        cargarProductos();
+
+        // Evitar duplicar listeners al re-inicializar desde el modal de apertura
+        if (!listenersInstalados) {
+            setupEventListeners();
+            listenersInstalados = true;
+        }
+
+        // Re-hidratar estado de UI (esto sí debe ejecutarse siempre)
+        updateFormularioUI();
+        renderizarCarrito();
+        updateProgressSteps();
+        aplicarValidacionDocumento();
+
+        // Asegurar que el botón finalize tenga estado correcto según carrito
+        $('#btnFinalizarVenta').prop('disabled', carrito.length === 0);
+    }
+
+    // Primero verificar que haya sesión de caja abierta
+    verificarSesionCaja().then(function() {        initVentaUI();
+    });
+
+    function verificarSesionCaja() {
+        return fetch('/ventas/api/verificar-caja')
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (!data.haySesionActiva) {
+                    // Mantener el modal "anterior" (SweetAlert bloqueante),
+                    // pero SIEMPRE evitar competencia con el modal/banner de caja rápida.
+                    var showSweetAlertModal = true;
+
+                    // Si el banner/modal de caja rápida está en la página, NO mostramos SweetAlert.
+                    if ($('#banner-caja-cerrada').length || $('#modal-caja-rapida').length) {
+                        showSweetAlertModal = false;
+
+                        // Si está el modal, lo abrimos.
+                        try {
+                            var saldoSugerido = data.saldoSugerido || 0;
+                            var $fondo = $('#fondo-rapido');
+                            if ($fondo.length) $fondo.val(saldoSugerido);
+
+                            var $modal = $('#modal-caja-rapida');
+                            if ($modal.length) $modal.css('display', 'flex');
+                        } catch (e) {
+                            console.warn('No se pudo abrir modal de caja rápida:', e);
+                        }
+
+                        // Blindaje: si ya estamos en el flujo de caja rápida,
+                        // salir para NO continuar con SweetAlert.
+                        return Promise.resolve();
+                    }
+
+                    if (!showSweetAlertModal) return;
+
+                    // SweetAlert "anterior": Apertura de Caja Requerida
+                    var saldoSugeridoFallback = data.saldoSugerido || 0;
+                    var html = '<div style="text-align:left;">' +
+                        '<div class="alert alert-warning">' +
+                        '<i class="bi bi-exclamation-triangle"></i> ' +
+                        '<strong>No hay sesión de caja abierta.</strong><br>' +
+                        'Debe abrir la caja antes de poder realizar ventas.' +
+                        '</div>' +
+                        '<div class="mb-3">' +
+                        '<label class="form-label fw-bold">Monto inicial (saldo sugerido: S/ ' + saldoSugeridoFallback.toFixed(2) + ')</label>' +
+                        '<input type="number" id="montoAperturaRapida" class="form-control" value="' + saldoSugeridoFallback.toFixed(2) + '" min="0" step="0.10">' +
+                        '</div>' +
+                        '</div>';
+
+                    return Swal.fire({
+                        title: 'Apertura de Caja Requerida',
+                        html: html,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Abrir Caja',
+                        cancelButtonText: 'Cancelar',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        width: '500px',
+                        preConfirm: function() {
+                            var monto = parseFloat(document.getElementById('montoAperturaRapida').value);
+                            if (isNaN(monto) || monto < 0) {
+                                Swal.showValidationMessage('Ingrese un monto válido');
+                                return false;
+                            }
+                            return fetch('/ventas/api/abrir-caja-rapida?montoInicial=' + monto, { method: 'POST' })
+                                .then(function(r) { return r.json(); })
+                                .then(function(result) {
+                                    if (!result.success) throw new Error(result.message);
+                                    return result;
+                                });
+                        }
+                    }).then(function(result) {
+                        if (result && result.isConfirmed) {
+                            Swal.fire('Caja Abierta', result.value.message, 'success');
+                            initVentaUI();
+                        } else {
+                            window.location.href = '/caja';
+                        }
+                    });
+                }
+            })
+            .catch(function(error) {
+                console.error('Error verificando caja:', error);
+            });
+    }
 
     function cargarProductos() {
         $('.product-card').each(function() {
@@ -383,10 +485,13 @@
         renderizarCarrito();
     }
 
-    function calcularTotalesConIGV(subtotalVenta, descuentoCalculado) {
-        const subtotalSinIGV = Math.max(0, subtotalVenta - descuentoCalculado);
+    function calcularTotales(subtotalVenta, descuentoCalculado) {
+        // El precio ya incluye IGV. Calculamos el IGV "hacia atrás":
+        // subtotalSinIGV = subtotal / 1.18, igv = subtotalSinIGV * 0.18
+        const subtotalSinIGV = subtotalVenta / 1.18;
         const igv = subtotalSinIGV * 0.18;
-        const totalVenta = subtotalSinIGV + igv;
+        // Total a pagar = subtotal - descuento (el IGV ya está incluido en el precio)
+        const totalVenta = Math.max(0, subtotalVenta - descuentoCalculado);
         return { subtotalSinIGV, igv, totalVenta };
     }
 
@@ -439,7 +544,7 @@
             descuentoCalculado = valorDescuento;
         }
 
-        const { subtotalSinIGV, igv, totalVenta } = calcularTotalesConIGV(subtotalVenta, descuentoCalculado);
+        const { subtotalSinIGV, igv, totalVenta } = calcularTotales(subtotalVenta, descuentoCalculado);
 
         $('#venta-subtotal').text(`S/ ${subtotalSinIGV.toFixed(2)}`);
         $('#venta-igv').text(`S/ ${igv.toFixed(2)}`);

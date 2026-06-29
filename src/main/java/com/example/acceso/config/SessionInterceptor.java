@@ -50,6 +50,12 @@ public class SessionInterceptor implements HandlerInterceptor {
             "/caja/api/",
             "/ventas/api/"
     );
+    
+    // Rutas adicionales permitidas para usuarios autenticados
+    private static final Set<String> RUTAS_ADICIONALES_PERMITIDAS = Set.of(
+            "/ventas/nota-credito",
+            "/reportes"
+    );
 
     public SessionInterceptor(EmpresaService empresaService) {
         this.empresaService = empresaService;
@@ -114,7 +120,8 @@ public class SessionInterceptor implements HandlerInterceptor {
 
     // 2.5 Permitir rutas PDF internas para usuarios autenticados
     boolean esRutaPdfPermitida = requestURI.equals("/caja/sesion-actual/pdf") || 
-                                  requestURI.startsWith("/caja/historial/") && requestURI.endsWith("/pdf");
+                                  (requestURI.startsWith("/caja/historial/") && 
+                                   (requestURI.endsWith("/pdf") || requestURI.endsWith("/pdf/download")));
     if (esRutaPdfPermitida) {
         System.out.println("--- SessionInterceptor: Ruta PDF permitida para usuario autenticado, acceso concedido. ---");
         return true;
@@ -125,7 +132,14 @@ public class SessionInterceptor implements HandlerInterceptor {
     if (esRutaApiPermitida) {
         System.out.println("--- SessionInterceptor: Ruta API interna permitida para usuario autenticado, acceso concedido. ---");
         return true;
-        }
+    }
+    
+    // 2.7 Permitir rutas adicionales para usuarios autenticados
+    boolean esRutaAdicionalPermitida = RUTAS_ADICIONALES_PERMITIDAS.stream().anyMatch(requestURI::startsWith);
+    if (esRutaAdicionalPermitida) {
+        System.out.println("--- SessionInterceptor: Ruta adicional permitida para usuario autenticado, acceso concedido. ---");
+        return true;
+    }
 
         // 3. Si hay sesión, verificar permisos para la ruta solicitada.
         // La ruta raíz ("/") se permite para todos los usuarios logueados.

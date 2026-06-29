@@ -140,6 +140,43 @@
 
         <div th:replace="~{fragments/notificaciones :: notification-container}"></div>
 
+        <!-- Cambio 4: Banner caja cerrada -->
+        <th:block th:if="${!cajaAbierta}">
+          <div id="banner-caja-cerrada"
+               style="background:#fcebeb;border:1.5px solid #f09595;border-radius:10px;
+                      padding:14px 18px;display:flex;align-items:center;gap:14px;
+                      margin-bottom:20px;">
+            <span style="font-size:24px;flex-shrink:0">🔴</span>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600;color:#a32d2d;margin-bottom:3px">
+                La caja no está abierta para hoy
+              </div>
+              <div style="font-size:11px;color:#c05050">
+                Necesitas abrir la caja antes de registrar ventas.
+                <span th:if="${saldoPropuesto != null and saldoPropuesto > 0}">
+                  El último cierre fue con
+                  <strong
+                    th:text="${'S/ ' + #numbers.formatDecimal(saldoPropuesto,1,'COMMA',2,'POINT')}">
+                  </strong>
+                  — ese monto se propone como fondo inicial.
+                </span>
+              </div>
+            </div>
+            <button type="button"
+                    onclick="abrirModalCajaRapida()"
+                    style="background:#e91e8c;color:white;border:none;border-radius:8px;
+                           padding:9px 16px;font-size:12px;font-weight:600;
+                           white-space:nowrap;cursor:pointer;">
+              ⚡ Abrir caja rápido
+            </button>
+          </div>
+
+          <!-- Overlay que cubre el formulario -->
+          <div id="overlay-caja"
+               style="position:relative;pointer-events:none;opacity:0.4;
+                      user-select:none;">
+        </th:block>
+
         <div class="container-fluid p-4">
             <div class="step-progress-container mb-4">
                 <div class="step-progress d-flex align-items-center justify-content-between gap-2">
@@ -388,14 +425,126 @@
                                     </div>
                                 </div>
                                 <div id="cart-empty-footer" class="text-center text-muted small d-none mb-3">Selecciona productos para ver el total</div>
-                                <button id="btnFinalizarVenta" class="btn btn-primary btn-lg w-100" disabled>Finalizar y Cobrar</button>
+                                <button type="button" id="btnFinalizarVenta" class="btn btn-primary btn-lg w-100" disabled>Finalizar y Cobrar</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+        <!-- Cierre del overlay si caja cerrada -->
+        <th:block th:if="${!cajaAbierta}">
+          </div> <!-- cierre del div overlay-caja -->
+        </th:block>
+
     </main>
+
+    <!-- Cambio 5: Modal apertura rápida -->
+    <th:block th:if="${!cajaAbierta}">
+    <div id="modal-caja-rapida"
+         style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);
+                z-index:9999;align-items:center;justify-content:center;">
+      <div style="background:white;border-radius:12px;padding:24px;
+                  width:380px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+        <h3 style="margin:0 0 6px;font-size:16px">⚡ Apertura rápida de caja</h3>
+        <p style="font-size:12px;color:#666;margin:0 0 16px">
+          Ingresa el fondo inicial para comenzar el día.
+        </p>
+
+        <label style="font-size:11px;font-weight:500;color:#444;
+                      display:block;margin-bottom:4px">
+          Fondo inicial (S/)
+        </label>
+        <input type="number"
+               id="fondo-rapido"
+               step="0.01" min="0"
+               th:value="${saldoPropuesto}"
+               style="width:100%;border:1.5px solid #e91e8c;border-radius:8px;
+                      padding:10px 12px;font-size:16px;font-weight:500;
+                      box-sizing:border-box;margin-bottom:8px">
+        <p style="font-size:10px;color:#888;margin:0 0 16px">
+          Pre-llenado desde el último cierre. Ajusta si retiraste dinero ayer.
+        </p>
+
+        <div style="display:flex;gap:8px">
+          <button type="button"
+                  onclick="cerrarModalCaja()"
+                  style="flex:1;background:#f5f5f5;color:#666;border:none;
+                         border-radius:8px;padding:10px;font-size:12px;cursor:pointer">
+            Cancelar
+          </button>
+          <button type="button"
+                  onclick="confirmarAperturaCaja(this)"
+                  style="flex:2;background:#e91e8c;color:white;border:none;
+                         border-radius:8px;padding:10px;font-size:13px;
+                         font-weight:600;cursor:pointer">
+            ✓ Abrir caja y continuar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    function abrirModalCajaRapida() {
+        document.getElementById('modal-caja-rapida').style.display = 'flex';
+    }
+
+    function cerrarModalCaja() {
+        document.getElementById('modal-caja-rapida').style.display = 'none';
+    }
+
+    function confirmarAperturaCaja(btn) {
+        const fondo = parseFloat(
+            document.getElementById('fondo-rapido').value) || 0;
+
+        if (fondo < 0) {
+            alert('El fondo inicial no puede ser negativo.');
+            return;
+        }
+
+        // btn puede ser null si se llama desde otro lugar; manejamos eso para no romper el flujo
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = '⏳ Abriendo caja...';
+        }
+
+        // Si tu modal ya re-habilita overlay/baner, esto asegura que el JS no se detenga por 'event' undefined
+
+        fetch('/caja/abrir-rapido', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ montoInicial: fondo })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('banner-caja-cerrada').style.display = 'none';
+                document.getElementById('overlay-caja').style.pointerEvents = 'auto';
+                document.getElementById('overlay-caja').style.opacity = '1';
+                document.getElementById('overlay-caja').style.userSelect = 'auto';
+                cerrarModalCaja();
+            } else {
+                alert('Error al abrir la caja: ' + (data.mensaje || 'Intenta de nuevo'));
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '✓ Abrir caja y continuar';
+                }
+            }
+        })
+        .catch(function() {
+            alert('Error de conexión. Recarga la página e intenta de nuevo.');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '✓ Abrir caja y continuar';
+            }
+        });
+    }
+    </script>
+    </th:block>
+
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

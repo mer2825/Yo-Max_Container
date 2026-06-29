@@ -8,8 +8,11 @@ import com.example.acceso.dto.ResumenSesionActivaDTO;
 import com.example.acceso.model.SesionCaja;
 import com.example.acceso.model.Usuario;
 import com.example.acceso.service.CajaService;
+import com.example.acceso.service.PdfService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import jakarta.servlet.http.HttpSession;
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -28,11 +32,15 @@ import java.util.Optional;
 @RequestMapping("/caja")
 public class CajaController {
 
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CajaController.class);
+
     private final CajaService cajaService;
+    private final PdfService pdfService;
 
     @Autowired
-    public CajaController(CajaService cajaService) {
+    public CajaController(CajaService cajaService, PdfService pdfService) {
         this.cajaService = cajaService;
+        this.pdfService = pdfService;
     }
 
     private Long getUsuarioId(HttpSession session) {
@@ -42,24 +50,78 @@ public class CajaController {
 
     @GetMapping
     public String index(Model model, HttpSession session) {
-        Optional<SesionCaja> sesionActiva = cajaService.obtenerSesionActiva();
-        
-        if (sesionActiva.isPresent()) {
-            // Hay sesión abierta, mostrar monitor en tiempo real
-            ResumenSesionActivaDTO resumen = cajaService.obtenerResumenSesionActiva();
-            model.addAttribute("resumen", resumen);
-            model.addAttribute("sesionActiva", sesionActiva.get());
-            model.addAttribute("hayAlertaCierre", cajaService.debeAlertarCierre(sesionActiva.get()));
-            return "caja-monitor";
-        } else {
-            // No hay sesión abierta, mostrar formulario de apertura con saldo propuesto
-            BigDecimal saldoPropuesto = cajaService.obtenerSaldoParaApertura();
-            SesionCaja ultimaCerrada = cajaService.obtenerUltimaSesionCerrada().orElse(null);
+        try {
+            Optional<SesionCaja> sesionActiva = cajaService.obtenerSesionActiva();
+            
+            if (sesionActiva.isPresent()) {
+                // Hay sesión abierta, mostrar monitor en tiempo real
+                ResumenSesionActivaDTO resumen = cajaService.obtenerResumenSesionActiva();
+                model.addAttribute("resumen", resumen);
+                model.addAttribute("sesionActiva", sesionActiva.get());
+                model.addAttribute("hayAlertaCierre", cajaService.debeAlertarCierre(sesionActiva.get()));
+                return "caja-monitor";
+            } else {
+                // No hay sesión abierta, mostrar formulario de apertura con saldo propuesto
+                BigDecimal saldoPropuesto = cajaService.obtenerSaldoParaApertura();
+                SesionCaja ultimaCerrada = cajaService.obtenerUltimaSesionCerrada().orElse(null);
 
-            model.addAttribute("saldoPropuesto", saldoPropuesto);
-            model.addAttribute("ultimaCerrada", ultimaCerrada);
-            model.addAttribute("hayAlertaDiaSinCerrar", cajaService.haySesionDelDiaAnteriorSinCerrar());
-            return "caja-apertura";
+                model.addAttribute("saldoPropuesto", saldoPropuesto);
+                model.addAttribute("ultimaCerrada", ultimaCerrada);
+                model.addAttribute("hayAlertaDiaSinCerrar", cajaService.haySesionDelDiaAnteriorSinCerrar());
+                return "caja-apertura";
+            }
+        } catch (Exception e) {
+            logger.error("Error al cargar el monitor de caja", e);
+            model.addAttribute("errorMessage", "Error al cargar el monitor de caja: " + e.getMessage());
+            return "error";
+        }
+    }
+
+    @PostMapping("/abrir-rapido")
+    @ResponseBody
+    public ResponseEntity<?> abrirCajaRapido(
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+
+        try {
+            // Verificar que no haya ya una sesión abierta
+            if (cajaService.haySesionActiva()) {
+                return ResponseEntity.ok(
+                    Map.of("success", true,
+                        "mensaje", "La caja ya está abierta"));
+            }
+
+            BigDecimal montoInicial = new BigDecimal(
+                body.getOrDefault("montoInicial", "0").toString());
+
+            if (montoInicial.compareTo(BigDecimal.ZERO) < 0) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("success", false,
+                        "mensaje", "El monto inicial no puede ser negativo"));
+            }
+
+            // Obtener usuario de la sesión (compatibilidad con otros flujos)
+            Long usuarioId = getUsuarioId(session);
+            if (usuarioId == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "mensaje", "Debe iniciar sesión para realizar esta acción."
+                ));
+            }
+
+            cajaService.abrirCaja(montoInicial, usuarioId);
+
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "mensaje", "Caja abierta correctamente con S/ "
+                    + montoInicial.setScale(2) + " de fondo inicial"
+            ));
+
+        } catch (Exception ex) {
+            logger.error("Error al abrir caja rápido", ex);
+            return ResponseEntity.internalServerError()
+                .body(Map.of("success", false,
+                    "mensaje", ex.getMessage()));
         }
     }
 
@@ -379,6 +441,31 @@ public class CajaController {
         return "caja-sesion-pdf";
     }
 
+    @GetMapping("/historial/{id}/pdf/download")
+    public ResponseEntity<org.springframework.core.io.InputStreamResource> descargarPdfSesion(@PathVariable Long id) {
+        SesionCaja sesion = cajaService.obtenerSesionPorId(id)
+                .orElse(null);
+        
+        if (sesion == null) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        // Obtener resumen detallado de la sesión
+        Map<String, Object> detalle = cajaService.obtenerDetalleSesion(id);
+        List<EventoAuditoriaDTO> logAuditoria = cajaService.obtenerLogAuditoriaSesion(id);
+        
+        // Generar PDF
+        ByteArrayInputStream bis = pdfService.generarReporteSesionCaja(sesion, detalle, logAuditoria);
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Disposition", "attachment; filename=reporte-sesion-" + id + ".pdf");
+        
+        return ResponseEntity.ok()
+                .headers(headers)
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .body(new org.springframework.core.io.InputStreamResource(bis));
+    }
+
     @GetMapping("/api/resumen")
     @ResponseBody
     public ResponseEntity<?> apiResumen() {
@@ -410,6 +497,23 @@ public class CajaController {
         }
         List<MovimientoLogDTO> log = cajaService.construirLogSesion(sesionActiva.get().getId());
         return ResponseEntity.ok(log);
+    }
+
+    @GetMapping("/api/movimientos/periodo")
+    @ResponseBody
+    public ResponseEntity<?> apiMovimientosPorPeriodo(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        try {
+            LocalDateTime inicio = desde.atStartOfDay();
+            LocalDateTime fin = hasta.atTime(23, 59, 59);
+            List<MovimientoLogDTO> log = cajaService.construirLogPorPeriodo(inicio, fin);
+            return ResponseEntity.ok(log);
+        } catch (Exception e) {
+            logger.error("Error al obtener movimientos por período", e);
+            return ResponseEntity.internalServerError()
+                .body(Map.of("error", "Error al cargar movimientos: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/sesion-actual/pdf")
