@@ -130,6 +130,15 @@
             0% { background-color: rgba(40, 167, 69, 0.16); }
             100% { background-color: transparent; }
         }
+        .comprobante-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .comprobante-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 42, 166, 0.3) !important;
+            border-color: #ff2aa6 !important;
+        }
     </style>
 </head>
 <body>
@@ -221,40 +230,35 @@
                                 <div class="col-12">
                                     <label class="form-label">Tipo de Comprobante</label>
                                     <div class="d-flex flex-column flex-sm-row gap-3 mb-3">
-                                        <button type="button" class="btn btn-outline-secondary shadow-sm flex-fill text-start comprobante-card" data-tipo="boleta">
+                                        <button type="button" class="btn shadow-sm flex-fill text-start comprobante-card" data-tipo="boleta" style="border: 2px solid #ffc0d9; background: linear-gradient(135deg, #fff5f8 0%, #ffffff 100%);">
                                             <div class="d-flex align-items-center gap-2 mb-2">
-                                                <i class="bi bi-ticket-perforated fs-3"></i>
+                                                <i class="bi bi-ticket-perforated fs-3" style="color: #ff2aa6;"></i>
                                                 <div>
-                                                    <div class="fw-bold">Boleta de Venta</div>
-                                                    <small class="text-muted">Para personas naturales con DNI</small>
+                                                    <div class="fw-bold" style="color: #2b0030;">Boleta de Venta</div>
+                                                    <small style="color: #495057;">Para personas naturales con DNI</small>
                                                 </div>
                                             </div>
                                         </button>
-                                        <button type="button" class="btn btn-outline-secondary shadow-sm flex-fill text-start comprobante-card" data-tipo="factura">
+                                        <button type="button" class="btn shadow-sm flex-fill text-start comprobante-card" data-tipo="factura" style="border: 2px solid #ffc0d9; background: linear-gradient(135deg, #fff5f8 0%, #ffffff 100%);">
                                             <div class="d-flex align-items-center gap-2 mb-2">
-                                                <i class="bi bi-file-earmark-text fs-3"></i>
+                                                <i class="bi bi-file-earmark-text fs-3" style="color: #ff2aa6;"></i>
                                                 <div>
-                                                    <div class="fw-bold">Factura</div>
-                                                    <small class="text-muted">Para empresas con RUC</small>
+                                                    <div class="fw-bold" style="color: #2b0030;">Factura</div>
+                                                    <small style="color: #495057;">Para empresas con RUC</small>
+                                                </div>
+                                            </div>
+                                        </button>
+                                        <button type="button" class="btn shadow-sm flex-fill text-start comprobante-card" data-tipo="nota_venta" style="border: 2px solid #ffc0d9; background: linear-gradient(135deg, #fff5f8 0%, #ffffff 100%);">
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                <i class="bi bi-journal-text fs-3" style="color: #ff2aa6;"></i>
+                                                <div>
+                                                    <div class="fw-bold" style="color: #2b0030;">Nota de Venta</div>
+                                                    <small style="color: #495057;">Registro interno sin validez tributaria</small>
                                                 </div>
                                             </div>
                                         </button>
                                     </div>
                                     <input type="hidden" id="tipoComprobanteVenta" value="nota_venta">
-                                    <div class="row g-2 align-items-end">
-                                        <div class="col-auto">
-                                            <div class="form-floating">
-                                                <select id="tipoComprobanteSecundario" class="form-select form-select-sm">
-                                                    <option value="">Uso interno</option>
-                                                    <option value="nota_venta">Nota de Venta</option>
-                                                </select>
-                                                <label for="tipoComprobanteSecundario">Uso interno</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <span class="text-muted small">Selecciona Nota de Venta solo para registro interno sin validez tributaria.</span>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -282,7 +286,7 @@
                                     <label for="clienteNombreInput" class="form-label">Nombre / Razón Social</label>
                                     <input type="text" id="clienteNombreInput" class="form-control" placeholder="Nombre del cliente...">
                                 </div>
-                                <div class="col-12">
+                                <div class="col-12" id="direccionFiscalContainer" style="display: none;">
                                     <label for="clienteDireccionInput" class="form-label">Dirección Fiscal</label>
                                     <input type="text" id="clienteDireccionInput" class="form-control" placeholder="Dirección...">
                                 </div>
@@ -555,6 +559,67 @@
     <!-- Scripts globales y específicos -->
     <script th:src="@{/js/main.js}"></script>
     <script th:src="@{/js/nueva-venta.js}"></script>
+
+    <script>
+    // Manejar selección de tipo de comprobante
+    document.addEventListener('DOMContentLoaded', function() {
+        const comprobanteCards = document.querySelectorAll('.comprobante-card');
+        const direccionContainer = document.getElementById('direccionFiscalContainer');
+        
+        // Color de la empresa (rosa Yo'Max)
+        const colorEmpresa = '#ff2aa6';
+        const colorBorde = '#ffc0d9';
+        
+        comprobanteCards.forEach(card => {
+            card.addEventListener('click', function() {
+                // Remover selección anterior - restaurar estado base
+                comprobanteCards.forEach(c => {
+                    c.style.background = 'linear-gradient(135deg, #fff5f8 0%, #ffffff 100%)';
+                    c.style.border = '2px solid ' + colorBorde;
+                    c.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)';
+                    // Restaurar color de texto
+                    const icon = c.querySelector('i');
+                    const title = c.querySelector('.fw-bold');
+                    const subtitle = c.querySelector('small');
+                    if (icon) icon.style.color = colorEmpresa;
+                    if (title) title.style.color = '#2b0030';
+                    if (subtitle) subtitle.style.color = '#495057';
+                });
+                
+                // Aplicar estilo de selección
+                this.style.background = 'linear-gradient(135deg, #ffe0f0 0%, #ffc0d9 100%)';
+                this.style.border = '3px solid ' + colorEmpresa;
+                this.style.boxShadow = '0 6px 20px rgba(255, 42, 166, 0.35)';
+                
+                // Mejorar contraste de texto en la card seleccionada
+                const icon = this.querySelector('i');
+                const title = this.querySelector('.fw-bold');
+                const subtitle = this.querySelector('small');
+                if (icon) icon.style.color = colorEmpresa;
+                if (title) title.style.color = '#2b0030';
+                if (subtitle) subtitle.style.color = '#495057';
+                
+                // Obtener tipo de comprobante
+                const tipo = this.dataset.tipo;
+                
+                // Mostrar/ocultar campo de dirección
+                // Solo se muestra para factura (empresas con RUC)
+                if (tipo === 'factura') {
+                    direccionContainer.style.display = 'block';
+                } else {
+                    direccionContainer.style.display = 'none';
+                    // Limpiar el campo de dirección
+                    document.getElementById('clienteDireccionInput').value = '';
+                }
+            });
+        });
+        
+        // Inicializar: ocultar campo de dirección por defecto
+        if (direccionContainer) {
+            direccionContainer.style.display = 'none';
+        }
+    });
+    </script>
 
 </body>
 </html>

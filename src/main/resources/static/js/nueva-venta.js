@@ -763,8 +763,17 @@
                 if (result.estadoSunat && result.estadoSunat.toLowerCase() === 'aceptado' && result.pdfUrl) {
                     mostrarConfirmacionPostVenta(result);
                 } else {
-                    const errorMessage = result.errorMessage || result.message || 'El comprobante no fue aceptado por SUNAT.';
-                    Swal.fire('Venta registrada', errorMessage, 'warning').then(() => {
+                    Swal.fire({
+                        title: 'Venta registrada',
+                        html: '<div style="text-align:left;">' +
+                            '<p>El comprobante está <strong>pendiente de confirmación</strong> por SUNAT.</p>' +
+                            '<p style="font-size:0.9em;color:#666;">Los comprobantes electrónicos pueden tardar entre <strong>5 y 15 minutos</strong> en ser procesados.</p>' +
+                            '<p style="font-size:0.9em;color:#666;">Puede cerrar esta ventana y continuar con otras ventas. El comprobante se actualizará automáticamente.</p>' +
+                            '</div>',
+                        icon: 'info',
+                        confirmButtonText: 'Entendido',
+                        width: '500px'
+                    }).then(() => {
                         window.location.href = '/ventas/nueva';
                     });
                 }

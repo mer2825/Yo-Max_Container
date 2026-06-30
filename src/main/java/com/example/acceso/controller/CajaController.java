@@ -15,6 +15,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -531,6 +532,30 @@ public class CajaController {
         model.addAttribute("logAuditoria", logAuditoria);
         
         return "caja-sesion-actual-pdf";
+    }
+
+    @GetMapping("/sesion-actual/pdf/download")
+    @Transactional(readOnly = true)
+    public ResponseEntity<org.springframework.core.io.InputStreamResource> descargarPdfSesionActual(HttpSession session) {
+        Optional<SesionCaja> sesionActiva = cajaService.obtenerSesionActiva();
+        if (sesionActiva.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        SesionCaja sesion = sesionActiva.get();
+        Map<String, Object> detalle = cajaService.obtenerDetalleSesion(sesion.getId());
+        List<EventoAuditoriaDTO> logAuditoria = cajaService.obtenerLogAuditoriaSesionActiva();
+        
+        // Generar PDF
+        ByteArrayInputStream bis = pdfService.generarReporteSesionCaja(sesion, detalle, logAuditoria);
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Disposition", "attachment; filename=reporte-sesion-actual-" + sesion.getId() + ".pdf");
+        
+        return ResponseEntity.ok()
+                .headers(headers)
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .body(new org.springframework.core.io.InputStreamResource(bis));
     }
 
     @GetMapping("/reporte")

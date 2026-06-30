@@ -50,31 +50,33 @@
     </th:block>
 
     <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <h2 class="mb-0 fw-bold">
-                    <i class="bi bi-display me-2" style="color: var(--ym-pink);"></i>Monitor de Caja
-                </h2>
-                <span class="badge badge-sesion-activa">
-                    <i class="bi bi-circle-fill me-1"></i>Sesión Activa
-                </span>
-            </div>
-            <hr class="mt-3" style="border-color: rgba(255, 42, 166, 0.1);">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="mb-0 fw-bold" style="font-size: 1.75rem; color: var(--ym-dark);">
+                <i class="bi bi-display me-2" style="color: var(--ym-pink);"></i>Monitor de Caja
+            </h2>
+            <span class="badge badge-sesion-activa">
+                <i class="bi bi-circle-fill me-1"></i>Sesión Activa
+            </span>
         </div>
+        <p class="text-muted mb-0" style="font-size: 0.9rem;">
+            <i class="bi bi-info-circle me-1"></i>Visualización en tiempo real del estado de caja
+        </p>
     </div>
+</div>
 
-    <div class="row g-3 mb-4">
+    <div class="row g-4 mb-4">
         <div class="col-md-3">
-            <div class="card monitor-card h-100">
-                <div class="card-body">
+            <div class="card monitor-card h-100 border-0">
+                <div class="card-body p-4">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="flex-grow-1">
-                            <p class="monitor-stat-label mb-2">Total ventas del día</p>
-                            <h3 class="monitor-stat-value mb-1 text-success" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.totalVentas, 0, 2)}">S/ 0.00</h3>
-                            <small class="monitor-stat-sublabel">Todos los métodos</small>
+                            <p class="monitor-stat-label mb-2">Total Ventas del Día</p>
+                            <h3 class="monitor-stat-value mb-1" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.totalVentas, 0, 2)}">S/ 0.00</h3>
+                            <small class="monitor-stat-sublabel">Todos los métodos de pago</small>
                         </div>
-                        <div class="monitor-stat-icon bg-success bg-opacity-10">
-                            <i class="bi bi-currency-dollar text-success"></i>
+                        <div class="monitor-stat-icon" style="background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 100%); color: #28a745;">
+                            <i class="bi bi-currency-dollar"></i>
                         </div>
                     </div>
                 </div>
@@ -82,16 +84,16 @@
         </div>
 
         <div class="col-md-3">
-            <div class="card monitor-card h-100">
-                <div class="card-body">
+            <div class="card monitor-card h-100 border-0">
+                <div class="card-body p-4">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="flex-grow-1">
-                            <p class="monitor-stat-label mb-2">Solo efectivo</p>
-                            <h3 class="monitor-stat-value mb-1 text-success" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.soloEfectivo, 0, 2)}">S/ 0.00</h3>
+                            <p class="monitor-stat-label mb-2">Solo Efectivo</p>
+                            <h3 class="monitor-stat-value mb-1" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.soloEfectivo, 0, 2)}">S/ 0.00</h3>
                             <small class="monitor-stat-sublabel">Lo que realmente entró a caja</small>
                         </div>
-                        <div class="monitor-stat-icon bg-success bg-opacity-10">
-                            <i class="bi bi-cash text-success"></i>
+                        <div class="monitor-stat-icon" style="background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 100%); color: #28a745;">
+                            <i class="bi bi-cash"></i>
                         </div>
                     </div>
                 </div>
@@ -99,16 +101,16 @@
         </div>
 
         <div class="col-md-3">
-            <div class="card monitor-card h-100">
-                <div class="card-body">
+            <div class="card monitor-card h-100 border-0">
+                <div class="card-body p-4">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="flex-grow-1">
-                            <p class="monitor-stat-label mb-2">Yape / otros métodos</p>
-                            <h3 class="monitor-stat-value mb-1 text-warning" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.otrosMedios, 0, 2)}">S/ 0.00</h3>
+                            <p class="monitor-stat-label mb-2">Yape / Otros Métodos</p>
+                            <h3 class="monitor-stat-value mb-1" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.otrosMedios, 0, 2)}">S/ 0.00</h3>
                             <small class="monitor-stat-sublabel">No impacta caja física</small>
                         </div>
-                        <div class="monitor-stat-icon bg-warning bg-opacity-10">
-                            <i class="bi bi-phone text-warning"></i>
+                        <div class="monitor-stat-icon" style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 193, 7, 0.05) 100%); color: #ffc107;">
+                            <i class="bi bi-phone"></i>
                         </div>
                     </div>
                 </div>
@@ -116,16 +118,16 @@
         </div>
 
         <div class="col-md-3">
-            <div class="card monitor-card h-100">
-                <div class="card-body">
+            <div class="card monitor-card h-100 border-0">
+                <div class="card-body p-4">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="flex-grow-1">
-                            <p class="monitor-stat-label mb-2">Efectivo en caja ahora</p>
-                            <h3 class="monitor-stat-value mb-1 text-dark" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.efectivoEnCaja, 0, 2)}">S/ 0.00</h3>
+                            <p class="monitor-stat-label mb-2">Efectivo en Caja</p>
+                            <h3 class="monitor-stat-value mb-1" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.efectivoEnCaja, 0, 2)}">S/ 0.00</h3>
                             <small class="monitor-stat-sublabel">Fondo + ventas + movimientos</small>
                         </div>
-                        <div class="monitor-stat-icon bg-dark bg-opacity-10">
-                            <i class="bi bi-safe text-dark"></i>
+                        <div class="monitor-stat-icon" style="background: linear-gradient(135deg, rgba(255, 42, 166, 0.1) 0%, rgba(255, 42, 166, 0.05) 100%); color: var(--ym-pink);">
+                            <i class="bi bi-safe"></i>
                         </div>
                     </div>
                 </div>
@@ -135,30 +137,30 @@
 
     <div class="row g-3 mb-4">
         <div class="col-12">
-            <div class="card monitor-card">
+            <div class="card monitor-card border-0">
                 <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-semibold">
+                    <h5 class="mb-0 fw-bold" style="font-size: 1.1rem; color: var(--ym-dark);">
                         <i class="bi bi-calendar-range me-2" style="color: var(--ym-pink);"></i>Filtro de Movimientos por Período
                     </h5>
                 </div>
                 <div class="card-body">
                     <div class="row g-3 align-items-end">
                         <div class="col-md-4">
-                            <label for="fechaDesde" class="form-label fw-semibold">Fecha Desde</label>
-                            <input type="date" class="form-control" id="fechaDesde" name="fechaDesde">
+                            <label for="fechaDesde" class="form-label fw-semibold" style="font-size: 0.9rem;">Fecha Desde</label>
+                            <input type="date" class="form-control" id="fechaDesde" name="fechaDesde" style="border-radius: 10px; border: 2px solid #e9ecef;">
                         </div>
                         <div class="col-md-4">
-                            <label for="fechaHasta" class="form-label fw-semibold">Fecha Hasta</label>
-                            <input type="date" class="form-control" id="fechaHasta" name="fechaHasta">
+                            <label for="fechaHasta" class="form-label fw-semibold" style="font-size: 0.9rem;">Fecha Hasta</label>
+                            <input type="date" class="form-control" id="fechaHasta" name="fechaHasta" style="border-radius: 10px; border: 2px solid #e9ecef;">
                         </div>
                         <div class="col-md-4">
-                            <button type="button" class="btn btn-primary w-100" id="btnFiltrarPeriodo">
+                            <button type="button" class="btn btn-primary w-100" id="btnFiltrarPeriodo" style="border-radius: 10px; padding: 0.6rem 1.2rem;">
                                 <i class="bi bi-funnel me-2"></i>Filtrar Movimientos
                             </button>
                         </div>
                     </div>
                     <div class="mt-3">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnLimpiarFiltro">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnLimpiarFiltro" style="border-radius: 8px;">
                             <i class="bi bi-x-circle me-1"></i>Limpiar filtro (ver sesión actual)
                         </button>
                     </div>
@@ -169,18 +171,18 @@
 
     <div class="row g-3 mb-4">
         <div class="col-12">
-            <div class="card monitor-card">
+            <div class="card monitor-card border-0">
                 <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-semibold">
+                    <h5 class="mb-0 fw-bold" style="font-size: 1.1rem; color: var(--ym-dark);">
                         <i class="bi bi-gear me-2" style="color: var(--ym-pink);"></i>Acciones de Caja
                     </h5>
                 </div>
                 <div class="card-body">
                     <div class="d-flex gap-3 flex-wrap">
-                        <button type="button" class="btn btn-primary btn-monitor" data-bs-toggle="modal" data-bs-target="#movimientoModal">
+                        <button type="button" class="btn btn-primary btn-monitor" data-bs-toggle="modal" data-bs-target="#movimientoModal" style="border-radius: 10px;">
                             <i class="bi bi-arrow-left-right me-2"></i>Registrar Movimiento
                         </button>
-                        <a th:href="@{/caja/cerrar}" class="btn btn-danger btn-monitor">
+                        <a th:href="@{/caja/cerrar}" class="btn btn-danger btn-monitor" style="border-radius: 10px;">
                             <i class="bi bi-lock me-2"></i>Cerrar Caja
                         </a>
                     </div>
@@ -195,9 +197,9 @@
                 <div class="card-header bg-white border-0 py-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">
-                            <i class="bi bi-journal-text me-2"></i>Log de Auditoría
+                            <i class="bi bi-journal-text me-2"></i>Historial de Movimientos
                         </h5>
-                        <a th:href="@{/caja/sesion-actual/pdf}" class="btn btn-outline-primary btn-sm" target="_blank">
+                        <a th:href="@{/caja/sesion-actual/pdf/download}" class="btn btn-outline-primary btn-sm" target="_blank">
                             <i class="bi bi-file-earmark-pdf me-2"></i>Exportar PDF
                         </a>
                     </div>
@@ -225,7 +227,7 @@
                     </div>
 
                     <!-- Lista de eventos -->
-                    <div class="list-group" id="logAuditoriaList">
+                    <div class="list-group" id="historialMovimientosList">
                         <div class="text-center py-5">
                             <div class="spinner-border text-primary" role="status">
                                 <span class="visually-hidden">Cargando...</span>
@@ -285,8 +287,8 @@ const categoriasIngreso = [
 let tipoSeleccionado = null;
 let categoriaSeleccionada = null;
 
-// Log de auditoría
-let logAuditoriaCompleto = [];
+    // Historial de movimientos
+    let historialCompleto = [];
 let filtroActual = 'TODOS';
 
     // Variables para filtro de período
@@ -475,11 +477,11 @@ let filtroActual = 'TODOS';
         });
     });
 
-    // ===== Cargar log de auditoría =====
-    cargarLogAuditoria();
+    // ===== Cargar historial de movimientos =====
+    cargarHistorial();
     
-    // Recargar log cada 30 segundos
-    setInterval(cargarLogAuditoria, 30000);
+    // Recargar historial cada 30 segundos
+    setInterval(cargarHistorial, 30000);
 
     // ===== Filtro de Período =====
     const btnFiltrar = document.getElementById('btnFiltrarPeriodo');
@@ -565,8 +567,8 @@ function validarFormulario() {
     btnConfirmar.disabled = !(tipoSeleccionado && categoriaSeleccionada && monto && descripcion && valido);
 }
 
-// Cargar log de auditoría usando el DTO unificado
-function cargarLogAuditoria() {
+// Cargar historial de movimientos usando el DTO unificado
+function cargarHistorial() {
     let url = '/caja/api/sesion-actual/log';
     
     // Si hay filtro de período activo, usar el endpoint de período
@@ -582,12 +584,12 @@ function cargarLogAuditoria() {
             return response.json();
         })
         .then(data => {
-            logAuditoriaCompleto = data;
+            historialCompleto = data;
             aplicarFiltro('TODOS');
         })
         .catch(error => {
             console.error('Error al cargar log de auditoría:', error);
-            const container = document.getElementById('logAuditoriaList');
+            const container = document.getElementById('historialMovimientosList');
             if (container) {
                 container.innerHTML = '<div class="alert alert-danger">Error al cargar el log de auditoría</div>';
             }
@@ -607,22 +609,22 @@ function aplicarFiltro(filtro) {
     });
     
     // Filtrar eventos usando los nuevos tipos del DTO MovimientoLogDTO
-    let eventosFiltrados = logAuditoriaCompleto;
+    let eventosFiltrados = historialCompleto;
     
     if (filtro === 'VENTA_EFECTIVO') {
-        eventosFiltrados = logAuditoriaCompleto.filter(e => 
+        eventosFiltrados = historialCompleto.filter(e => 
             e.tipo === 'VENTA_EFECTIVO' || e.tipo === 'VENTA_OTRO'
         );
     } else if (filtro === 'EFECTIVO') {
-        eventosFiltrados = logAuditoriaCompleto.filter(e => 
+        eventosFiltrados = historialCompleto.filter(e => 
             e.tipo === 'VENTA_EFECTIVO' || e.tipo === 'APERTURA'
         );
     } else if (filtro === 'YAPE_TRANSFERENCIA') {
-        eventosFiltrados = logAuditoriaCompleto.filter(e => 
+        eventosFiltrados = historialCompleto.filter(e => 
             e.tipo === 'VENTA_OTRO'
         );
     } else if (filtro === 'MOVIMIENTO') {
-        eventosFiltrados = logAuditoriaCompleto.filter(e => 
+        eventosFiltrados = historialCompleto.filter(e => 
             e.tipo === 'RETIRO' || e.tipo === 'INGRESO'
         );
     }
@@ -633,7 +635,7 @@ function aplicarFiltro(filtro) {
 
 // Renderizar eventos en el DOM
 function renderizarEventos(eventos) {
-    const container = document.getElementById('logAuditoriaList');
+    const container = document.getElementById('historialMovimientosList');
     if (!container) return;
     
     if (eventos.length === 0) {

@@ -233,7 +233,7 @@
                     } else {
                         btn.disabled = false;
                         btn.textContent = '🔄 Refrescar estado desde SUNAT';
-                        alert('Estado actual: ' + (data.estadoSunat || 'pendiente'));
+                        alert('El comprobante aún está pendiente de confirmación por SUNAT.\n\nPor favor, espere unos minutos y vuelva a intentarlo.\n\nLos comprobantes pueden tardar entre 5 y 15 minutos en ser procesados.');
                     }
                 })
                 .catch(() => {
