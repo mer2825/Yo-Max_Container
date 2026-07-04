@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="300">
+    <title>Monitor de Caja</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<div th:replace="~{topbar :: topbar(activeUri='/caja')}"></div>
+
+<div class="container-fluid" style="padding-top: 2rem;">
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <span th:text="${successMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <span th:text="${errorMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <!-- Banner de alerta de cierre -->
+    <th:block th:if="${hayAlertaCierre}">
+        <div class="alerta-cierre p-3 mb-4">
+            <div class="d-flex align-items-center gap-3">
+                <span class="alerta-cierre-icon">⏰</span>
+                <div class="flex-grow-1">
+                    <div class="fw-semibold" style="color:#7a4c0d; font-size: 0.9rem;">
+                        Recuerda cerrar la caja antes de salir
+                    </div>
+                    <div style="color:#a86a1a; font-size: 0.8rem;">
+                        Son las
+                        <span th:text="${#temporals.format(#temporals.createNow(), 'hh:mm a')}" class="fw-semibold"></span>
+                        · La sesión lleva
+                        <span th:text="${resumen.duracion}" class="fw-semibold"></span>
+                        abierta
+                    </div>
+                </div>
+                <a href="/caja/cerrar"
+                   class="btn btn-sm fw-semibold"
+                   style="background:#7a4c0d;color:white;border:none;border-radius:6px;padding:6px 14px;font-size:0.8rem;text-decoration:none;">
+                    Cerrar caja
+                </a>
+            </div>
+        </div>
+    </th:block>
+
+    <div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="mb-0 fw-bold" style="font-size: 1.75rem; color: var(--ym-dark);">
+                <i class="bi bi-display me-2" style="color: var(--ym-pink);"></i>Monitor de Caja
+            </h2>
+            <span class="badge badge-sesion-activa">
+                <i class="bi bi-circle-fill me-1"></i>Sesión Activa
+            </span>
+        </div>
+        <p class="text-muted mb-0" style="font-size: 0.9rem;">
+            <i class="bi bi-info-circle me-1"></i>Visualización en tiempo real del estado de caja
+        </p>
+    </div>
+</div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card monitor-card h-100 border-0">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="flex-grow-1">
+                            <p class="monitor-stat-label mb-2">Total Ventas del Día</p>
+                            <h3 class="monitor-stat-value mb-1" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.totalVentas, 0, 2)}">S/ 0.00</h3>
+                            <small class="monitor-stat-sublabel">Todos los métodos de pago</small>
+                        </div>
+                        <div class="monitor-stat-icon" style="background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 100%); color: #28a745;">
+                            <i class="bi bi-currency-dollar"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card monitor-card h-100 border-0">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="flex-grow-1">
+                            <p class="monitor-stat-label mb-2">Solo Efectivo</p>
+                            <h3 class="monitor-stat-value mb-1" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.soloEfectivo, 0, 2)}">S/ 0.00</h3>
+                            <small class="monitor-stat-sublabel">Lo que realmente entró a caja</small>
+                        </div>
+                        <div class="monitor-stat-icon" style="background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 100%); color: #28a745;">
+                            <i class="bi bi-cash"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card monitor-card h-100 border-0">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="flex-grow-1">
+                            <p class="monitor-stat-label mb-2">Yape / Otros Métodos</p>
+                            <h3 class="monitor-stat-value mb-1" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.otrosMedios, 0, 2)}">S/ 0.00</h3>
+                            <small class="monitor-stat-sublabel">No impacta caja física</small>
+                        </div>
+                        <div class="monitor-stat-icon" style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 193, 7, 0.05) 100%); color: #ffc107;">
+                            <i class="bi bi-phone"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card monitor-card h-100 border-0">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="flex-grow-1">
+                            <p class="monitor-stat-label mb-2">Efectivo en Caja</p>
+                            <h3 class="monitor-stat-value mb-1" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.efectivoEnCaja, 0, 2)}">S/ 0.00</h3>
+                            <small class="monitor-stat-sublabel">Fondo + ventas + movimientos</small>
+                        </div>
+                        <div class="monitor-stat-icon" style="background: linear-gradient(135deg, rgba(255, 42, 166, 0.1) 0%, rgba(255, 42, 166, 0.05) 100%); color: var(--ym-pink);">
+                            <i class="bi bi-safe"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="card monitor-card border-0">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0 fw-bold" style="font-size: 1.1rem; color: var(--ym-dark);">
+                        <i class="bi bi-calendar-range me-2" style="color: var(--ym-pink);"></i>Filtro de Movimientos por Período
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label for="fechaDesde" class="form-label fw-semibold" style="font-size: 0.9rem;">Fecha Desde</label>
+                            <input type="date" class="form-control" id="fechaDesde" name="fechaDesde" style="border-radius: 10px; border: 2px solid #e9ecef;">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="fechaHasta" class="form-label fw-semibold" style="font-size: 0.9rem;">Fecha Hasta</label>
+                            <input type="date" class="form-control" id="fechaHasta" name="fechaHasta" style="border-radius: 10px; border: 2px solid #e9ecef;">
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-primary w-100" id="btnFiltrarPeriodo" style="border-radius: 10px; padding: 0.6rem 1.2rem;">
+                                <i class="bi bi-funnel me-2"></i>Filtrar Movimientos
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnLimpiarFiltro" style="border-radius: 8px;">
+                            <i class="bi bi-x-circle me-1"></i>Limpiar filtro (ver sesión actual)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="card monitor-card border-0">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0 fw-bold" style="font-size: 1.1rem; color: var(--ym-dark);">
+                        <i class="bi bi-gear me-2" style="color: var(--ym-pink);"></i>Acciones de Caja
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-3 flex-wrap">
+                        <button type="button" class="btn btn-primary btn-monitor" data-bs-toggle="modal" data-bs-target="#movimientoModal" style="border-radius: 10px;">
+                            <i class="bi bi-arrow-left-right me-2"></i>Registrar Movimiento
+                        </button>
+                        <a th:href="@{/caja/cerrar}" class="btn btn-danger btn-monitor" style="border-radius: 10px;">
+                            <i class="bi bi-lock me-2"></i>Cerrar Caja
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-journal-text me-2"></i>Historial de Movimientos
+                        </h5>
+                        <a th:href="@{/caja/sesion-actual/pdf/download}" class="btn btn-outline-primary btn-sm" target="_blank">
+                            <i class="bi bi-file-earmark-pdf me-2"></i>Exportar PDF
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Filtros -->
+                    <div class="mb-3">
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-primary btn-sm filtro-chip active" data-filtro="TODOS">
+                                <i class="bi bi-funnel me-1"></i>Todo
+                            </button>
+                            <button type="button" class="btn btn-outline-success btn-sm filtro-chip" data-filtro="VENTA_EFECTIVO">
+                                <i class="bi bi-cart me-1"></i>Solo ventas
+                            </button>
+                            <button type="button" class="btn btn-outline-success btn-sm filtro-chip" data-filtro="EFECTIVO">
+                                <i class="bi bi-cash me-1"></i>Solo efectivo
+                            </button>
+                            <button type="button" class="btn btn-outline-warning btn-sm filtro-chip" data-filtro="YAPE_TRANSFERENCIA">
+                                <i class="bi bi-phone me-1"></i>Yape / transferencia
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm filtro-chip" data-filtro="MOVIMIENTO">
+                                <i class="bi bi-arrow-left-right me-1"></i>Movimientos manuales
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Lista de eventos -->
+                    <div class="list-group" id="historialMovimientosList">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Información de Sesión
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <small class="text-muted">Apertura:</small>
+                        <p class="mb-0 fw-semibold" th:text="${#temporals.format(sesionActiva.fechaApertura, 'dd/MM/yyyy HH:mm')}">25/06/2026 08:00</p>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-muted">Fondo Inicial:</small>
+                        <p class="mb-0 fw-semibold" th:text="'S/ ' + ${#numbers.formatDecimal(sesionActiva.montoInicial, 0, 2)}">S/ 100.00</p>
+                    </div>
+                    <div>
+                        <small class="text-muted">Cajero:</small>
+                        <p class="mb-0 fw-semibold" th:text="${sesionActiva.usuarioApertura.nombre}">Juan Pérez</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/scripts :: common-scripts}"></div>
+
+<script>
+// Datos de categorías
+const categoriasRetiro = [
+    { valor: 'PAGO_PROVEEDOR', nombre: 'Pago a Proveedor', placeholder: 'Ej: Pago a Importaciones Liu por factura FAC-001' },
+    { valor: 'GASTO_OPERACION', nombre: 'Gasto de Operación', placeholder: 'Ej: Compra de útiles de limpieza y papelería' },
+    { valor: 'RETIRO_DUENO', nombre: 'Retiro del Dueño', placeholder: 'Ej: Retiro semanal para gastos personales' },
+    { valor: 'PAGO_SERVICIOS', nombre: 'Pago de Servicios', placeholder: 'Ej: Pago de luz y agua del mes de junio' },
+    { valor: 'CAMBIO_TURNO', nombre: 'Cambio de Turno', placeholder: 'Ej: Entrega de caja a turno de la tarde' },
+    { valor: 'OTRO', nombre: 'Otro', placeholder: 'Ej: Otro concepto de retiro' }
+];
+
+const categoriasIngreso = [
+    { valor: 'FONDO_ADICIONAL', nombre: 'Fondo Adicional', placeholder: 'Ej: Depósito de fondo de emergencia' },
+    { valor: 'DEVOLUCION_CLIENTE', nombre: 'Devolución a Cliente', placeholder: 'Ej: Devolución por producto defectuoso' },
+    { valor: 'INGRESO_OTRO', nombre: 'Otro Ingreso', placeholder: 'Ej: Ingreso por cobro de servicio adicional' }
+];
+
+// Variables de estado
+let tipoSeleccionado = null;
+let categoriaSeleccionada = null;
+
+    // Historial de movimientos
+    let historialCompleto = [];
+let filtroActual = 'TODOS';
+
+    // Variables para filtro de período
+    let filtroPeriodoActivo = false;
+    let fechaDesdeFiltro = null;
+    let fechaHastaFiltro = null;
+
+    // Inicializar todo cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', function() {
+    // ===== Inicialización del Modal de Movimiento =====
+    const movimientoModal = document.getElementById('movimientoModal');
+    if (movimientoModal) {
+        movimientoModal.addEventListener('show.bs.modal', function() {
+            // Resetear formulario
+            const form = document.getElementById('formMovimientoCaja');
+            if (form) form.reset();
+            tipoSeleccionado = null;
+            categoriaSeleccionada = null;
+            
+            // Resetear UI
+            const tipoMov = document.getElementById('tipoMovimiento');
+            if (tipoMov) tipoMov.value = '';
+            const catMov = document.getElementById('categoriaMovimiento');
+            if (catMov) {
+                catMov.innerHTML = '<option value="">Seleccionar categoría...</option>';
+                catMov.disabled = true;
+            }
+            const monMov = document.getElementById('montoMovimiento');
+            if (monMov) {
+                monMov.disabled = true;
+                monMov.value = '';
+            }
+            const descMov = document.getElementById('descripcionMovimiento');
+            if (descMov) {
+                descMov.disabled = true;
+                descMov.placeholder = 'Seleccione el tipo y categoría primero';
+            }
+            const btnConf = document.getElementById('btnConfirmarMovimiento');
+            if (btnConf) btnConf.disabled = true;
+            
+            // Remover selección de tarjetas
+            document.querySelectorAll('.tipo-movimiento-card').forEach(card => {
+                card.classList.remove('border-primary', 'border-success', 'border-warning', 'border-danger');
+                card.style.borderColor = '';
+            });
+            
+            // Actualizar usuario y hora
+            const nomUser = document.getElementById('nombreUsuario');
+            if (nomUser) nomUser.textContent = '[[${session.usuarioLogueado.nombre}]]';
+            const horaAct = document.getElementById('horaActual');
+            if (horaAct) horaAct.textContent = new Date().toLocaleString('es-PE');
+        });
+    }
+
+    // Manejar selección de tipo de movimiento
+    document.querySelectorAll('.tipo-movimiento-card').forEach(card => {
+        card.addEventListener('click', function() {
+            // Remover selección anterior
+            document.querySelectorAll('.tipo-movimiento-card').forEach(c => {
+                c.classList.remove('border-primary', 'border-success', 'border-warning', 'border-danger');
+                c.style.borderColor = '';
+            });
+            
+            // Marcar nueva selección
+            tipoSeleccionado = this.dataset.tipo;
+            const tipoMov = document.getElementById('tipoMovimiento');
+            if (tipoMov) tipoMov.value = tipoSeleccionado;
+            
+            if (tipoSeleccionado === 'RETIRO') {
+                this.style.borderColor = '#dc3545';
+                this.classList.add('border-danger');
+            } else {
+                this.style.borderColor = '#198754';
+                this.classList.add('border-success');
+            }
+            
+            // Actualizar categorías
+            actualizarCategorias(tipoSeleccionado);
+            
+            // Habilitar categoría y monto
+            const catMov = document.getElementById('categoriaMovimiento');
+            if (catMov) catMov.disabled = false;
+            const catErr = document.getElementById('categoriaError');
+            if (catErr) catErr.textContent = '';
+            
+            // Habilitar campo de monto al seleccionar tipo de movimiento
+            const monMov = document.getElementById('montoMovimiento');
+            if (monMov) {
+                monMov.disabled = false;
+                monMov.focus();
+            }
+        });
+    });
+
+    // Manejar cambio de categoría
+    const catMov = document.getElementById('categoriaMovimiento');
+    if (catMov) {
+        catMov.addEventListener('change', function() {
+            categoriaSeleccionada = this.value;
+            const catErr = document.getElementById('categoriaError');
+            if (catErr) catErr.textContent = '';
+            
+            // Actualizar placeholder de descripción
+            if (categoriaSeleccionada) {
+                const categorias = tipoSeleccionado === 'RETIRO' ? categoriasRetiro : categoriasIngreso;
+                const categoria = categorias.find(c => c.valor === categoriaSeleccionada);
+                const descMov = document.getElementById('descripcionMovimiento');
+                if (descMov) {
+                    if (categoria) descMov.placeholder = categoria.placeholder;
+                    descMov.disabled = false;
+                    descMov.focus();
+                }
+            } else {
+                const descMov = document.getElementById('descripcionMovimiento');
+                if (descMov) {
+                    descMov.disabled = true;
+                    descMov.placeholder = 'Seleccione el tipo y categoría primero';
+                }
+            }
+            
+            validarFormulario();
+        });
+    }
+
+    // Validar monto
+    const monMov = document.getElementById('montoMovimiento');
+    if (monMov) {
+        monMov.addEventListener('input', function() {
+            const monErr = document.getElementById('montoError');
+            if (monErr) monErr.textContent = '';
+            validarFormulario();
+        });
+    }
+
+    // Validar descripción
+    const descMov = document.getElementById('descripcionMovimiento');
+    if (descMov) {
+        descMov.addEventListener('input', function() {
+            const descErr = document.getElementById('descripcionError');
+            if (descErr) descErr.textContent = '';
+            validarFormulario();
+        });
+    }
+
+    // Validación antes de enviar
+    const formMov = document.getElementById('formMovimientoCaja');
+    if (formMov) {
+        formMov.addEventListener('submit', function(e) {
+            if (!tipoSeleccionado) {
+                e.preventDefault();
+                const tipoErr = document.getElementById('tipoError');
+                if (tipoErr) tipoErr.textContent = 'Debe seleccionar el tipo de movimiento';
+                return;
+            }
+            
+            if (!categoriaSeleccionada) {
+                e.preventDefault();
+                const catErr = document.getElementById('categoriaError');
+                if (catErr) catErr.textContent = 'Debe seleccionar una categoría';
+                return;
+            }
+            
+            const monto = document.getElementById('montoMovimiento').value;
+            if (!monto || parseFloat(monto) <= 0 || parseFloat(monto) > 9999) {
+                e.preventDefault();
+                const monErr = document.getElementById('montoError');
+                if (monErr) monErr.textContent = 'El monto debe estar entre S/ 0.01 y S/ 9,999';
+                return;
+            }
+            
+            const descripcion = document.getElementById('descripcionMovimiento').value;
+            if (!descripcion || descripcion.trim().length < 10) {
+                e.preventDefault();
+                const descErr = document.getElementById('descripcionError');
+                if (descErr) descErr.textContent = 'La descripción debe tener al menos 10 caracteres';
+                return;
+            }
+        });
+    }
+
+    // Manejar clics en filtros
+    document.querySelectorAll('.filtro-chip').forEach(chip => {
+        chip.addEventListener('click', function() {
+            const filtro = this.dataset.filtro;
+            aplicarFiltro(filtro);
+        });
+    });
+
+    // ===== Cargar historial de movimientos =====
+    cargarHistorial();
+    
+    // Recargar historial cada 30 segundos
+    setInterval(cargarHistorial, 30000);
+
+    // ===== Filtro de Período =====
+    const btnFiltrar = document.getElementById('btnFiltrarPeriodo');
+    if (btnFiltrar) {
+        btnFiltrar.addEventListener('click', function() {
+            const fechaDesde = document.getElementById('fechaDesde').value;
+            const fechaHasta = document.getElementById('fechaHasta').value;
+            
+            if (!fechaDesde || !fechaHasta) {
+                alert('Por favor seleccione ambas fechas');
+                return;
+            }
+            
+            if (fechaDesde > fechaHasta) {
+                alert('La fecha desde no puede ser mayor que la fecha hasta');
+                return;
+            }
+            
+            filtroPeriodoActivo = true;
+            fechaDesdeFiltro = fechaDesde;
+            fechaHastaFiltro = fechaHasta;
+            
+            cargarLogAuditoria();
+        });
+    }
+
+    const btnLimpiar = document.getElementById('btnLimpiarFiltro');
+    if (btnLimpiar) {
+        btnLimpiar.addEventListener('click', function() {
+            filtroPeriodoActivo = false;
+            fechaDesdeFiltro = null;
+            fechaHastaFiltro = null;
+            document.getElementById('fechaDesde').value = '';
+            document.getElementById('fechaHasta').value = '';
+            cargarLogAuditoria();
+        });
+    }
+});
+
+// Actualizar dropdown de categorías
+function actualizarCategorias(tipo) {
+    const select = document.getElementById('categoriaMovimiento');
+    if (!select) return;
+    const categorias = tipo === 'RETIRO' ? categoriasRetiro : categoriasIngreso;
+    
+    select.innerHTML = '<option value="">Seleccionar categoría...</option>';
+    categorias.forEach(cat => {
+        select.innerHTML += `<option value="${cat.valor}">${cat.nombre}</option>`;
+    });
+    
+    categoriaSeleccionada = null;
+    select.value = '';
+}
+
+// Validar formulario completo
+function validarFormulario() {
+    const montoInput = document.getElementById('montoMovimiento');
+    const descInput = document.getElementById('descripcionMovimiento');
+    const btnConfirmar = document.getElementById('btnConfirmarMovimiento');
+    
+    if (!montoInput || !descInput || !btnConfirmar) return;
+    
+    const monto = montoInput.value;
+    const descripcion = descInput.value;
+    
+    let valido = true;
+    
+    // Validar monto
+    if (monto && (parseFloat(monto) <= 0 || parseFloat(monto) > 9999)) {
+        const monErr = document.getElementById('montoError');
+        if (monErr) monErr.textContent = 'El monto debe estar entre S/ 0.01 y S/ 9,999';
+        valido = false;
+    }
+    
+    // Validar descripción
+    if (descripcion && descripcion.trim().length < 10) {
+        const descErr = document.getElementById('descripcionError');
+        if (descErr) descErr.textContent = 'La descripción debe tener al menos 10 caracteres';
+        valido = false;
+    }
+    
+    // Habilitar botón si todo es válido
+    btnConfirmar.disabled = !(tipoSeleccionado && categoriaSeleccionada && monto && descripcion && valido);
+}
+
+// Cargar historial de movimientos usando el DTO unificado
+function cargarHistorial() {
+    let url = '/caja/api/sesion-actual/log';
+    
+    // Si hay filtro de período activo, usar el endpoint de período
+    if (filtroPeriodoActivo && fechaDesdeFiltro && fechaHastaFiltro) {
+        url = `/caja/api/movimientos/periodo?desde=${fechaDesdeFiltro}&hasta=${fechaHastaFiltro}`;
+    }
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            historialCompleto = data;
+            aplicarFiltro('TODOS');
+        })
+        .catch(error => {
+            console.error('Error al cargar log de auditoría:', error);
+            const container = document.getElementById('historialMovimientosList');
+            if (container) {
+                container.innerHTML = '<div class="alert alert-danger">Error al cargar el log de auditoría</div>';
+            }
+        });
+}
+
+// Aplicar filtro
+function aplicarFiltro(filtro) {
+    filtroActual = filtro;
+    
+    // Actualizar chips activos
+    document.querySelectorAll('.filtro-chip').forEach(chip => {
+        chip.classList.remove('active');
+        if (chip.dataset.filtro === filtro) {
+            chip.classList.add('active');
+        }
+    });
+    
+    // Filtrar eventos usando los nuevos tipos del DTO MovimientoLogDTO
+    let eventosFiltrados = historialCompleto;
+    
+    if (filtro === 'VENTA_EFECTIVO') {
+        eventosFiltrados = historialCompleto.filter(e => 
+            e.tipo === 'VENTA_EFECTIVO' || e.tipo === 'VENTA_OTRO'
+        );
+    } else if (filtro === 'EFECTIVO') {
+        eventosFiltrados = historialCompleto.filter(e => 
+            e.tipo === 'VENTA_EFECTIVO' || e.tipo === 'APERTURA'
+        );
+    } else if (filtro === 'YAPE_TRANSFERENCIA') {
+        eventosFiltrados = historialCompleto.filter(e => 
+            e.tipo === 'VENTA_OTRO'
+        );
+    } else if (filtro === 'MOVIMIENTO') {
+        eventosFiltrados = historialCompleto.filter(e => 
+            e.tipo === 'RETIRO' || e.tipo === 'INGRESO'
+        );
+    }
+    
+    // Renderizar eventos
+    renderizarEventos(eventosFiltrados);
+}
+
+// Renderizar eventos en el DOM
+function renderizarEventos(eventos) {
+    const container = document.getElementById('historialMovimientosList');
+    if (!container) return;
+    
+    if (eventos.length === 0) {
+        container.innerHTML = '<div class="text-center py-4 text-muted">No hay eventos para mostrar</div>';
+        return;
+    }
+    
+    let html = '';
+    eventos.forEach(evento => {
+        const fecha = new Date(evento.fecha).toLocaleString('es-PE');
+        const montoFormateado = evento.monto ? 'S/ ' + parseFloat(evento.monto).toFixed(2) : '';
+        const signoMonto = evento.signo || (evento.tipo === 'RETIRO' ? '−' : '+');
+        const esRetiro = evento.tipo === 'RETIRO';
+        const esApertura = evento.tipo === 'APERTURA';
+        const badgeColor = esRetiro ? 'bg-danger' : (esApertura ? 'bg-secondary' : 'bg-success');
+        let icono = 'bi-circle';
+        let colorIcono = 'text-secondary';
+        
+        if (evento.tipo === 'APERTURA') { icono = 'bi-lock-open'; colorIcono = 'text-secondary'; }
+        else if (evento.tipo === 'VENTA_EFECTIVO') { icono = 'bi-cart'; colorIcono = 'text-success'; }
+        else if (evento.tipo === 'VENTA_OTRO') { icono = 'bi-cart'; colorIcono = 'text-warning'; }
+        else if (evento.tipo === 'RETIRO') { icono = 'bi-arrow-down-circle'; colorIcono = 'text-danger'; }
+        else if (evento.tipo === 'INGRESO') { icono = 'bi-arrow-up-circle'; colorIcono = 'text-warning'; }
+        else if (evento.tipo === 'CIERRE') { icono = 'bi-lock'; colorIcono = 'text-secondary'; }
+        
+        html += `
+            <div class="list-group-item list-group-item-action log-auditoria-item">
+                <div class="d-flex w-100 justify-content-between align-items-center">
+                    <div class="d-flex align-items-center flex-grow-1">
+                        <div class="log-auditoria-icon bg-${esRetiro ? 'danger' : (esApertura ? 'secondary' : 'success')} bg-opacity-10 me-3">
+                            <i class="bi ${icono} ${colorIcono}"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1 fw-semibold">${evento.tipo.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</h6>
+                            <p class="mb-1 text-muted small">${evento.descripcion}</p>
+                            <small class="text-muted">
+                                <i class="bi bi-person me-1"></i>${evento.usuario} • 
+                                <i class="bi bi-clock me-1"></i>${fecha}
+                            </small>
+                            ${evento.categoria ? `<br><span class="badge bg-light text-dark mt-1">${evento.categoria}</span>` : ''}
+                            ${!evento.impactaEfectivo ? `<br><small class="text-warning"><i class="bi bi-info-circle me-1"></i>No impacta efectivo</small>` : ''}
+                        </div>
+                    </div>
+                    ${montoFormateado ? `<div class="ms-3">
+                        <span class="badge log-auditoria-badge ${badgeColor}">
+                            ${signoMonto} ${montoFormateado}
+                        </span>
+                    </div>` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+</script>
+
+<!-- Modal Único de Movimiento -->
+<div class="modal fade" id="movimientoModal" tabindex="-1" aria-labelledby="movimientoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="movimientoModalLabel">
+                    <i class="bi bi-arrow-left-right me-2"></i>Registrar Movimiento de Caja
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form th:action="@{/caja/movimiento}" method="POST" id="formMovimientoCaja">
+                <div class="modal-body">
+                    <input type="hidden" name="tipo" id="tipoMovimiento" value="">
+                    
+                    <!-- Selector Visual de Tipo -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Tipo de Movimiento *</label>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="card border-2 cursor-pointer tipo-movimiento-card" data-tipo="RETIRO" id="cardRetiro">
+                                    <div class="card-body text-center py-4">
+                                        <i class="bi bi-arrow-down-circle text-danger" style="font-size: 2.5rem;"></i>
+                                        <h6 class="mt-2 mb-1 fw-bold">Retiro de efectivo</h6>
+                                        <small class="text-muted">Reduce la caja</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-2 cursor-pointer tipo-movimiento-card" data-tipo="INGRESO" id="cardIngreso">
+                                    <div class="card-body text-center py-4">
+                                        <i class="bi bi-arrow-up-circle text-success" style="font-size: 2.5rem;"></i>
+                                        <h6 class="mt-2 mb-1 fw-bold">Entrada de efectivo</h6>
+                                        <small class="text-muted">Aumenta la caja</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="invalid-feedback d-block text-danger small mt-2" id="tipoError"></div>
+                    </div>
+
+                    <!-- Categoría -->
+                    <div class="mb-3">
+                        <label for="categoriaMovimiento" class="form-label fw-semibold">Categoría del movimiento *</label>
+                        <select class="form-select" id="categoriaMovimiento" name="categoria" required disabled>
+                            <option value="">Seleccionar categoría...</option>
+                        </select>
+                        <div class="invalid-feedback d-block text-danger small" id="categoriaError"></div>
+                    </div>
+
+                    <!-- Monto -->
+                    <div class="mb-3">
+                        <label for="montoMovimiento" class="form-label fw-semibold">Monto (S/) *</label>
+                        <input type="number" class="form-control" id="montoMovimiento" name="monto" 
+                               step="0.01" min="0.01" max="9999" required disabled>
+                        <small class="form-text text-muted">Monto máximo: S/ 9,999</small>
+                        <div class="invalid-feedback d-block text-danger small" id="montoError"></div>
+                    </div>
+
+                    <!-- Descripción -->
+                    <div class="mb-3">
+                        <label for="descripcionMovimiento" class="form-label fw-semibold">Descripción detallada *</label>
+                        <textarea class="form-control" id="descripcionMovimiento" name="motivo" 
+                                  rows="3" minlength="10" required disabled
+                                  placeholder="Seleccione el tipo y categoría primero"></textarea>
+                        <small class="form-text text-muted">Mínimo 10 caracteres</small>
+                        <div class="invalid-feedback d-block text-danger small" id="descripcionError"></div>
+                    </div>
+
+                    <!-- Aviso de Inmutabilidad -->
+                    <div class="alert alert-warning" role="alert">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Importante:</strong> Este movimiento quedará registrado permanentemente con tu usuario 
+                        (<span id="nombreUsuario">--</span>) y la hora exacta (<span id="horaActual">--</span>). 
+                        No puede modificarse ni eliminarse.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btnConfirmarMovimiento" disabled>
+                        <i class="bi bi-check-circle me-2"></i>Confirmar Movimiento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

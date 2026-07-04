@@ -2,11 +2,13 @@ package com.example.acceso.controller;
 
 import com.example.acceso.model.Empresa;
 import com.example.acceso.model.Producto;
+import com.example.acceso.service.ApisunatService;
 import com.example.acceso.service.EmpresaService;
 import com.example.acceso.service.ProductoService;
 import com.example.acceso.service.CloudinaryService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -28,6 +30,8 @@ public class EmpresaController {
     private ProductoService productoService;
     @Autowired
     private CloudinaryService cloudinaryService;
+    @Autowired
+    private ApisunatService apisunatService;
 
     @GetMapping("/listar")
     public String gestionarEmpresa(Model model, HttpSession session) {
@@ -153,5 +157,20 @@ public class EmpresaController {
     public ResponseEntity<Empresa> getEmpresaInfo() {
         Empresa empresa = empresaService.getEmpresaInfo();
         return ResponseEntity.ok(empresa);
+    }
+
+    @PostMapping("/api/probar-conexion-apisunat")
+    @ResponseBody
+    public ResponseEntity<?> probarConexionApisunat() {
+        Map<String, Object> response = new HashMap<>();
+        ApisunatService.ApisunatConnectionResult resultado = apisunatService.testConnection();
+
+        response.put("success", resultado.isSuccess());
+        response.put("message", resultado.getMessage());
+        if (resultado.isSuccess()) {
+            return ResponseEntity.ok(response);
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
     }
 }

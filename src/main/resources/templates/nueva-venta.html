@@ -130,6 +130,15 @@
             0% { background-color: rgba(40, 167, 69, 0.16); }
             100% { background-color: transparent; }
         }
+        .comprobante-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .comprobante-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 42, 166, 0.3) !important;
+            border-color: #ff2aa6 !important;
+        }
     </style>
 </head>
 <body>
@@ -139,6 +148,43 @@
 <main class="container-fluid" style="padding-top: 2rem;">
 
         <div th:replace="~{fragments/notificaciones :: notification-container}"></div>
+
+        <!-- Cambio 4: Banner caja cerrada -->
+        <th:block th:if="${!cajaAbierta}">
+          <div id="banner-caja-cerrada"
+               style="background:#fcebeb;border:1.5px solid #f09595;border-radius:10px;
+                      padding:14px 18px;display:flex;align-items:center;gap:14px;
+                      margin-bottom:20px;">
+            <span style="font-size:24px;flex-shrink:0">🔴</span>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600;color:#a32d2d;margin-bottom:3px">
+                La caja no está abierta para hoy
+              </div>
+              <div style="font-size:11px;color:#c05050">
+                Necesitas abrir la caja antes de registrar ventas.
+                <span th:if="${saldoPropuesto != null and saldoPropuesto > 0}">
+                  El último cierre fue con
+                  <strong
+                    th:text="${'S/ ' + #numbers.formatDecimal(saldoPropuesto,1,'COMMA',2,'POINT')}">
+                  </strong>
+                  — ese monto se propone como fondo inicial.
+                </span>
+              </div>
+            </div>
+            <button type="button"
+                    onclick="abrirModalCajaRapida()"
+                    style="background:#e91e8c;color:white;border:none;border-radius:8px;
+                           padding:9px 16px;font-size:12px;font-weight:600;
+                           white-space:nowrap;cursor:pointer;">
+              ⚡ Abrir caja rápido
+            </button>
+          </div>
+
+          <!-- Overlay que cubre el formulario -->
+          <div id="overlay-caja"
+               style="position:relative;pointer-events:none;opacity:0.4;
+                      user-select:none;">
+        </th:block>
 
         <div class="container-fluid p-4">
             <div class="step-progress-container mb-4">
@@ -181,13 +227,39 @@
                         <div class="card-body">
                             <h5 class="card-title">Comprobante y Cliente</h5>
                             <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label for="tipoComprobanteVenta" class="form-label">Tipo de Comprobante</label>
-                                    <select id="tipoComprobanteVenta" class="form-select">
-                                        <option value="Nota de Venta">Nota de Venta</option>
-                                        <option value="Boleta">Boleta</option>
-                                    </select>
-                                 </div>
+                                <div class="col-12">
+                                    <label class="form-label">Tipo de Comprobante</label>
+                                    <div class="d-flex flex-column flex-sm-row gap-3 mb-3">
+                                        <button type="button" class="btn shadow-sm flex-fill text-start comprobante-card" data-tipo="boleta" style="border: 2px solid #ffc0d9; background: linear-gradient(135deg, #fff5f8 0%, #ffffff 100%);">
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                <i class="bi bi-ticket-perforated fs-3" style="color: #ff2aa6;"></i>
+                                                <div>
+                                                    <div class="fw-bold" style="color: #2b0030;">Boleta de Venta</div>
+                                                    <small style="color: #495057;">Para personas naturales con DNI</small>
+                                                </div>
+                                            </div>
+                                        </button>
+                                        <button type="button" class="btn shadow-sm flex-fill text-start comprobante-card" data-tipo="factura" style="border: 2px solid #ffc0d9; background: linear-gradient(135deg, #fff5f8 0%, #ffffff 100%);">
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                <i class="bi bi-file-earmark-text fs-3" style="color: #ff2aa6;"></i>
+                                                <div>
+                                                    <div class="fw-bold" style="color: #2b0030;">Factura</div>
+                                                    <small style="color: #495057;">Para empresas con RUC</small>
+                                                </div>
+                                            </div>
+                                        </button>
+                                        <button type="button" class="btn shadow-sm flex-fill text-start comprobante-card" data-tipo="nota_venta" style="border: 2px solid #ffc0d9; background: linear-gradient(135deg, #fff5f8 0%, #ffffff 100%);">
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                <i class="bi bi-journal-text fs-3" style="color: #ff2aa6;"></i>
+                                                <div>
+                                                    <div class="fw-bold" style="color: #2b0030;">Nota de Venta</div>
+                                                    <small style="color: #495057;">Registro interno sin validez tributaria</small>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    </div>
+                                    <input type="hidden" id="tipoComprobanteVenta" value="nota_venta">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -195,29 +267,34 @@
                     <!-- Sección de Búsqueda de Cliente -->
                     <div class="card shadow-sm mb-4" id="seccionCliente" style="display: none;">
                         <div class="card-body">
-                            <h5 class="card-title">Buscar Cliente</h5>
+                            <h5 class="card-title">Datos del Cliente</h5>
                             <div class="row g-2">
-                                <div class="col-md-3">
-                                    <label for="tipoDocumento" class="form-label">Tipo Doc.</label>
-                                    <select id="tipoDocumento" class="form-select">
-                                        <option value="dni">DNI</option>
-                                        <option value="ruc">RUC</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="numeroDocumento" class="form-label">Nro. Documento</label>
+                                <div class="col-md-8">
+                                    <label id="labelNumeroDocumento" for="numeroDocumento" class="form-label">DNI del cliente</label>
                                     <div class="input-group">
                                         <input type="text" id="numeroDocumento" class="form-control" placeholder="Número de documento...">
                                         <button class="btn btn-outline-secondary" type="button" id="btnBuscarCliente">Buscar</button>
                                     </div>
+                                    <div id="documentoAyuda" class="form-text text-muted">DNI opcional para ventas menores a S/ 700 (consumidor final).</div>
                                 </div>
-                                <div class="col-md-3 d-flex align-items-end">
+                                <div class="col-md-4 d-flex align-items-end">
                                     <button class="btn btn-secondary w-100" type="button" id="btnLimpiarCliente">Limpiar</button>
                                 </div>
                             </div>
+                            <div class="row g-3 mt-3">
+                                <div class="col-12">
+                                    <label for="clienteNombreInput" class="form-label">Nombre / Razón Social</label>
+                                    <input type="text" id="clienteNombreInput" class="form-control" placeholder="Nombre del cliente...">
+                                </div>
+                                <div class="col-12" id="direccionFiscalContainer" style="display: none;">
+                                    <label for="clienteDireccionInput" class="form-label">Dirección Fiscal</label>
+                                    <input type="text" id="clienteDireccionInput" class="form-control" placeholder="Dirección...">
+                                </div>
+                            </div>
                             <div class="mt-3">
-                                <p class="mb-1"><strong>Cliente:</strong> <span id="nombreCliente">Consumidor Final</span></p>
+                                <p class="mb-1"><strong>Cliente asignado:</strong> <span id="nombreCliente">Consumidor Final</span></p>
                                 <input type="hidden" id="clienteId">
+                                <input type="hidden" id="tipoDocumento" value="dni">
                             </div>
                         </div>
                     </div>
@@ -274,9 +351,10 @@
                                                     <button type="button" class="btn btn-primary btn-sm w-100 btn-agregar" th:data-product-id="${producto.id}">+ Agregar</button>
                                                     <div class="input-group input-group-sm quantity-controls mt-2 d-none">
                                                         <button type="button" class="btn btn-outline-secondary btn-decrease" th:data-product-id="${producto.id}">−</button>
-                                                        <input type="number" class="form-control text-center product-qty" value="1" min="1" onkeydown="return event.keyCode !== 69 && event.keyCode !== 189 && event.keyCode !== 190" oninput="this.value = Math.abs(this.value.replace(/[^0-9]/g, '')) || 1">
+                                                        <input type="number" class="form-control text-center product-qty" value="1" min="1" th:data-stock-disponible="${producto.stock}" onkeydown="return event.keyCode !== 69 && event.keyCode !== 189 && event.keyCode !== 190" oninput="this.value = Math.abs(this.value.replace(/[^0-9]/g, '')) || 1">
                                                         <button type="button" class="btn btn-outline-secondary btn-increase" th:data-product-id="${producto.id}">+</button>
                                                     </div>
+                                                    <small class="text-muted stock-disponible-text mt-1 d-none">Disponible: <span th:text="${producto.stock}"></span> unidades</small>
                                                 </div>
                                             </div>
                                         </div>
@@ -310,8 +388,16 @@
                             </div>
                             <div id="venta-summary" class="mt-3 d-none">
                                 <div class="d-flex justify-content-between mb-2">
-                                    <span class="fw-bold">Subtotal:</span>
+                                    <span class="fw-bold">Subtotal (sin IGV):</span>
                                     <span id="venta-subtotal">S/ 0.00</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="fw-bold">IGV 18%:</span>
+                                    <span id="venta-igv">S/ 0.00</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-3">
+                                    <span class="fw-bold">Total a pagar:</span>
+                                    <span id="venta-total-resumen" class="text-success fw-bold">S/ 0.00</span>
                                 </div>
                                 <div class="input-group mb-3">
                                     <select class="form-select" id="tipoDescuento" style="max-width: 130px;">
@@ -343,14 +429,126 @@
                                     </div>
                                 </div>
                                 <div id="cart-empty-footer" class="text-center text-muted small d-none mb-3">Selecciona productos para ver el total</div>
-                                <button id="btnFinalizarVenta" class="btn btn-primary btn-lg w-100" disabled>Finalizar y Cobrar</button>
+                                <button type="button" id="btnFinalizarVenta" class="btn btn-primary btn-lg w-100" disabled>Finalizar y Cobrar</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+        <!-- Cierre del overlay si caja cerrada -->
+        <th:block th:if="${!cajaAbierta}">
+          </div> <!-- cierre del div overlay-caja -->
+        </th:block>
+
     </main>
+
+    <!-- Cambio 5: Modal apertura rápida -->
+    <th:block th:if="${!cajaAbierta}">
+    <div id="modal-caja-rapida"
+         style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);
+                z-index:9999;align-items:center;justify-content:center;">
+      <div style="background:white;border-radius:12px;padding:24px;
+                  width:380px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+        <h3 style="margin:0 0 6px;font-size:16px">⚡ Apertura rápida de caja</h3>
+        <p style="font-size:12px;color:#666;margin:0 0 16px">
+          Ingresa el fondo inicial para comenzar el día.
+        </p>
+
+        <label style="font-size:11px;font-weight:500;color:#444;
+                      display:block;margin-bottom:4px">
+          Fondo inicial (S/)
+        </label>
+        <input type="number"
+               id="fondo-rapido"
+               step="0.01" min="0"
+               th:value="${saldoPropuesto}"
+               style="width:100%;border:1.5px solid #e91e8c;border-radius:8px;
+                      padding:10px 12px;font-size:16px;font-weight:500;
+                      box-sizing:border-box;margin-bottom:8px">
+        <p style="font-size:10px;color:#888;margin:0 0 16px">
+          Pre-llenado desde el último cierre. Ajusta si retiraste dinero ayer.
+        </p>
+
+        <div style="display:flex;gap:8px">
+          <button type="button"
+                  onclick="cerrarModalCaja()"
+                  style="flex:1;background:#f5f5f5;color:#666;border:none;
+                         border-radius:8px;padding:10px;font-size:12px;cursor:pointer">
+            Cancelar
+          </button>
+          <button type="button"
+                  onclick="confirmarAperturaCaja(this)"
+                  style="flex:2;background:#e91e8c;color:white;border:none;
+                         border-radius:8px;padding:10px;font-size:13px;
+                         font-weight:600;cursor:pointer">
+            ✓ Abrir caja y continuar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    function abrirModalCajaRapida() {
+        document.getElementById('modal-caja-rapida').style.display = 'flex';
+    }
+
+    function cerrarModalCaja() {
+        document.getElementById('modal-caja-rapida').style.display = 'none';
+    }
+
+    function confirmarAperturaCaja(btn) {
+        const fondo = parseFloat(
+            document.getElementById('fondo-rapido').value) || 0;
+
+        if (fondo < 0) {
+            alert('El fondo inicial no puede ser negativo.');
+            return;
+        }
+
+        // btn puede ser null si se llama desde otro lugar; manejamos eso para no romper el flujo
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = '⏳ Abriendo caja...';
+        }
+
+        // Si tu modal ya re-habilita overlay/baner, esto asegura que el JS no se detenga por 'event' undefined
+
+        fetch('/caja/abrir-rapido', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ montoInicial: fondo })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('banner-caja-cerrada').style.display = 'none';
+                document.getElementById('overlay-caja').style.pointerEvents = 'auto';
+                document.getElementById('overlay-caja').style.opacity = '1';
+                document.getElementById('overlay-caja').style.userSelect = 'auto';
+                cerrarModalCaja();
+            } else {
+                alert('Error al abrir la caja: ' + (data.mensaje || 'Intenta de nuevo'));
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '✓ Abrir caja y continuar';
+                }
+            }
+        })
+        .catch(function() {
+            alert('Error de conexión. Recarga la página e intenta de nuevo.');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '✓ Abrir caja y continuar';
+            }
+        });
+    }
+    </script>
+    </th:block>
+
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -361,6 +559,67 @@
     <!-- Scripts globales y específicos -->
     <script th:src="@{/js/main.js}"></script>
     <script th:src="@{/js/nueva-venta.js}"></script>
+
+    <script>
+    // Manejar selección de tipo de comprobante
+    document.addEventListener('DOMContentLoaded', function() {
+        const comprobanteCards = document.querySelectorAll('.comprobante-card');
+        const direccionContainer = document.getElementById('direccionFiscalContainer');
+        
+        // Color de la empresa (rosa Yo'Max)
+        const colorEmpresa = '#ff2aa6';
+        const colorBorde = '#ffc0d9';
+        
+        comprobanteCards.forEach(card => {
+            card.addEventListener('click', function() {
+                // Remover selección anterior - restaurar estado base
+                comprobanteCards.forEach(c => {
+                    c.style.background = 'linear-gradient(135deg, #fff5f8 0%, #ffffff 100%)';
+                    c.style.border = '2px solid ' + colorBorde;
+                    c.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)';
+                    // Restaurar color de texto
+                    const icon = c.querySelector('i');
+                    const title = c.querySelector('.fw-bold');
+                    const subtitle = c.querySelector('small');
+                    if (icon) icon.style.color = colorEmpresa;
+                    if (title) title.style.color = '#2b0030';
+                    if (subtitle) subtitle.style.color = '#495057';
+                });
+                
+                // Aplicar estilo de selección
+                this.style.background = 'linear-gradient(135deg, #ffe0f0 0%, #ffc0d9 100%)';
+                this.style.border = '3px solid ' + colorEmpresa;
+                this.style.boxShadow = '0 6px 20px rgba(255, 42, 166, 0.35)';
+                
+                // Mejorar contraste de texto en la card seleccionada
+                const icon = this.querySelector('i');
+                const title = this.querySelector('.fw-bold');
+                const subtitle = this.querySelector('small');
+                if (icon) icon.style.color = colorEmpresa;
+                if (title) title.style.color = '#2b0030';
+                if (subtitle) subtitle.style.color = '#495057';
+                
+                // Obtener tipo de comprobante
+                const tipo = this.dataset.tipo;
+                
+                // Mostrar/ocultar campo de dirección
+                // Solo se muestra para factura (empresas con RUC)
+                if (tipo === 'factura') {
+                    direccionContainer.style.display = 'block';
+                } else {
+                    direccionContainer.style.display = 'none';
+                    // Limpiar el campo de dirección
+                    document.getElementById('clienteDireccionInput').value = '';
+                }
+            });
+        });
+        
+        // Inicializar: ocultar campo de dirección por defecto
+        if (direccionContainer) {
+            direccionContainer.style.display = 'none';
+        }
+    });
+    </script>
 
 </body>
 </html>

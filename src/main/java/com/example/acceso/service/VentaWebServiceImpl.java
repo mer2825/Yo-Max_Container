@@ -2,6 +2,7 @@ package com.example.acceso.service;
 
 import com.example.acceso.model.*;
 import com.example.acceso.repository.ClienteRepository;
+import com.example.acceso.repository.ProductoRepository;
 import com.example.acceso.repository.VentaRepository;
 import com.example.acceso.repository.VentaWebRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,12 +20,14 @@ public class VentaWebServiceImpl implements VentaWebService {
     private final VentaWebRepository ventaWebRepository;
     private final VentaService ventaService;
     private final ClienteRepository clienteRepository;
+    private final ProductoRepository productoRepository;
 
     @Autowired
-    public VentaWebServiceImpl(VentaWebRepository ventaWebRepository, VentaService ventaService, ClienteRepository clienteRepository) {
+    public VentaWebServiceImpl(VentaWebRepository ventaWebRepository, VentaService ventaService, ClienteRepository clienteRepository, ProductoRepository productoRepository) {
         this.ventaWebRepository = ventaWebRepository;
         this.ventaService = ventaService;
         this.clienteRepository = clienteRepository;
+        this.productoRepository = productoRepository;
     }
 
     @Override
@@ -48,6 +51,20 @@ public class VentaWebServiceImpl implements VentaWebService {
     public void procesarVentaWeb(Long idVentaWeb) {
         VentaWeb ventaWeb = ventaWebRepository.findById(idVentaWeb)
                 .orElseThrow(() -> new RuntimeException("Venta web no encontrada con id: " + idVentaWeb));
+
+        // Validar stock de cada producto en el momento exacto del guardado
+        for (DetalleVentaWeb detalleWeb : ventaWeb.getDetalles()) {
+            Producto producto = productoRepository.findById(detalleWeb.getProducto().getId())
+                    .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + detalleWeb.getProducto().getId()));
+            
+            Integer stockActual = producto.getStock();
+            Integer cantidadSolicitada = detalleWeb.getCantidad();
+            
+            if (cantidadSolicitada > stockActual) {
+                throw new RuntimeException("Stock insuficiente para el producto '" + producto.getNombre() + "'. " +
+                        "Disponible: " + stockActual + ", solicitado: " + cantidadSolicitada);
+            }
+        }
 
         Cliente clienteParaVenta;
         if (ventaWeb.getCliente() != null) {

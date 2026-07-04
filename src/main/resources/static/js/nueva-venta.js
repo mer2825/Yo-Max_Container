@@ -1,13 +1,115 @@
 ﻿$(document).ready(function() {
     let carrito = [];
     let productosCargados = {};
+    let uiInicializada = false;
+    let listenersInstalados = false;
 
-    cargarProductos();
-    setupEventListeners();
-    updateFormularioUI();
-    renderizarCarrito();
-    updateProgressSteps();
-    aplicarValidacionDocumento();
+    function initVentaUI() {
+        cargarProductos();
+
+        // Evitar duplicar listeners al re-inicializar desde el modal de apertura
+        if (!listenersInstalados) {
+            setupEventListeners();
+            listenersInstalados = true;
+        }
+
+        // Re-hidratar estado de UI (esto sí debe ejecutarse siempre)
+        updateFormularioUI();
+        renderizarCarrito();
+        updateProgressSteps();
+        aplicarValidacionDocumento();
+
+        // Asegurar que el botón finalize tenga estado correcto según carrito
+        $('#btnFinalizarVenta').prop('disabled', carrito.length === 0);
+    }
+
+    // Primero verificar que haya sesión de caja abierta
+    verificarSesionCaja().then(function() {        initVentaUI();
+    });
+
+    function verificarSesionCaja() {
+        return fetch('/ventas/api/verificar-caja')
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (!data.haySesionActiva) {
+                    // Mantener el modal "anterior" (SweetAlert bloqueante),
+                    // pero SIEMPRE evitar competencia con el modal/banner de caja rápida.
+                    var showSweetAlertModal = true;
+
+                    // Si el banner/modal de caja rápida está en la página, NO mostramos SweetAlert.
+                    if ($('#banner-caja-cerrada').length || $('#modal-caja-rapida').length) {
+                        showSweetAlertModal = false;
+
+                        // Si está el modal, lo abrimos.
+                        try {
+                            var saldoSugerido = data.saldoSugerido || 0;
+                            var $fondo = $('#fondo-rapido');
+                            if ($fondo.length) $fondo.val(saldoSugerido);
+
+                            var $modal = $('#modal-caja-rapida');
+                            if ($modal.length) $modal.css('display', 'flex');
+                        } catch (e) {
+                            console.warn('No se pudo abrir modal de caja rápida:', e);
+                        }
+
+                        // Blindaje: si ya estamos en el flujo de caja rápida,
+                        // salir para NO continuar con SweetAlert.
+                        return Promise.resolve();
+                    }
+
+                    if (!showSweetAlertModal) return;
+
+                    // SweetAlert "anterior": Apertura de Caja Requerida
+                    var saldoSugeridoFallback = data.saldoSugerido || 0;
+                    var html = '<div style="text-align:left;">' +
+                        '<div class="alert alert-warning">' +
+                        '<i class="bi bi-exclamation-triangle"></i> ' +
+                        '<strong>No hay sesión de caja abierta.</strong><br>' +
+                        'Debe abrir la caja antes de poder realizar ventas.' +
+                        '</div>' +
+                        '<div class="mb-3">' +
+                        '<label class="form-label fw-bold">Monto inicial (saldo sugerido: S/ ' + saldoSugeridoFallback.toFixed(2) + ')</label>' +
+                        '<input type="number" id="montoAperturaRapida" class="form-control" value="' + saldoSugeridoFallback.toFixed(2) + '" min="0" step="0.10">' +
+                        '</div>' +
+                        '</div>';
+
+                    return Swal.fire({
+                        title: 'Apertura de Caja Requerida',
+                        html: html,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Abrir Caja',
+                        cancelButtonText: 'Cancelar',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        width: '500px',
+                        preConfirm: function() {
+                            var monto = parseFloat(document.getElementById('montoAperturaRapida').value);
+                            if (isNaN(monto) || monto < 0) {
+                                Swal.showValidationMessage('Ingrese un monto válido');
+                                return false;
+                            }
+                            return fetch('/ventas/api/abrir-caja-rapida?montoInicial=' + monto, { method: 'POST' })
+                                .then(function(r) { return r.json(); })
+                                .then(function(result) {
+                                    if (!result.success) throw new Error(result.message);
+                                    return result;
+                                });
+                        }
+                    }).then(function(result) {
+                        if (result && result.isConfirmed) {
+                            Swal.fire('Caja Abierta', result.value.message, 'success');
+                            initVentaUI();
+                        } else {
+                            window.location.href = '/caja';
+                        }
+                    });
+                }
+            })
+            .catch(function(error) {
+                console.error('Error verificando caja:', error);
+            });
+    }
 
     function cargarProductos() {
         $('.product-card').each(function() {
@@ -25,7 +127,14 @@
 
     function setupEventListeners() {
         $('#tipoComprobanteVenta').on('change', updateFormularioUI);
-        $('#btnBuscarCliente').on('click', () => buscarOCrearCliente(false));
+        $('#tipoComprobanteSecundario').on('change', updateFormularioUI);
+        $('.comprobante-card').on('click', function() {
+            seleccionarTipoComprobante($(this).data('tipo'));
+        });
+        $('#btnBuscarCliente').on('click', async () => {
+            const found = await buscarDocumentoExternamente();
+            if (!found) await buscarOCrearCliente(false);
+        });
         $('#btnLimpiarCliente').on('click', () => limpiarCliente(true));
         $('#product-grid').on('click', '.btn-agregar', agregarAlCarrito);
         $('#product-grid').on('click', '.btn-increase', function() {
@@ -35,6 +144,10 @@
         $('#product-grid').on('click', '.btn-decrease', function() {
             const productoId = $(this).data('product-id');
             changeCantidadProducto(productoId, -1);
+        });
+        $('#product-grid').on('input', '.product-qty', function() {
+            const productoId = $(this).closest('.product-card').data('product-id');
+            validarCantidadManual(productoId, $(this));
         });
         $('#category-filters').on('click', '.category-pill', function() {
             setActiveCategory($(this).data('category'));
@@ -66,64 +179,73 @@
     function aplicarValidacionDocumento() {
         const tipo = $('#tipoDocumento').val();
         const numeroDocumentoInput = $('#numeroDocumento');
+        const labelNumeroDocumento = $('#labelNumeroDocumento');
+        const documentoAyuda = $('#documentoAyuda');
         numeroDocumentoInput.val('');
         if (tipo === 'dni') {
             numeroDocumentoInput.attr('maxlength', '8');
             numeroDocumentoInput.attr('placeholder', '8 dígitos (DNI)');
+            labelNumeroDocumento.text('DNI del cliente');
+            documentoAyuda.text('DNI opcional para ventas menores a S/ 700 (consumidor final).');
         } else {
             numeroDocumentoInput.attr('maxlength', '11');
             numeroDocumentoInput.attr('placeholder', '11 dígitos (RUC)');
+            labelNumeroDocumento.text('RUC del cliente');
+            documentoAyuda.text('RUC obligatorio para Factura.');
         }
         updateClienteDisplay({ nombre: 'Consumidor Final', direccion: '' }, tipo);
     }
 
     function updateFormularioUI() {
-        const tipoComprobante = $('#tipoComprobanteVenta').val();
+        let tipoComprobante = $('#tipoComprobanteSecundario').val() || $('#tipoComprobanteVenta').val();
         const seccionCliente = $('#seccionCliente');
-        const tipoDocumentoSelect = $('#tipoDocumento');
+        const tipoDocumentoInput = $('#tipoDocumento');
         const inputComprobanteFinal = $('#tipoComprobante');
 
-        seccionCliente.hide();
-        tipoDocumentoSelect.prop('disabled', false);
-
-        if (tipoComprobante === 'Factura') {
-            inputComprobanteFinal.val('Factura');
-            tipoDocumentoSelect.val('ruc').prop('disabled', true);
-            seccionCliente.show();
-        } else if (tipoComprobante === 'Boleta') {
-            inputComprobanteFinal.val('Boleta');
-            // Permitir seleccionar DNI o RUC para boleta, pero por defecto DNI
-            if (tipoDocumentoSelect.val() !== 'ruc') {
-                tipoDocumentoSelect.val('dni');
-            }
-            seccionCliente.show();
-        } else {
+        if (tipoComprobante === 'nota_venta') {
             inputComprobanteFinal.val('Nota de Venta');
-            // En Nota de Venta ocultamos la sección cliente para agilidad, 
-            // pero si necesitas registrar cliente podrías mostrarlo. 
-            // Para tu flujo, lo mantendré oculto.
-            limpiarCliente(false);
+            tipoDocumentoInput.val('dni');
+            seccionCliente.hide();
+            setActiveComprobanteCard('');
+        } else {
+            seccionCliente.show();
+            if (tipoComprobante === 'factura') {
+                inputComprobanteFinal.val('Factura');
+                tipoDocumentoInput.val('ruc');
+                setActiveComprobanteCard('factura');
+            } else {
+                inputComprobanteFinal.val('Boleta de Venta');
+                tipoDocumentoInput.val('dni');
+                setActiveComprobanteCard('boleta');
+            }
+            tipoDocumentoInput.prop('disabled', true);
         }
+
         aplicarValidacionDocumento();
+        updateFinalizarButton();
         updateProgressSteps();
     }
 
     function limpiarCliente(resetearSeleccion = false) {
         $('#numeroDocumento').val('');
         $('#clienteId').val('');
+        $('#clienteNombreInput').val('');
+        $('#clienteDireccionInput').val('');
         updateClienteDisplay({ nombre: 'Consumidor Final', direccion: '' }, $('#tipoDocumento').val());
         if (resetearSeleccion) {
-            $('#tipoComprobanteVenta').val('Nota de Venta');
+            $('#tipoComprobanteVenta').val('nota_venta');
+            $('#tipoComprobanteSecundario').val('nota_venta');
             updateFormularioUI();
         }
     }
 
     function updateClienteDisplay(cliente, tipoDocumento) {
-        $('#nombreCliente').text(cliente.nombre);
+        const nombre = cliente.nombre || 'Consumidor Final';
+        $('#nombreCliente').text(nombre);
+        $('#clienteNombreInput').val(cliente.nombre || '');
+        $('#clienteDireccionInput').val(cliente.direccion || '');
         if (tipoDocumento === 'dni') {
-            $('#direccionCliente').text('-');
-        } else {
-            $('#direccionCliente').text(cliente.direccion || '-');
+            $('#documentoAyuda').text('DNI opcional para ventas menores a S/ 700 (consumidor final).');
         }
     }
 
@@ -200,6 +322,74 @@
         }
     }
 
+    function seleccionarTipoComprobante(tipo) {
+        $('#tipoComprobanteVenta').val(tipo);
+        $('#tipoComprobanteSecundario').val('');
+        updateFormularioUI();
+    }
+
+    function setActiveComprobanteCard(tipo) {
+        $('.comprobante-card').removeClass('border-primary bg-primary text-white').addClass('btn-outline-secondary text-dark');
+        if (tipo) {
+            $(`.comprobante-card[data-tipo='${tipo}']`).removeClass('btn-outline-secondary text-dark').addClass('border-primary bg-primary text-white');
+        }
+    }
+
+    async function buscarDocumentoExternamente() {
+        const tipo = $('#tipoDocumento').val();
+        const numero = $('#numeroDocumento').val();
+        if (!numero) {
+            showNotification('Ingrese un número de documento para buscar.', 'error');
+            return false;
+        }
+        const maxLength = (tipo === 'dni') ? 8 : 11;
+        if (numero.length !== maxLength) {
+            showNotification(`El ${tipo.toUpperCase()} debe tener ${maxLength} dígitos.`, 'error');
+            return false;
+        }
+
+        const endpoint = tipo === 'dni'
+            ? `https://api.apis.net.pe/v1/dni?numero=${numero}`
+            : `https://api.apis.net.pe/v1/ruc?numero=${numero}`;
+
+        try {
+            const response = await fetch(endpoint);
+            if (!response.ok) {
+                throw new Error('No se pudo obtener información desde el servicio externo.');
+            }
+            const data = await response.json();
+            if (tipo === 'dni') {
+                const nombre = [data.nombres, data.apellidoPaterno, data.apellidoMaterno].filter(Boolean).join(' ').trim();
+                $('#clienteNombreInput').val(nombre || '');
+                showNotification('Datos encontrados. Complete los campos si es necesario.', 'success');
+            } else {
+                $('#clienteNombreInput').val(data.nombre || data.razonSocial || '');
+                $('#clienteDireccionInput').val(data.direccion || '');
+                showNotification('RUC encontrado. Verifique la razón social y dirección.', 'success');
+            }
+            return true;
+        } catch (error) {
+            showNotification('No se pudo traer los datos externos. Puede completar manualmente.', 'warning');
+            return false;
+        }
+    }
+
+    function updateFinalizarButton() {
+        const tipoComprobante = $('#tipoComprobanteSecundario').val() || $('#tipoComprobanteVenta').val();
+        const boton = $('#btnFinalizarVenta');
+        boton.removeClass('btn-primary btn-warning btn-success btn-secondary');
+        if (tipoComprobante === 'factura') {
+            boton.addClass('btn-success');
+            boton.text('Emitir Factura Electrónica');
+        } else if (tipoComprobante === 'boleta') {
+            boton.addClass('btn-warning');
+            boton.text('Emitir Boleta Electrónica');
+        } else {
+            boton.addClass('btn-secondary');
+            boton.text('Registrar Nota de Venta');
+        }
+    }
+
     function filtrarProductos() {
         const nombreFiltro = $('#filtroNombre').val().toLowerCase();
         const precioMin = Math.max(0, parseFloat($('#filtroPrecioMin').val()) || 0);
@@ -254,6 +444,28 @@
         renderizarCarrito();
     }
 
+    function validarCantidadManual(productoId, $input) {
+        const producto = productosCargados[productoId];
+        const stockDisponible = parseInt($input.data('stock-disponible'), 10) || producto.stock;
+        let valor = parseInt($input.val(), 10);
+
+        if (isNaN(valor) || valor < 1) {
+            valor = 1;
+        } else if (valor > stockDisponible) {
+            valor = stockDisponible;
+            showNotification(`Cantidad máxima: ${stockDisponible} unidades disponibles.`, 'warning');
+        }
+
+        $input.val(valor);
+
+        // Actualizar el carrito con la nueva cantidad
+        const item = carrito.find(item => item.producto.id === productoId);
+        if (item) {
+            item.cantidad = valor;
+            renderizarCarrito();
+        }
+    }
+
     function actualizarCantidad(e) {
         const productoId = $(e.currentTarget).data('id');
         let nuevaCantidad = parseInt($(e.currentTarget).val().replace(/[^0-9]/g, ''));
@@ -271,6 +483,16 @@
             item.cantidad = nuevaCantidad;
         }
         renderizarCarrito();
+    }
+
+    function calcularTotales(subtotalVenta, descuentoCalculado) {
+        // El precio ya incluye IGV. Calculamos el IGV "hacia atrás":
+        // subtotalSinIGV = subtotal / 1.18, igv = subtotalSinIGV * 0.18
+        const subtotalSinIGV = subtotalVenta / 1.18;
+        const igv = subtotalSinIGV * 0.18;
+        // Total a pagar = subtotal - descuento (el IGV ya está incluido en el precio)
+        const totalVenta = Math.max(0, subtotalVenta - descuentoCalculado);
+        return { subtotalSinIGV, igv, totalVenta };
     }
 
     function removerDelCarrito(e) {
@@ -322,11 +544,14 @@
             descuentoCalculado = valorDescuento;
         }
 
-        const totalVenta = subtotalVenta - descuentoCalculado;
+        const { subtotalSinIGV, igv, totalVenta } = calcularTotales(subtotalVenta, descuentoCalculado);
 
-        $('#venta-subtotal').text(`S/ ${subtotalVenta.toFixed(2)}`);
+        $('#venta-subtotal').text(`S/ ${subtotalSinIGV.toFixed(2)}`);
+        $('#venta-igv').text(`S/ ${igv.toFixed(2)}`);
+        $('#venta-total-resumen').text(`S/ ${totalVenta.toFixed(2)}`);
         $('#venta-total').text(`S/ ${totalVenta.toFixed(2)}`);
         $('#btnFinalizarVenta').prop('disabled', carrito.length === 0);
+        updateFinalizarButton();
 
         updateProductCardActions();
         updateProgressSteps();
@@ -341,18 +566,31 @@
             const card = $(this);
             const productoId = card.data('product-id');
             const item = carrito.find(i => i.producto.id === productoId);
+            const producto = productosCargados[productoId];
             const agregarBtn = card.find('.btn-agregar');
             const quantityControls = card.find('.quantity-controls');
             const qtyInput = card.find('.product-qty');
+            const increaseBtn = card.find('.btn-increase');
+            const stockDisponibleText = card.find('.stock-disponible-text');
 
             if (item) {
                 agregarBtn.addClass('d-none');
                 quantityControls.removeClass('d-none');
+                stockDisponibleText.removeClass('d-none');
                 qtyInput.val(item.cantidad);
+                
+                // Deshabilitar botón + si la cantidad llega al stock disponible
+                if (item.cantidad >= producto.stock) {
+                    increaseBtn.prop('disabled', true);
+                } else {
+                    increaseBtn.prop('disabled', false);
+                }
             } else {
                 agregarBtn.removeClass('d-none');
                 quantityControls.addClass('d-none');
+                stockDisponibleText.addClass('d-none');
                 qtyInput.val(1);
+                increaseBtn.prop('disabled', false);
             }
         });
     }
@@ -398,12 +636,36 @@
     async function finalizarVenta() {
         if (carrito.length === 0) return showNotification('Agregue al menos un producto.', 'error');
 
-        const tipoComprobanteVenta = $('#tipoComprobanteVenta').val();
+        const tipoComprobanteVenta = $('#tipoComprobanteSecundario').val() || $('#tipoComprobanteVenta').val();
         let clienteId = $('#clienteId').val();
         const numeroDocumento = $('#numeroDocumento').val();
+        const totalVenta = parseFloat($('#venta-total').text().replace('S/ ', '')) || 0;
 
-        if (tipoComprobanteVenta === 'Factura' && !numeroDocumento) {
-            return showNotification('Para una Factura, debe ingresar un RUC.', 'error');
+        if (tipoComprobanteVenta === 'factura') {
+            if (!numeroDocumento) {
+                return showNotification('Para una Factura, debe ingresar un RUC.', 'error');
+            }
+            if (numeroDocumento.length !== 11 || !/^(10|20)/.test(numeroDocumento)) {
+                return showNotification('El RUC debe tener 11 dígitos y comenzar con 10 o 20.', 'error');
+            }
+        }
+
+        if (tipoComprobanteVenta === 'boleta') {
+            if (numeroDocumento && numeroDocumento.length !== 8) {
+                return showNotification('El DNI debe tener 8 dígitos.', 'error');
+            }
+            if (totalVenta >= 700 && (!numeroDocumento || numeroDocumento.length !== 8)) {
+                return showNotification('Para Boleta con S/ 700 o más, ingrese el DNI del cliente.', 'error');
+            }
+        }
+
+        if (numeroDocumento && !clienteId) {
+            const clientProcessed = await buscarOCrearCliente(true);
+            if (!clientProcessed) {
+                showNotification('No se pudo asignar un cliente. Venta cancelada.', 'error');
+                return;
+            }
+            clienteId = $('#clienteId').val();
         }
 
         if (numeroDocumento && !clienteId) {
@@ -435,8 +697,15 @@
             }
         }
 
+        const tipoComprobanteRaw = $('#tipoComprobante').val();
+        const tipoComprobante = tipoComprobanteRaw && tipoComprobanteRaw.toLowerCase().includes('factura')
+            ? 'Factura'
+            : tipoComprobanteRaw && tipoComprobanteRaw.toLowerCase().includes('boleta')
+                ? 'Boleta'
+                : 'Nota de Venta';
+
         const ventaData = {
-            tipoComprobante: $('#tipoComprobante').val(),
+            tipoComprobante: tipoComprobante,
             cliente: { id: clienteId },
             metodoPago: $('#metodoPago').val(),
             nota: $('#notaVenta').val(),
@@ -489,11 +758,25 @@
                 body: JSON.stringify(ventaData)
             });
             const result = await response.json();
+
             if (result.success) {
-                Swal.fire('¡Venta Registrada!', result.message, 'success').then(() => {
-                    // Volver al dashboard para ver métricas actualizadas inmediatamente
-                    window.location.href = '/';
-                });
+                if (result.estadoSunat && result.estadoSunat.toLowerCase() === 'aceptado' && result.pdfUrl) {
+                    mostrarConfirmacionPostVenta(result);
+                } else {
+                    Swal.fire({
+                        title: 'Venta registrada',
+                        html: '<div style="text-align:left;">' +
+                            '<p>El comprobante está <strong>pendiente de confirmación</strong> por SUNAT.</p>' +
+                            '<p style="font-size:0.9em;color:#666;">Los comprobantes electrónicos pueden tardar entre <strong>5 y 15 minutos</strong> en ser procesados.</p>' +
+                            '<p style="font-size:0.9em;color:#666;">Puede cerrar esta ventana y continuar con otras ventas. El comprobante se actualizará automáticamente.</p>' +
+                            '</div>',
+                        icon: 'info',
+                        confirmButtonText: 'Entendido',
+                        width: '500px'
+                    }).then(() => {
+                        window.location.href = '/ventas/nueva';
+                    });
+                }
             } else {
                 showNotification(result.message || 'Error al guardar la venta.', 'error');
             }
@@ -502,6 +785,38 @@
         } finally {
             showLoading(false);
         }
+    }
+
+    function mostrarConfirmacionPostVenta(result) {
+        const estadoSunatLabel = result.estadoSunat && result.estadoSunat.toLowerCase() === 'aceptado'
+            ? '<span class="text-success">Aceptado por SUNAT</span>'
+            : '<span class="text-warning">' + (result.estadoSunat || 'Pendiente') + '</span>';
+
+        Swal.fire({
+            title: 'Venta finalizada',
+            html: `<div style="text-align:left;">` +
+                `<p><strong>Comprobante:</strong> ${result.numeroVenta || 'N/A'}</p>` +
+                `<p><strong>Estado SUNAT:</strong> ${estadoSunatLabel}</p>` +
+                `<p><strong>PDF:</strong> <a href="${result.pdfUrl}" target="_blank">Abrir comprobante</a></p>` +
+                `</div>`,
+            icon: 'success',
+            showDenyButton: true,
+            showCancelButton: true,
+            confirmButtonText: 'Descargar PDF',
+            denyButtonText: 'Nueva Venta',
+            cancelButtonText: 'Cerrar',
+            width: '600px'
+        }).then((swalResult) => {
+            if (swalResult.isConfirmed) {
+                window.open(result.pdfUrl, '_blank');
+            }
+            if (swalResult.isDenied) {
+                window.location.href = '/ventas/nueva';
+            }
+            if (!swalResult.isConfirmed && !swalResult.isDenied) {
+                // Mantener en la misma vista para crear otra venta manualmente
+            }
+        });
     }
 
     function showNotification(message, type = 'success') {

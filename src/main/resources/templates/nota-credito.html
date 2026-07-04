@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nota de Crédito</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        :root {
+            --ym-pink: #ff2aa6;
+            --ym-pink-dark: #cc007f;
+            --ym-yellow: #ffd400;
+            --ym-dark: #2b0030;
+            --ym-bg: #fff4fb;
+            --ym-bg-soft: #fff0f7;
+        }
+
+        .nc-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .nc-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(43, 0, 48, 0.08);
+            border: 1px solid rgba(255, 42, 166, 0.08);
+            overflow: hidden;
+        }
+
+        .nc-header {
+            background: linear-gradient(135deg, var(--ym-pink) 0%, var(--ym-pink-dark) 100%);
+            color: white;
+            padding: 2rem 2.5rem;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(255, 42, 166, 0.3);
+        }
+
+        .nc-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 300px;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+        }
+
+        .nc-header::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -5%;
+            width: 200px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+        }
+
+        .nc-header h2 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .nc-header .header-icon {
+            font-size: 2.25rem;
+            margin-right: 0.875rem;
+            position: relative;
+            z-index: 1;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        }
+
+        .nc-body {
+            padding: 2rem;
+        }
+
+        .nc-section {
+            margin-bottom: 2.5rem;
+        }
+
+        .nc-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .nc-section-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--ym-dark);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.875rem;
+            border-bottom: 3px solid rgba(255, 42, 166, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            position: relative;
+        }
+
+        .nc-section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: var(--ym-pink);
+            border-radius: 2px;
+        }
+
+        .nc-section-title i {
+            color: var(--ym-pink);
+            font-size: 1.25rem;
+            filter: drop-shadow(0 1px 2px rgba(255, 42, 166, 0.2));
+        }
+
+        .nc-info-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: white;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(255, 42, 166, 0.08);
+        }
+
+        .nc-info-table thead {
+            background: linear-gradient(135deg, var(--ym-bg-soft) 0%, var(--ym-bg) 100%);
+        }
+
+        .nc-info-table thead th {
+            padding: 1rem 1.5rem;
+            font-weight: 700;
+            color: var(--ym-dark);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            border-bottom: 2px solid rgba(255, 42, 166, 0.15);
+        }
+
+        .nc-info-table tbody td {
+            padding: 1.125rem 1.5rem;
+            border-bottom: 1px solid #f5f5f5;
+            color: #495057;
+            font-size: 0.95rem;
+        }
+
+        .nc-info-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .nc-info-table tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        .nc-info-table tbody tr:hover {
+            background-color: rgba(255, 42, 166, 0.03);
+            transform: scale(1.005);
+        }
+
+        .nc-info-table tbody td:first-child {
+            font-weight: 700;
+            color: var(--ym-dark);
+            width: 220px;
+            background: linear-gradient(to right, #fafafa, #f8f9fa);
+            border-right: 2px solid rgba(255, 42, 166, 0.08);
+        }
+
+        .nc-alert {
+            background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+            border: 1px solid #ffc107;
+            border-left: 4px solid #ffc107;
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            box-shadow: 0 2px 8px rgba(255, 193, 7, 0.15);
+        }
+
+        .nc-alert-icon {
+            font-size: 1.5rem;
+            color: #ff9800;
+            flex-shrink: 0;
+        }
+
+        .nc-alert-content {
+            flex: 1;
+        }
+
+        .nc-alert-content strong {
+            color: #f57c00;
+        }
+
+        .nc-alert-content span {
+            color: #e65100;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .nc-form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .nc-form-label {
+            display: block;
+            font-weight: 600;
+            color: var(--ym-dark);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .nc-form-control,
+        .nc-form-select {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .nc-form-control:focus,
+        .nc-form-select:focus {
+            border-color: var(--ym-pink);
+            box-shadow: 0 0 0 3px rgba(255, 42, 166, 0.1);
+            outline: none;
+        }
+
+        .nc-form-control:disabled {
+            background-color: #f8f9fa;
+            opacity: 0.7;
+        }
+
+        .nc-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .nc-table-wrapper {
+            background: white;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(255, 42, 166, 0.08);
+        }
+
+        .nc-table {
+            width: 100%;
+            margin-bottom: 0;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .nc-table thead {
+            background: linear-gradient(135deg, var(--ym-bg-soft) 0%, var(--ym-bg) 100%);
+        }
+
+        .nc-table thead th {
+            padding: 1.125rem 1rem;
+            font-weight: 700;
+            color: var(--ym-dark);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            border-bottom: 2px solid rgba(255, 42, 166, 0.15);
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .nc-table thead th:first-child {
+            text-align: center;
+            width: 100px;
+        }
+
+        .nc-table thead th:last-child {
+            text-align: right;
+            padding-right: 1.5rem;
+        }
+
+        .nc-table tbody td {
+            padding: 1.125rem 1rem;
+            border-bottom: 1px solid #f5f5f5;
+            vertical-align: middle;
+            font-size: 0.95rem;
+        }
+
+        .nc-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .nc-table tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        .nc-table tbody tr:hover {
+            background-color: rgba(255, 42, 166, 0.03);
+            transform: scale(1.005);
+        }
+
+        .nc-table .product-name {
+            font-weight: 500;
+            color: var(--ym-dark);
+        }
+
+        .nc-table .text-center {
+            text-align: center;
+        }
+
+        .nc-table .text-end {
+            text-align: right;
+        }
+
+        .nc-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--ym-pink);
+        }
+
+        .nc-checkbox:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .nc-quantity-input {
+            width: 70px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .nc-quantity-input:focus {
+            border-color: var(--ym-pink);
+            box-shadow: 0 0 0 3px rgba(255, 42, 166, 0.1);
+            outline: none;
+        }
+
+        .nc-quantity-input:disabled {
+            background-color: #f8f9fa;
+            cursor: not-allowed;
+        }
+
+        .nc-price {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .nc-subtotal {
+            font-weight: 700;
+            color: var(--ym-dark);
+        }
+
+        .nc-total-section {
+            background: linear-gradient(135deg, var(--ym-bg-soft) 0%, var(--ym-bg) 100%);
+            border-radius: 14px;
+            padding: 1.5rem 2rem;
+            margin-top: 2rem;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 1.25rem;
+            border: 2px solid rgba(255, 42, 166, 0.15);
+            box-shadow: 0 4px 12px rgba(255, 42, 166, 0.08);
+        }
+
+        .nc-total-label {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--ym-dark);
+            letter-spacing: 0.3px;
+        }
+
+        .nc-total-value {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: var(--ym-pink);
+            text-shadow: 0 2px 4px rgba(255, 42, 166, 0.2);
+            letter-spacing: -0.5px;
+        }
+
+        .nc-info-box {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border: 1px solid #90caf9;
+            border-left: 4px solid #2196f3;
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .nc-info-box i {
+            color: #1976d2;
+            font-size: 1.25rem;
+        }
+
+        .nc-info-box span {
+            color: #0d47a1;
+            font-size: 0.9rem;
+        }
+
+        .nc-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .nc-btn {
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.625rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            letter-spacing: 0.3px;
+        }
+
+        .nc-btn-primary {
+            background: linear-gradient(135deg, var(--ym-pink) 0%, var(--ym-pink-dark) 100%);
+            color: white;
+            box-shadow: 0 6px 20px rgba(255, 42, 166, 0.35);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nc-btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .nc-btn-primary:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .nc-btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(255, 42, 166, 0.45);
+        }
+
+        .nc-btn-primary:active {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 42, 166, 0.3);
+        }
+
+        .nc-btn-secondary {
+            background: white;
+            color: #6c757d;
+            border: 2px solid #dee2e6;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .nc-btn-secondary:hover {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-color: #adb5bd;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .nc-btn-secondary:active {
+            transform: translateY(0);
+        }
+
+        .nc-description {
+            font-size: 0.875rem;
+            color: #6c757d;
+            margin-top: 0.5rem;
+            line-height: 1.5;
+        }
+
+        .nc-error-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(220, 53, 69, 0.1);
+            border: 1px solid rgba(220, 53, 69, 0.2);
+            overflow: hidden;
+        }
+
+        .nc-error-header {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+        }
+
+        .nc-error-body {
+            padding: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .nc-header {
+                padding: 1.25rem 1.5rem;
+            }
+
+            .nc-header h2 {
+                font-size: 1.5rem;
+            }
+
+            .nc-body {
+                padding: 1.5rem;
+            }
+
+            .nc-info-table tbody td:first-child {
+                width: auto;
+                display: block;
+                padding-bottom: 0.25rem;
+            }
+
+            .nc-table-wrapper {
+                overflow-x: auto;
+            }
+
+            .nc-actions {
+                flex-direction: column;
+            }
+
+            .nc-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="nc-container">
+        <div th:if="${venta != null}">
+            <div class="nc-card">
+                <div class="nc-header">
+                    <h2><span class="header-icon">📋</span>Emitir Nota de Crédito</h2>
+                </div>
+                <div class="nc-body">
+                    <!-- Datos del Comprobante Original -->
+                    <div class="nc-section">
+                        <h3 class="nc-section-title">
+                            <i class="bi bi-receipt"></i>
+                            Datos del Comprobante Original
+                        </h3>
+                        <table class="nc-info-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 25%;">Campo</th>
+                                    <th>Información</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>N° Venta</td>
+                                    <td th:text="${venta['numeroVenta']}">-</td>
+                                </tr>
+                                <tr>
+                                    <td>Cliente</td>
+                                    <td th:text="${venta['cliente'] != null ? venta['cliente']['nombre'] : 'N/A'}">-</td>
+                                </tr>
+                                <tr>
+                                    <td>Total</td>
+                                    <td th:text="${'S/ ' + venta['total']}">-</td>
+                                </tr>
+                                <tr>
+                                    <td>Tipo</td>
+                                    <td th:text="${venta['tipoComprobante']}">-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <th:block th:if="${esPendiente}">
+                            <div class="nc-alert">
+                                <span class="nc-alert-icon">⚠️</span>
+                                <div class="nc-alert-content">
+                                    <span>El comprobante original aún está <strong>pendiente</strong> de confirmación por SUNAT. Puedes emitir la NC igualmente, pero considera esperar a que SUNAT lo acepte.</span>
+                                </div>
+                            </div>
+                        </th:block>
+                    </div>
+
+                    <!-- Datos de la Nota de Crédito -->
+                    <div class="nc-section">
+                        <h3 class="nc-section-title">
+                            <i class="bi bi-file-earmark-text"></i>
+                            Datos de la Nota de Crédito
+                        </h3>
+                        <form th:action="@{/ventas/nota-credito/{id}(id=${venta['id']})}" method="post" id="formNotaCredito">
+                            <div th:if="${_csrf != null}">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                            </div>
+
+                            <div class="nc-form-group">
+                                <label for="tipoNota" class="nc-form-label">Tipo de Nota de Crédito</label>
+                                <select class="nc-form-select nc-form-select" id="tipoNota" name="tipoNota" required onchange="actualizarComportamiento(this.value)">
+                                    <option value="">Seleccione...</option>
+                                    <th:block th:each="tipo : ${tiposNC}">
+                                        <option th:value="${tipo.codigo}" th:text="${tipo.descripcion}" th:unless="${tipo.codigo == '02' || tipo.codigo == '09'}"></option>
+                                    </th:block>
+                                </select>
+                            </div>
+
+                            <div class="nc-form-group">
+                                <label for="motivo" class="nc-form-label">Motivo</label>
+                                <textarea class="nc-form-control nc-textarea" id="motivo" name="motivo" rows="3" required placeholder="Ingrese el motivo de la emisión de la nota de crédito..."></textarea>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Productos a incluir -->
+                    <div class="nc-section">
+                        <h3 class="nc-section-title">
+                            <i class="bi bi-box-seam"></i>
+                            Productos a incluir en la nota de crédito
+                        </h3>
+                        <p class="nc-description">
+                            Marca los productos que se devuelven e indica la cantidad. Para anulación total, se seleccionarán todos automáticamente.
+                        </p>
+
+                        <div class="nc-table-wrapper">
+                            <table id="tabla-items" class="nc-table">
+                                <thead>
+                                    <tr>
+                                        <th>Seleccionar</th>
+                                        <th>Producto</th>
+                                        <th class="text-center">Cant. original</th>
+                                        <th class="text-center">Cant. a devolver</th>
+                                        <th class="text-end">Precio unit.</th>
+                                        <th class="text-end">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="detalle, iter : ${detalles}"
+                                        th:attr="data-idx=${iter.index}"
+                                        th:data-precio="${detalle.precioUnitario}">
+                                        <td class="text-center">
+                                            <input type="checkbox"
+                                                   th:id="'check-' + ${iter.index}"
+                                                   th:value="${iter.index}"
+                                                   th:attr="data-idx=${iter.index}"
+                                                   class="nc-checkbox item-check"
+                                                   aria-label="Seleccionar producto">
+                                            <input type="hidden"
+                                                   th:name="'items[' + ${detalle.id} + '].id'"
+                                                   th:value="${detalle.id}">
+                                            <input type="hidden"
+                                                   th:name="'items[' + ${detalle.id} + '].precio'"
+                                                   th:value="${detalle.precioUnitario}">
+                                        </td>
+                                        <td th:text="${detalle.producto.nombre}" class="product-name"></td>
+                                        <td class="text-center" th:text="${detalle.cantidad}"></td>
+                                        <td class="text-center">
+                                            <input type="number"
+                                                   th:id="'cant-' + ${iter.index}"
+                                                   th:name="'items[' + ${detalle.id} + '].cantidad'"
+                                                   th:max="${detalle.cantidad}"
+                                                   min="0" value="0"
+                                                   th:attr="data-idx=${iter.index}"
+                                                   class="nc-quantity-input cant-input"
+                                                   disabled>
+                                        </td>
+                                        <td class="text-end nc-price" th:text="${'S/ ' + detalle.precioUnitario}"></td>
+                                        <td id="'sub-' + ${iter.index}" class="text-end nc-subtotal">S/ 0.00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="nc-total-section">
+                            <span class="nc-total-label">Total a acreditar:</span>
+                            <span class="nc-total-value" id="total-nc">S/ 0.00</span>
+                        </div>
+
+                        <div class="nc-info-box" id="infoItems" style="display: none;">
+                            <i class="bi bi-info-circle-fill"></i>
+                            <span><strong>Información:</strong> <span id="cantidadItemsSeleccionados">0</span> ítem(s) seleccionado(s) para devolver</span>
+                        </div>
+                    </div>
+
+                    <!-- Botones de Acción -->
+                    <div class="nc-actions">
+                        <button type="submit" form="formNotaCredito" class="nc-btn nc-btn-primary" id="btnEmitir">
+                            <i class="bi bi-file-earmark-pdf"></i>
+                            Emitir Nota de Crédito
+                        </button>
+                        <a th:href="@{/ventas/listar}" class="nc-btn nc-btn-secondary">
+                            <i class="bi bi-x-circle"></i>
+                            Cancelar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${venta == null}">
+            <div class="nc-error-card">
+                <div class="nc-error-header">
+                    <h2><i class="bi bi-exclamation-triangle-fill"></i> Error</h2>
+                </div>
+                <div class="nc-error-body">
+                    <p th:text="${errorMessage}" class="mb-4">Venta no encontrada</p>
+                    <a th:href="@{/ventas/listar}" class="nc-btn nc-btn-primary">
+                        <i class="bi bi-arrow-left"></i>
+                        Volver al listado
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ─── Utilidades ───────────────────────────────────────────────
+        function getFila(idx) {
+            return document.querySelector('#tabla-items tbody tr[data-idx="' + idx + '"]');
+        }
+
+        function getCantInput(idx) {
+            return document.querySelector('#cant-' + idx) || document.querySelector('input[name="items[' + idx + '].cantidad"]');
+        }
+
+        function recalcularSubtotalFila(idx) {
+            const fila  = getFila(idx);
+            const input = document.querySelector('#cant-' + idx);
+
+            if (!fila || !input) return;
+
+            const precio = parseFloat(fila.getAttribute('data-precio')) || 0;
+            const cant = parseInt(input.value, 10) || 0;
+            const sub = precio * cant;
+
+            const celdaSub = document.querySelector('#sub-' + idx);
+            if (celdaSub) celdaSub.textContent = 'S/ ' + sub.toFixed(2);
+
+            recalcularTotal();
+        }
+
+        function recalcularTotal() {
+            let total = 0;
+
+            document.querySelectorAll('td[id^="sub-"]').forEach(function(celda) {
+                const text = (celda.textContent || '').replace('S/', '').trim();
+                const val = parseFloat(text.replace(',', '')) || 0;
+                total += val;
+            });
+
+            document.getElementById('total-nc').textContent =
+                'S/ ' + total.toFixed(2);
+
+            // cantidadItemsSeleccionados
+            let itemsSeleccionados = 0;
+            document.querySelectorAll('.item-check:checked').forEach(function(cb) {
+                const idx = cb.getAttribute('data-idx');
+                const inp = document.getElementById('cant-' + idx);
+                const cant = parseInt(inp?.value || '0', 10);
+                if (cant > 0) itemsSeleccionados++;
+            });
+
+            document.getElementById('cantidadItemsSeleccionados').textContent = itemsSeleccionados;
+            document.getElementById('infoItems').style.display = itemsSeleccionados > 0 ? 'block' : 'none';
+        }
+
+        // ─── Evento: cambio en checkbox ───────────────────────────────
+        document.querySelectorAll('.item-check').forEach(function(cb) {
+            cb.addEventListener('change', function() {
+                // Si el checkbox está deshabilitado, no hacer nada
+                if (this.disabled) return;
+
+                const idx = this.getAttribute('data-idx');
+                const input = document.getElementById('cant-' + idx);
+                if (!input) return;
+
+                if (this.checked) {
+                    input.disabled = false;
+
+                    if (parseInt(input.value, 10) === 0) {
+                        input.value = 1; // mínimo útil
+                    }
+                } else {
+                    input.disabled = true;
+                    input.value = 0;
+                }
+                recalcularSubtotalFila(idx);
+            });
+        });
+
+        // ─── Evento: cambio en cantidad ───────────────────────────────
+        document.querySelectorAll('.cant-input').forEach(function(input) {
+            input.addEventListener('input', function() {
+                const idx = this.getAttribute('data-idx');
+                const max = parseInt(this.getAttribute('max'), 10) || 0;
+
+                let v = parseInt(this.value, 10);
+                if (Number.isNaN(v)) v = 0;
+
+                if (v > max) v = max;
+                if (v < 0) v = 0;
+
+                this.value = v;
+                recalcularSubtotalFila(idx);
+            });
+        });
+
+        // ─── Evento: cambio en tipo de NC ────────────────────────────
+        document.getElementById('tipoNota').addEventListener('change', function() {
+            const tipo = this.value;
+
+            // Según lo que pediste:
+            // - Solo permite editar cantidades para 07
+            // - Para otros tipos (01/02/06/09) se mantiene lectura
+            const es07 = (tipo === '07');
+            const esTotal = ['01', '06'].includes(tipo); // si quieres forzar todo en algunos totales
+
+            document.querySelectorAll('#tabla-items tbody tr').forEach(function(fila) {
+                const idx = fila.getAttribute('data-idx');
+                const cb = fila.querySelector('.item-check');
+                const input = document.getElementById('cant-' + idx);
+
+                if (!cb || !input) return;
+
+                if (esTotal && !es07) {
+                    // Anulación total: todos seleccionados y bloqueados
+                    cb.checked = true;
+                    cb.disabled = true; // Bloquear checkbox
+                    input.disabled = true;
+                    input.value = input.max || 0;
+                } else if (es07) {
+                    // 07: edición parcial - permitir selección
+                    cb.checked = false;
+                    cb.disabled = false; // Habilitar checkbox
+                    input.disabled = false;
+                    input.value = 0;
+
+                    const subCell = document.getElementById('sub-' + idx);
+                    if (subCell) subCell.textContent = 'S/ 0.00';
+                } else {
+                    // otros: solo lectura (reset)
+                    cb.checked = false;
+                    cb.disabled = true; // Bloquear checkbox
+                    input.disabled = true;
+                    input.value = 0;
+
+                    const subCell = document.getElementById('sub-' + idx);
+                    if (subCell) subCell.textContent = 'S/ 0.00';
+                }
+
+                recalcularSubtotalFila(idx);
+            });
+
+            recalcularTotal();
+        });
+
+        // ─── Validación antes de enviar ───────────────────────────────
+        document.getElementById('formNotaCredito').addEventListener('submit', function(e) {
+            const tipoNota = document.getElementById('tipoNota').value;
+            const motivo = document.getElementById('motivo').value.trim();
+
+            if (!tipoNota) {
+                e.preventDefault();
+                alert('Debe seleccionar el tipo de nota de crédito');
+                return;
+            }
+            if (!motivo) {
+                e.preventDefault();
+                alert('Debe ingresar el motivo de la devolución');
+                return;
+            }
+
+            // Habilitar todos los campos cantidad para que se envíen en el formulario
+            document.querySelectorAll('.cant-input').forEach(function(input) {
+                input.disabled = false;
+            });
+
+            const hayItems = Array.from(document.querySelectorAll('.item-check:checked'))
+                .some(function(cb) {
+                    const idx = cb.getAttribute('data-idx');
+                    const inp = document.getElementById('cant-' + idx);
+                    return parseInt(inp?.value || '0', 10) > 0;
+                });
+
+            if (!hayItems) {
+                e.preventDefault();
+                alert('Debes seleccionar al menos un producto con cantidad mayor a 0 para emitir la nota de crédito.');
+                return;
+            }
+
+            const total = document.getElementById('total-nc').textContent;
+            const tipoEl = document.getElementById('tipoNota');
+            const tipoTexto = tipoEl.options[tipoEl.selectedIndex]?.text || '';
+
+            const ok = confirm(
+                '¿Confirmas emitir la nota de crédito?\n\n' +
+                'Tipo: ' + tipoTexto + '\n' +
+                'Total a acreditar: ' + total + '\n\n' +
+                'Esta acción no se puede deshacer.'
+            );
+            if (!ok) e.preventDefault();
+        });
+
+        // Inicializar estados (por si el usuario abre la página y cambia rápido)
+        recalcularTotal();
+    </script>
+</body>
+</html>

@@ -3,35 +3,47 @@ package com.example.acceso.controller;
 import com.example.acceso.model.*;
 import com.example.acceso.service.*;
 import com.example.acceso.dto.ProductoMasVendidoDTO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpSession;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/ventas")
 public class VentaController {
 
+    private static final Logger logger = LoggerFactory.getLogger(VentaController.class);
+
     private final VentaService ventaService;
     private final ProductoService productoService;
     private final CategoriaService categoriaService;
     private final EmpresaService empresaService;
+    private final CajaService cajaService;
+    private final com.example.acceso.repository.VentaRepository ventaRepository;
 
     @Autowired
-    public VentaController(VentaService ventaService, ProductoService productoService, CategoriaService categoriaService, EmpresaService empresaService) {
+    public VentaController(VentaService ventaService, ProductoService productoService, CategoriaService categoriaService, EmpresaService empresaService, CajaService cajaService, com.example.acceso.repository.VentaRepository ventaRepository) {
         this.ventaService = ventaService;
         this.productoService = productoService;
         this.categoriaService = categoriaService;
         this.empresaService = empresaService;
+        this.cajaService = cajaService;
+        this.ventaRepository = ventaRepository;
     }
 
     @GetMapping("/listar")
@@ -46,6 +58,15 @@ public class VentaController {
                 .collect(Collectors.groupingBy(Producto::getCategoria));
 
         model.addAttribute("productosPorCategoria", productosPorCategoria);
+
+        // Cambio 2: Verificar estado de caja y pasarlo al modelo
+        boolean cajaAbierta = cajaService.haySesionActiva();
+        model.addAttribute("cajaAbierta", cajaAbierta);
+        if (!cajaAbierta) {
+            BigDecimal saldoPropuesto = cajaService.obtenerSaldoParaApertura();
+            model.addAttribute("saldoPropuesto", saldoPropuesto);
+        }
+
         return "nueva-venta";
     }
 
@@ -68,18 +89,60 @@ public class VentaController {
     @PostMapping("/api/guardar")
     @ResponseBody
     public ResponseEntity<?> guardarVenta(@RequestBody Venta venta) {
+        // Cambio 3: Bloquear si no hay caja abierta
+        if (!cajaService.haySesionActiva()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "caja_cerrada",
+                    "mensaje", "No hay caja abierta. Abre la caja antes de registrar ventas."));
+        }
+
+        Venta ventaCreada = null;
         try {
-            Venta ventaCreada = ventaService.crearVenta(venta);
+            ventaCreada = ventaService.crearVenta(venta);
+            
+            // Vincular la venta a la sesión de caja activa si existe
+            Optional<com.example.acceso.model.SesionCaja> sesionActiva = cajaService.obtenerSesionActiva();
+            if (sesionActiva.isPresent()) {
+                ventaCreada.setSesionCaja(sesionActiva.get());
+                ventaCreada = ventaRepository.save(ventaCreada); // Guardar la relación con la sesión de caja
+            }
+            
+            Venta ventaProcesada = null;
+            try {
+                ventaProcesada = ventaService.procesarComprobanteElectronico(ventaCreada);
+            } catch (Exception ex) {
+                // Mantener la venta creada aunque falle la emisión SUNAT/PDF/XML
+                logger.error("Error procesando comprobante electrónico (la venta queda registrada sin comprobante)", ex);
+                ventaCreada.setEstadoSunat("error");
+                ventaCreada.setNota("Error emisión comprobante: " + (ex.getMessage() != null ? ex.getMessage() : "sin detalle"));
+                ventaProcesada = ventaRepository.save(ventaCreada);
+            }
+
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("message", "Venta registrada con éxito");
-            response.put("ventaId", ventaCreada.getId());
+            response.put("ventaId", ventaProcesada.getId());
+            response.put("numeroVenta", ventaProcesada.getNumeroVenta());
+            response.put("estadoSunat", ventaProcesada.getEstadoSunat());
+            response.put("message", "Venta registrada con éxito.");
+
+            if ("aceptado".equalsIgnoreCase(ventaProcesada.getEstadoSunat())) {
+                response.put("pdfUrl", ventaProcesada.getPdfUrl());
+                response.put("xmlUrl", ventaProcesada.getXmlUrl());
+            } else {
+                response.put("errorMessage", ventaProcesada.getNota() != null ? ventaProcesada.getNota() : "Ocurrió un error al emitir el comprobante.");
+            }
+
             return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
+            logger.error("Error al guardar venta", e);
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
-            response.put("message", e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            response.put("message", "Error interno al procesar la venta: " + e.getMessage());
+            if (ventaCreada != null) {
+                response.put("ventaId", ventaCreada.getId());
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 
@@ -155,9 +218,9 @@ public class VentaController {
 
     @GetMapping("/imprimir/{id}")
     public String imprimirBoleta(@PathVariable Long id, Model model) {
-        return ventaService.obtenerVentaPorId(id)
-                .map(venta -> {
-                    model.addAttribute("venta", venta);
+        return ventaService.obtenerVentaDetalladaPorId(id)
+                .map(ventaMap -> {
+                    model.addAttribute("venta", ventaMap);
                     model.addAttribute("empresa", empresaService.getEmpresaInfo());
                     return "boleta";
                 })
@@ -172,6 +235,58 @@ public class VentaController {
     public ResponseEntity<List<ProductoMasVendidoDTO>> getTop5ProductosMasVendidosDeLaSemana() {
         List<ProductoMasVendidoDTO> topProductos = ventaService.obtenerTop5ProductosMasVendidosDeLaSemana();
         return ResponseEntity.ok(topProductos);
+    }
+
+    @GetMapping("/api/verificar-caja")
+    @ResponseBody
+    public ResponseEntity<?> verificarCaja(HttpSession session) {
+        boolean haySesion = cajaService.haySesionActiva();
+        Map<String, Object> response = new HashMap<>();
+        response.put("haySesionActiva", haySesion);
+        
+        if (!haySesion) {
+            // Sugerir saldo de apertura desde la última sesión cerrada
+            BigDecimal saldoSugerido = cajaService.obtenerSaldoParaApertura();
+            response.put("saldoSugerido", saldoSugerido);
+            response.put("mensaje", "No hay una sesión de caja abierta. Debe abrir caja antes de realizar ventas.");
+        }
+        
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/api/abrir-caja-rapida")
+    @ResponseBody
+    public ResponseEntity<?> abrirCajaRapida(@RequestParam BigDecimal montoInicial,
+                                              HttpSession session) {
+        try {
+            Usuario usuario = (Usuario) session.getAttribute("usuarioLogueado");
+            if (usuario == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "Debe iniciar sesión para abrir caja.");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+            
+            // Validar que no haya sesión abierta
+            if (cajaService.haySesionActiva()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "Ya existe una sesión de caja abierta.");
+                return ResponseEntity.badRequest().body(error);
+            }
+            
+            cajaService.abrirCaja(montoInicial, usuario.getId());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Caja abierta correctamente con S/ " + montoInicial.setScale(2, java.math.RoundingMode.HALF_UP));
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Error al abrir caja: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
     }
 
     @GetMapping("/api/debug/ventas-hoy")

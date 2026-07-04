@@ -128,6 +128,12 @@ $(document).ready(function() {
             titularYape: $('#titularYape').val(),
             logoUrl: logoUrl,
             qrYapeUrl: qrYapeUrl,
+            rucEmpresa: $('#rucEmpresa').val(),
+            razonSocialEmpresa: $('#razonSocialEmpresa').val(),
+            direccionEmpresa: $('#direccionEmpresa').val(),
+            serieBoleta: $('#serieBoleta').val(),
+            serieFactura: $('#serieFactura').val(),
+            nubefactAmbiente: $('#nubefactAmbiente').val(),
             productosDestacados: productosDestacados
         };
 
@@ -165,6 +171,35 @@ $(document).ready(function() {
             console.error('Error:', error);
             showNotification('Error de conexión al guardar los cambios.', 'error');
         });
+    }
+
+    $('#btnTestApisunatConnection').on('click', function() {
+        testApisunatConnection();
+    });
+
+    async function testApisunatConnection() {
+        $('#testConexionResult').removeClass('text-success text-danger').text('Probando conexión...');
+
+        try {
+            const response = await fetch('/empresa/api/probar-conexion-apisunat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                $('#testConexionResult').addClass('text-success').removeClass('text-danger').text(result.message || 'Conexión APISUNAT válida.');
+                showNotification(result.message || 'Conexión APISUNAT válida.', 'success');
+            } else {
+                $('#testConexionResult').addClass('text-danger').removeClass('text-success').text(result.message || 'No se pudo conectar con APISUNAT.');
+                showNotification(result.message || 'No se pudo conectar con APISUNAT.', 'error');
+            }
+        } catch (error) {
+            console.error('Error al probar conexión con APISUNAT:', error);
+            $('#testConexionResult').addClass('text-danger').removeClass('text-success').text('Error de conexión al probar APISUNAT.');
+            showNotification('Error de conexión al probar APISUNAT.', 'error');
+        }
     }
 
     // Lógica para la PREVISUALIZACIÓN del logo

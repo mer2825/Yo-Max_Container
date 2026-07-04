@@ -61,11 +61,12 @@ public class DataInitializer implements CommandLineRunner {
         crearOpcionSiNoExiste("Gestión de Productos", "/productos/listar", "bi-cake2", null);
         crearOpcionSiNoExiste("Gestión de Clientes", "/clientes/listar", "bi-person-vcard", null);
         crearOpcionSiNoExiste("Gestión de Empresa", "/empresa/listar", "bi-shop-window", null);
-        crearOpcionSiNoExiste("Listado de Ventas", "/ventas/listar", "bi-receipt", null);
+        crearOpcionSiNoExiste("Listado de Ventas", "/ventas/listar", "bi-receipt", "/ventas/nota-credito");
         crearOpcionSiNoExiste("Nueva Venta", "/ventas/nueva", "bi-cart-plus", null);
         crearOpcionSiNoExiste("Ventas Web", "/ventas_web", "bi-globe", null);
         crearOpcionSiNoExiste("Gestión Inventario", "/inventario/listar", "bi-boxes", null);
-        crearOpcionSiNoExiste("Ir al Catálogo", "/catalogo", "bi-shop", null); // Nueva opción añadida
+        crearOpcionSiNoExiste("Ir al Catálogo", "/catalogo", "bi-shop", null);
+        crearOpcionSiNoExiste("Monitor de Caja", "/caja", "bi-cash-register", "/caja/cerrar,/caja/historial,/caja/movimiento");
     }
 
     private void crearPerfilAdminConTodasLasOpciones() {

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -40,10 +41,35 @@ public class Venta {
     private String nota;
 
     @Column(name = "tipo_comprobante", nullable = false, length = 50)
-    private String tipoComprobante;
+    private String tipoComprobante = "nota_venta";
+
+    @Column(name = "serie_correlativo", length = 50)
+    private String serieCorrelativo;
+
+    @Column(name = "estado_sunat", length = 50)
+    private String estadoSunat;
+
+    @Column(name = "cdr_sunat", columnDefinition = "TEXT")
+    private String cdrSunat;
+
+    @Column(name = "pdf_url", length = 255)
+    private String pdfUrl;
+
+    @Column(name = "xml_url", length = 255)
+    private String xmlUrl;
+
+    @Column(name = "hash_cdr", length = 255)
+    private String hashCdr;
+
+    @Column(name = "nubefact_id", length = 255)
+    private String nubefactId;
 
     @Column(nullable = false)
     private Integer estado = 1; // 0: Inactivo, 1: Activo, 2: Eliminado (soft delete), 3: Pendiente de Procesar (Venta Web)
+
+    // null = sin NC, "PARCIAL" = NC parcial emitida, "TOTAL" = NC total emitida / anulada
+    @Column(name = "estado_nota_credito", length = 20)
+    private String estadoNotaCredito;
 
     @Column(nullable = false, length = 20)
     private String origen = "pos"; // pos, web
@@ -52,8 +78,16 @@ public class Venta {
     @JsonManagedReference
     private List<DetalleVenta> detalles;
 
+    @OneToMany(mappedBy = "venta", fetch = FetchType.LAZY)
+    @JsonManagedReference
+    private List<NotasCredito> notasCredito = new ArrayList<>();
+
     @Column(length = 20)
     private String pdfKey;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "sesion_caja_id")
+    private SesionCaja sesionCaja;
 
     // Getters y Setters
 
@@ -145,12 +179,76 @@ public class Venta {
         this.tipoComprobante = tipoComprobante;
     }
 
+    public String getSerieCorrelativo() {
+        return serieCorrelativo;
+    }
+
+    public void setSerieCorrelativo(String serieCorrelativo) {
+        this.serieCorrelativo = serieCorrelativo;
+    }
+
+    public String getEstadoSunat() {
+        return estadoSunat;
+    }
+
+    public void setEstadoSunat(String estadoSunat) {
+        this.estadoSunat = estadoSunat;
+    }
+
+    public String getCdrSunat() {
+        return cdrSunat;
+    }
+
+    public void setCdrSunat(String cdrSunat) {
+        this.cdrSunat = cdrSunat;
+    }
+
+    public String getPdfUrl() {
+        return pdfUrl;
+    }
+
+    public void setPdfUrl(String pdfUrl) {
+        this.pdfUrl = pdfUrl;
+    }
+
+    public String getXmlUrl() {
+        return xmlUrl;
+    }
+
+    public void setXmlUrl(String xmlUrl) {
+        this.xmlUrl = xmlUrl;
+    }
+
+    public String getHashCdr() {
+        return hashCdr;
+    }
+
+    public void setHashCdr(String hashCdr) {
+        this.hashCdr = hashCdr;
+    }
+
+    public String getNubefactId() {
+        return nubefactId;
+    }
+
+    public void setNubefactId(String nubefactId) {
+        this.nubefactId = nubefactId;
+    }
+
     public Integer getEstado() {
         return estado;
     }
 
     public void setEstado(Integer estado) {
         this.estado = estado;
+    }
+
+    public String getEstadoNotaCredito() {
+        return estadoNotaCredito;
+    }
+
+    public void setEstadoNotaCredito(String estadoNotaCredito) {
+        this.estadoNotaCredito = estadoNotaCredito;
     }
 
     public String getOrigen() {
@@ -167,5 +265,21 @@ public class Venta {
 
     public void setPdfKey(String pdfKey) {
         this.pdfKey = pdfKey;
+    }
+
+    public SesionCaja getSesionCaja() {
+        return sesionCaja;
+    }
+
+    public void setSesionCaja(SesionCaja sesionCaja) {
+        this.sesionCaja = sesionCaja;
+    }
+
+    public List<NotasCredito> getNotasCredito() {
+        return notasCredito;
+    }
+
+    public void setNotasCredito(List<NotasCredito> notasCredito) {
+        this.notasCredito = notasCredito;
     }
 }

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h2><i class="bi bi-exclamation-triangle-fill"></i> Error</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-danger" role="alert">
+                            <h4 class="alert-heading">Ha ocurrido un error</h4>
+                            <p th:text="${errorMessage}" class="mb-0">Mensaje de error</p>
+                        </div>
+                        
+                        <div th:if="${errorDetalle != null}" class="alert alert-warning mt-3">
+                            <strong>Detalle:</strong>
+                            <p th:text="${errorDetalle}" class="mb-0"></p>
+                        </div>
+                        
+                        <div th:if="${errorTecnico != null}" class="mt-3">
+                            <details>
+                                <summary class="text-muted">Información técnica</summary>
+                                <pre th:text="${errorTecnico}" class="bg-light p-2 mt-2 small"></pre>
+                            </details>
+                        </div>
+                        
+                        <div class="d-flex gap-2 mt-4">
+                            <a th:href="@{/ventas/listar}" class="btn btn-primary">
+                                <i class="bi bi-arrow-left"></i> Volver al listado de ventas
+                            </a>
+                            <a th:href="@{/}" class="btn btn-secondary">
+                                <i class="bi bi-house"></i> Ir al inicio
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -24,6 +24,18 @@ public class Cliente {
     @Column(nullable = false, unique = true, length = 20)
     private String numeroDocumento;
 
+    @Size(min = 11, max = 11, message = "El RUC debe tener 11 dígitos")
+    @Column(length = 11)
+    private String ruc;
+
+    @Size(max = 255, message = "La razón social no puede exceder 255 caracteres")
+    @Column(length = 255)
+    private String razonSocial;
+
+    @Size(max = 255, message = "La dirección fiscal no puede exceder 255 caracteres")
+    @Column(length = 255)
+    private String direccionFiscal;
+
     @NotBlank(message = "El nombre es obligatorio")
     @Size(min = 2, max = 255, message = "El nombre debe tener entre 2 y 255 caracteres")
     @Column(nullable = false, length = 255)
@@ -69,6 +81,30 @@ public class Cliente {
 
     public void setNumeroDocumento(String numeroDocumento) {
         this.numeroDocumento = numeroDocumento;
+    }
+
+    public String getRuc() {
+        return ruc;
+    }
+
+    public void setRuc(String ruc) {
+        this.ruc = ruc;
+    }
+
+    public String getRazonSocial() {
+        return razonSocial;
+    }
+
+    public void setRazonSocial(String razonSocial) {
+        this.razonSocial = razonSocial;
+    }
+
+    public String getDireccionFiscal() {
+        return direccionFiscal;
+    }
+
+    public void setDireccionFiscal(String direccionFiscal) {
+        this.direccionFiscal = direccionFiscal;
     }
 
     public String getNombre() {

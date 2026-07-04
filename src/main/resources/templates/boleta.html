@@ -116,9 +116,9 @@
     </div>
 
     <div class="info-section">
-        <p>Cliente: <span th:text="${venta.cliente.nombre}"></span></p>
-        <p>DNI/RUC: <span th:text="${venta.cliente.numeroDocumento}"></span></p>
-        <p>Dirección: <span th:text="${venta.cliente.direccion}"></span></p>
+        <p>Cliente: <span th:text="${venta['cliente'] != null ? venta['cliente']['nombre'] : 'N/A'}"></span></p>
+        <p>DNI/RUC: <span th:text="${venta['cliente'] != null ? venta['cliente']['numeroDocumento'] : 'N/A'}"></span></p>
+        <p>Dirección: <span th:text="${venta['cliente'] != null ? venta['cliente']['direccion'] : 'N/A'}"></span></p>
         <hr>
     </div>
 
@@ -132,19 +132,19 @@
             </tr>
         </thead>
         <tbody>
-            <tr th:each="detalle : ${venta.detalles}">
-                <td th:text="${detalle.producto.nombre}">Producto X</td>
-                <td th:text="${detalle.cantidad}">1</td>
-                <td th:text="${#numbers.formatDecimal(detalle.precioUnitario, 1, 2)}">10.00</td>
-                <td th:text="${#numbers.formatDecimal(detalle.subtotal, 1, 2)}">10.00</td>
+            <tr th:each="detalle : ${venta['detalles']}">
+                <td th:text="${detalle['producto'] != null ? detalle['producto']['nombre'] : 'Producto'}">Producto X</td>
+                <td th:text="${detalle['cantidad']}">1</td>
+                <td th:text="${#numbers.formatDecimal(detalle['precioUnitario'], 1, 2)}">10.00</td>
+                <td th:text="${#numbers.formatDecimal(detalle['subtotal'], 1, 2)}">10.00</td>
             </tr>
         </tbody>
     </table>
 
     <div class="totals-section">
-        <p>Subtotal: S/ <span th:text="${#numbers.formatDecimal(venta.subtotal, 1, 2)}">0.00</span></p>
-        <p class="total-final">TOTAL: S/ <span th:text="${#numbers.formatDecimal(venta.total, 1, 2)}">0.00</span></p>
-        <p>Método de Pago: <span th:text="${venta.metodoPago}"></span></p>
+        <p>Subtotal: S/ <span th:text="${#numbers.formatDecimal(venta['subtotal'], 1, 2)}">0.00</span></p>
+        <p class="total-final">TOTAL: S/ <span th:text="${#numbers.formatDecimal(venta['total'], 1, 2)}">0.00</span></p>
+        <p>Método de Pago: <span th:text="${venta['metodoPago']}"></span></p>
     </div>
 
     <div th:if="${venta.nota != null and !venta.nota.isEmpty()}" class="nota">

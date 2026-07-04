@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nota de Crédito - PDF</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .ticket {
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid #ddd;
+            padding: 30px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        .info-section {
+            margin-bottom: 20px;
+        }
+        .table-bordered {
+            border: 1px solid #333;
+        }
+        .table-bordered th,
+        .table-bordered td {
+            border: 1px solid #333;
+            padding: 8px;
+        }
+        .total-section {
+            text-align: right;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #666;
+        }
+        @media print {
+            body {
+                padding: 0;
+            }
+            .ticket {
+                border: none;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="ticket">
+        <div class="no-print mb-3">
+            <button onclick="window.print()" class="btn btn-primary">
+                <i class="bi bi-printer"></i> Imprimir
+            </button>
+            <a th:href="@{/ventas/listar}" class="btn btn-secondary">Volver</a>
+        </div>
+
+        <div th:if="${venta != null}">
+            <div class="header">
+                <h1>NOTA DE CRÉDITO</h1>
+                <h3 th:text="${venta['numeroVenta']}">N° -</h3>
+            </div>
+
+            <div class="info-section">
+                <h4>Datos del Emisor</h4>
+                <p><strong>Empresa:</strong> Tienda de Importaciones Yo'Max</p>
+                <p><strong>RUC:</strong> 20556548745</p>
+                <p><strong>Dirección:</strong> 963 Monseñor Francisco Gonzales, Pueblo Nuevo, Ferreñafe</p>
+            </div>
+
+            <div class="info-section">
+                <h4>Datos del Cliente</h4>
+                <table class="table table-bordered">
+                    <tr>
+                        <th width="30%">Cliente</th>
+                        <td th:text="${venta['cliente'] != null ? venta['cliente']['nombre'] : 'CONSUMIDOR FINAL'}">-</td>
+                    </tr>
+                    <tr th:if="${venta['cliente'] != null}">
+                        <th>Documento</th>
+                        <td th:text="${venta['cliente']['tipoDocumento'] + ' ' + (venta['cliente']['numeroDocumento'] != null ? venta['cliente']['numeroDocumento'] : venta['cliente']['ruc'])}">-</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="info-section">
+                <h4>Comprobante Original</h4>
+                <table class="table table-bordered">
+                    <tr>
+                        <th width="30%">Tipo</th>
+                        <td th:text="${venta['tipoComprobante']}">-</td>
+                    </tr>
+                    <tr>
+                        <th>Número</th>
+                        <td th:text="${venta['serieCorrelativo']}">-</td>
+                    </tr>
+                    <tr>
+                        <th>Fecha Emisión</th>
+                        <td th:text="${#temporals.format(venta['fechaVenta'], 'dd/MM/yyyy HH:mm')}">-</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div th:if="${notaCredito != null}" class="info-section">
+                <h3>Estado SUNAT</h3>
+                <table style="width:100%;border-collapse:collapse">
+                    <tr>
+                        <td style="padding:6px;border:1px solid #ddd;font-weight:bold;width:30%">
+                            Serie-Correlativo NC
+                        </td>
+                        <td style="padding:6px;border:1px solid #ddd"
+                            th:text="${notaCredito.serieCorrelativo}">-</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:6px;border:1px solid #ddd;font-weight:bold">
+                            Estado SUNAT
+                        </td>
+                        <td style="padding:6px;border:1px solid #ddd">
+                            <span th:text="${notaCredito.estadoSunat}"
+                                  th:style="${'aceptado'.equals(notaCredito.estadoSunat)
+                                              ? 'color:green;font-weight:bold'
+                                              : 'pendiente'.equals(notaCredito.estadoSunat)
+                                              ? 'color:orange;font-weight:bold'
+                                              : 'color:red;font-weight:bold'}">
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:6px;border:1px solid #ddd;font-weight:bold">
+                            Total acreditado
+                        </td>
+                        <td style="padding:6px;border:1px solid #ddd;color:#c00;font-weight:bold"
+                            th:text="${'S/ ' + notaCredito.totalAcreditado}">
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <div th:if="${notaCredito != null and (notaCredito.pdfUrl != null or notaCredito.xmlUrl != null)}"
+                 class="no-print" style="margin-top:16px;display:flex;gap:8px">
+                <a th:if="${notaCredito.pdfUrl != null}"
+                   th:href="${notaCredito.pdfUrl}" target="_blank"
+                   style="background:#e91e8c;color:white;padding:8px 16px;
+                          border-radius:6px;text-decoration:none;font-size:13px">
+                    📄 Descargar PDF SUNAT
+                </a>
+                <a th:if="${notaCredito.xmlUrl != null}"
+                   th:href="${notaCredito.xmlUrl}" target="_blank"
+                   style="background:#1d9e75;color:white;padding:8px 16px;
+                          border-radius:6px;text-decoration:none;font-size:13px">
+                    📋 Descargar XML
+                </a>
+            </div>
+
+            <div th:if="${notaCredito != null and 'pendiente'.equals(notaCredito.estadoSunat) and notaCredito.nubefactId != null}"
+                 class="no-print"
+                 style="margin-top:10px">
+                <button type="button"
+                        th:attr="data-nc-id=${notaCredito.id}"
+                        onclick="refrescarNC(this)"
+                        style="background:#faeeda;color:#7a4c0d;border:1px solid #e4b063;
+                               border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer">
+                    🔄 Refrescar estado desde SUNAT
+                </button>
+            </div>
+
+            <div class="info-section">
+                <h4>Detalle de la Nota de Crédito</h4>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Descripción</th>
+                            <th>Cantidad</th>
+                            <th>Precio Unit.</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="detalle, iter : ${venta['detalles']}">
+                            <td th:text="${iter.count}">1</td>
+                            <td th:text="${detalle['producto'] != null ? detalle['producto']['nombre'] : 'Producto'}">Producto</td>
+                            <td th:text="${detalle['cantidad']}">0</td>
+                            <td th:text="${'S/ ' + detalle['precioUnitario']}">S/ 0.00</td>
+                            <td th:text="${'S/ ' + detalle['subtotal']}">S/ 0.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="total-section">
+                <p><strong>Total a Devolver: </strong>
+                <span th:text="${notaCredito != null ? ('S/ ' + notaCredito.totalAcreditado) : 'S/ 0.00'}"
+                      style="font-size: 1.5em;">S/ 0.00</span></p>
+            </div>
+
+            <div class="footer">
+                <p>Este documento es una representación impresa de la Nota de Crédito electrónica.</p>
+                <p th:text="${'Fecha de emisión: ' + #temporals.format(#temporals.createNow(), 'dd/MM/yyyy HH:mm')}">Fecha: -</p>
+            </div>
+        </div>
+
+        <div th:if="${venta == null}">
+            <div class="alert alert-danger">
+                <h4>Error</h4>
+                <p th:text="${errorMessage}">Venta no encontrada</p>
+                <a th:href="@{/ventas/listar}" class="btn btn-primary">Volver al listado</a>
+            </div>
+        </div>
+    </div>
+
+    <script th:if="${notaCredito != null}">
+        function refrescarNC(btn) {
+            const ncId = btn.getAttribute('data-nc-id');
+            btn.disabled = true;
+            btn.textContent = '⏳ Consultando...';
+            fetch('/ventas/nota-credito/refrescar/' + ncId)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.pdfUrl || data.estadoSunat === 'aceptado') {
+                        location.reload();
+                    } else {
+                        btn.disabled = false;
+                        btn.textContent = '🔄 Refrescar estado desde SUNAT';
+                        alert('El comprobante aún está pendiente de confirmación por SUNAT.\n\nPor favor, espere unos minutos y vuelva a intentarlo.\n\nLos comprobantes pueden tardar entre 5 y 15 minutos en ser procesados.');
+                    }
+                })
+                .catch(() => {
+                    btn.disabled = false;
+                    btn.textContent = '🔄 Refrescar estado desde SUNAT';
+                });
+        }
+    </script>
+</body>
+</html>

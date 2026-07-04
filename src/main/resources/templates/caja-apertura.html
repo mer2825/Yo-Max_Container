@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apertura de Caja</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<div th:replace="~{topbar :: topbar(activeUri='/caja')}"></div>
+
+<div class="container-fluid" style="padding-top: 2rem;">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow-lg border-0 rounded-lg mt-5">
+                <div class="card-header bg-primary text-white text-center py-3">
+                    <h3 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Apertura de Caja</h3>
+                </div>
+                <div class="card-body p-4">
+                    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+                        <span th:text="${successMessage}"></span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <span th:text="${errorMessage}"></span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+
+                    <!-- Alerta de sesión del día anterior sin cerrar -->
+                    <div th:if="${hayAlertaDiaSinCerrar}" class="alert alert-danger border-danger" role="alert">
+                        <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i>¡Atención!</h5>
+                        <p th:if="${ultimaCerrada != null}">
+                            La sesión del <strong th:text="${#temporals.format(ultimaCerrada.fechaApertura, 'dd/MM/yyyy')}"></strong> 
+                            quedó abierta sin cerrar. Ciérrala primero antes de abrir una nueva sesión.
+                        </p>
+                        <p th:unless="${ultimaCerrada != null}">
+                            Hay una sesión abierta desde el día anterior. Ciérrala primero antes de abrir una nueva sesión.
+                        </p>
+                        <hr>
+                        <a href="/caja/cerrar" class="btn btn-danger btn-sm">
+                            <i class="bi bi-lock-fill me-1"></i>Cerrar sesión anterior
+                        </a>
+                    </div>
+
+                    <!-- Banner informativo de traspaso -->
+                    <div th:if="${ultimaCerrada != null && !hayAlertaDiaSinCerrar}" class="alert alert-success border-success" role="alert">
+                        <h5 class="alert-heading"><i class="bi bi-check-circle-fill me-2"></i>Traspaso detectado</h5>
+                        <p>
+                            El sistema detectó que la última caja cerró con <strong>S/ <span th:text="${#numbers.formatDecimal(ultimaCerrada.saldoTraspasado != null ? ultimaCerrada.saldoTraspasado : ultimaCerrada.montoCierreDeclarado, 1, 'COMMA', 2, 'POINT')}">0.00</span></strong> 
+                            el <strong th:text="${#temporals.format(ultimaCerrada.fechaCierre, 'dd/MM/yyyy')}"></strong>. 
+                            Este monto se propone como fondo inicial de hoy.
+                        </p>
+                    </div>
+
+                    <div th:if="${!hayAlertaDiaSinCerrar}" class="text-center mb-4">
+                        <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                            <i class="bi bi-safe2 text-primary" style="font-size: 2.5rem;"></i>
+                        </div>
+                        <p class="text-muted">Ingrese el monto inicial para abrir la caja del día</p>
+                    </div>
+
+                    <form th:if="${!hayAlertaDiaSinCerrar}" th:action="@{/caja/abrir}" method="POST">
+                        <div class="mb-4">
+                            <label for="montoInicial" class="form-label fw-semibold">Fondo inicial (S/)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">S/</span>
+                                <input type="number" 
+                                       class="form-control form-control-lg" 
+                                       id="montoInicial" 
+                                       name="montoInicial" 
+                                       th:value="${#numbers.formatDecimal(saldoPropuesto, 1, 'COMMA', 2, 'POINT')}"
+                                       step="0.01" 
+                                       min="0" 
+                                       required
+                                       placeholder="0.00"
+                                       autofocus>
+                            </div>
+                            <div class="form-text">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Modifica este monto solo si retiraste efectivo antes de salir ayer
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-unlock me-2"></i>Abrir Caja
+                            </button>
+                        </div>
+                    </form>
+
+                    <div th:if="${hayAlertaDiaSinCerrar}" class="text-center mt-4">
+                        <p class="text-muted">
+                            <i class="bi bi-lock me-1"></i>
+                            Debes cerrar la sesión anterior antes de poder abrir una nueva caja
+                        </p>
+                    </div>
+                </div>
+                <div class="card-footer text-center py-3 bg-light">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Asegúrese de contar el efectivo antes de abrir la caja
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/scripts :: common-scripts}"></div>
+
+</body>
+</html>

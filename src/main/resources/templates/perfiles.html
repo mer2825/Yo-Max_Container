@@ -61,7 +61,10 @@
                     <input type="hidden" id="id" name="id">
                     <div class="mb-3">
                         <label for="nombre" class="form-label">Nombre del Perfil:</label>
-                        <input type="text" id="nombre" name="nombre" class="form-control" required>
+                        <input type="text" id="nombre" name="nombre" class="form-control" required
+                               pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+"
+                               title="Solo se permiten letras (incluyendo acentos y ñ), sin números ni caracteres especiales"
+                               oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')">
                         <div id="nombre-error" class="invalid-feedback d-block"></div>
                     </div>
                     <div class="mb-3">

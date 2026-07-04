@@ -1,11 +1,14 @@
 package com.example.acceso.controller;
 
+import com.example.acceso.dto.ProductoMasVendidoDTO;
+import com.example.acceso.dto.ResumenSesionActivaDTO;
 import com.example.acceso.model.Categoria;
 import com.example.acceso.model.Producto;
+import com.example.acceso.model.SesionCaja;
+import com.example.acceso.service.CajaService;
 import com.example.acceso.service.CategoriaService;
 import com.example.acceso.service.ProductoService;
 import com.example.acceso.service.VentaService;
-import com.example.acceso.dto.ProductoMasVendidoDTO;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Controller
@@ -21,11 +25,13 @@ public class DashboardController {
     private final VentaService ventaService;
     private final ProductoService productoService;
     private final CategoriaService categoriaService;
+    private final CajaService cajaService;
 
-    public DashboardController(VentaService ventaService, ProductoService productoService, CategoriaService categoriaService) {
+    public DashboardController(VentaService ventaService, ProductoService productoService, CategoriaService categoriaService, CajaService cajaService) {
         this.ventaService = ventaService;
         this.productoService = productoService;
         this.categoriaService = categoriaService;
+        this.cajaService = cajaService;
     }
 
     @GetMapping("/")
@@ -68,6 +74,17 @@ public class DashboardController {
         model.addAttribute("valorInventario", valorInventario);
         model.addAttribute("categoriasActivas", categoriasActivas);
         model.addAttribute("productosPorCategoria", productosPorCategoria);
+
+        // Widget de estado de caja
+        Optional<SesionCaja> sesionActiva = cajaService.obtenerSesionActiva();
+        if (sesionActiva.isPresent()) {
+            model.addAttribute("cajaAbierta", true);
+            ResumenSesionActivaDTO resumenCaja = cajaService.obtenerResumenSesionActiva();
+            model.addAttribute("cajaResumen", resumenCaja);
+        } else {
+            model.addAttribute("cajaAbierta", false);
+            model.addAttribute("cajaSinCerrar", cajaService.haySesionDelDiaAnteriorSinCerrar());
+        }
 
         return "index";
     }

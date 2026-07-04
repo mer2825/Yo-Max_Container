@@ -91,10 +91,11 @@ document.addEventListener('DOMContentLoaded', function() {
         let subtotal = 0;
         cartItems.innerHTML = '';
 
-        cartData.forEach(item => {
+        cartData.forEach((item, index) => {
             console.log('Processing item:', item);
             const precio = item.precio || item.price;
             const cantidad = item.cantidad || item.quantity;
+            const stock = item.stock || 999; // Stock disponible del producto
             const nombre = item.nombre || item.name;
             const itemTotal = precio * cantidad;
             subtotal += itemTotal;
@@ -104,7 +105,13 @@ document.addEventListener('DOMContentLoaded', function() {
             cartItem.innerHTML = `
                 <div>
                     <strong>${nombre}</strong>
-                    <small class="text-muted d-block">Cantidad: ${cantidad} x S/ ${precio.toFixed(2)}</small>
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-decrease-cart" data-index="${index}" ${cantidad <= 1 ? 'disabled' : ''}>−</button>
+                        <input type="number" class="form-control form-control-sm text-center cart-qty-input" value="${cantidad}" min="1" max="${stock}" data-index="${index}" data-stock="${stock}" style="width: 60px;">
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-increase-cart" data-index="${index}" ${cantidad >= stock ? 'disabled' : ''}>+</button>
+                        <small class="text-muted ms-2">Disponible: ${stock}</small>
+                    </div>
+                    <small class="text-muted d-block">S/ ${precio.toFixed(2)} c/u</small>
                 </div>
                 <span class="fw-bold">S/ ${itemTotal.toFixed(2)}</span>
             `;
@@ -168,6 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const nombreCliente = document.getElementById('nombreCliente').value.trim();
         const dniCliente = document.getElementById('dniCliente').value.trim();
         const telefonoCliente = document.getElementById('telefonoCliente').value.trim();
+        const telefonoError = document.getElementById('telefonoError');
         
         if (!nombreCliente) {
             alert('Por favor, ingresa un DNI válido para autocompletar el nombre.');
@@ -177,8 +185,8 @@ document.addEventListener('DOMContentLoaded', function() {
             dniError.style.display = 'block';
             return false;
         }
-        if (!telefonoCliente || !/^[0-9]{9}$/.test(telefonoCliente)) {
-            alert('Por favor, ingresa un teléfono válido de 9 dígitos.');
+        if (!telefonoCliente || !/^9[0-9]{8}$/.test(telefonoCliente)) {
+            telefonoError.style.display = 'block';
             return false;
         }
         return true;
@@ -242,6 +250,61 @@ document.addEventListener('DOMContentLoaded', function() {
 
     continueToPaymentBtn.addEventListener('click', () => { if (validateStep1()) goToStep(2); });
     backToStep1Btn.addEventListener('click', () => goToStep(1));
+
+    // Event listeners para controles de cantidad en el carrito
+    cartItems.addEventListener('click', function(e) {
+        if (e.target.classList.contains('btn-increase-cart')) {
+            const index = parseInt(e.target.dataset.index);
+            changeCartQuantity(index, 1);
+        } else if (e.target.classList.contains('btn-decrease-cart')) {
+            const index = parseInt(e.target.dataset.index);
+            changeCartQuantity(index, -1);
+        }
+    });
+
+    cartItems.addEventListener('input', function(e) {
+        if (e.target.classList.contains('cart-qty-input')) {
+            const index = parseInt(e.target.dataset.index);
+            const stock = parseInt(e.target.dataset.stock);
+            let value = parseInt(e.target.value);
+
+            if (isNaN(value) || value < 1) {
+                value = 1;
+            } else if (value > stock) {
+                value = stock;
+                alert(`Cantidad máxima: ${stock} unidades disponibles.`);
+            }
+
+            e.target.value = value;
+            cartData[index].cantidad = value;
+            localStorage.setItem('cart', JSON.stringify(cartData));
+            renderCart();
+        }
+    });
+
+    function changeCartQuantity(index, delta) {
+        const item = cartData[index];
+        const stock = item.stock || 999;
+        const nuevaCantidad = item.cantidad + delta;
+
+        if (nuevaCantidad <= 0) {
+            // Eliminar item del carrito
+            cartData.splice(index, 1);
+        } else if (nuevaCantidad > stock) {
+            alert(`Cantidad excede el stock disponible (${stock}).`);
+            return;
+        } else {
+            item.cantidad = nuevaCantidad;
+        }
+
+        localStorage.setItem('cart', JSON.stringify(cartData));
+        
+        if (cartData.length === 0) {
+            window.location.href = '/';
+        } else {
+            renderCart();
+        }
+    }
 
     confirmBtn.addEventListener('click', async () => {
         if (!uploadedFile) {
