@@ -904,30 +904,52 @@ public class ApisunatService {
         return payload;
     }
 
-    private String convertirNumeroALetras(BigDecimal monto) {
-        // Implementación simple de conversión a letras
-        // Por ahora retornamos un formato básico
+    public String convertirNumeroALetras(BigDecimal monto) {
+        // Implementación de conversión a letras para montos en soles
         int soles = monto.intValue();
         int centavos = monto.remainder(BigDecimal.ONE).multiply(BigDecimal.valueOf(100)).intValue();
         
+        // Validar rango máximo para evitar IndexOutOfBoundsException
+        if (soles > 999) {
+            // Para montos mayores a 999, usar formato numérico simplificado
+            return "SON " + monto.setScale(2, RoundingMode.HALF_UP) + " SOLES";
+        }
+        
         String[] unidades = {"", "UNO", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE"};
         String[] decenas = {"", "DIEZ", "VEINTE", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA"};
+        String[] especiales = {"DIEZ", "ONCE", "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISÉIS", "DIECISIETE", "DIECIOCHO", "DIECINUEVE"};
         
         String letras = "";
+        
+        // Manejar centenas
         if (soles >= 100) {
-            letras += "CIENTO ";
-            soles -= 100;
+            if (soles == 100) {
+                letras = "CIEN ";
+            } else {
+                letras = "CIENTO ";
+            }
+            soles %= 100;
         }
-        if (soles >= 10) {
-            letras += decenas[soles / 10] + " ";
-            soles %= 10;
-        }
-        if (soles > 0) {
+        
+        // Manejar decenas y unidades
+        if (soles >= 10 && soles <= 19) {
+            // Números especiales del 10 al 19
+            letras += especiales[soles - 10] + " ";
+        } else if (soles >= 20) {
+            // Decenas
+            int decena = soles / 10;
+            int unidad = soles % 10;
+            letras += decenas[decena] + " ";
+            if (unidad > 0) {
+                letras += "Y " + unidades[unidad] + " ";
+            }
+        } else if (soles > 0) {
+            // Unidades del 1 al 9
             letras += unidades[soles] + " ";
         }
         
         letras += "CON " + centavos + "/100 SOLES";
-        return letras.toUpperCase();
+        return letras.toUpperCase().trim();
     }
 
     private String resolveCustomerEmail(Venta venta, Empresa empresa) {

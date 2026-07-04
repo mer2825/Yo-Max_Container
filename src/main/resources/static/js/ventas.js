@@ -1,3 +1,4 @@
+
 $(document).ready(function() {
     let dataTable;
     let boletaModal, editVentaModal;

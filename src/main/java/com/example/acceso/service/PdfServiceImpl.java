@@ -187,7 +187,8 @@ public class PdfServiceImpl implements PdfService {
             if (detalle != null && detalle.containsKey("ventasPorMetodoPago")) {
                 document.add(new Paragraph("Resumen por Método de Pago", boldFont));
                 
-                Map<String, Object> ventasPorMetodo = (Map<String, Object>) detalle.get("ventasPorMetodoPago");
+                @SuppressWarnings("unchecked")
+                Map<String, BigDecimal> ventasPorMetodo = (Map<String, BigDecimal>) detalle.get("ventasPorMetodoPago");
                 if (ventasPorMetodo != null && !ventasPorMetodo.isEmpty()) {
                     PdfPTable table = new PdfPTable(4);
                     table.setWidthPercentage(100);
@@ -212,11 +213,10 @@ public class PdfServiceImpl implements PdfService {
                     Object totalVentasObj = detalle.get("totalVentas");
                     double totalVentas = (totalVentasObj instanceof Number) ? ((Number) totalVentasObj).doubleValue() : 0;
 
-                    for (Map.Entry<String, Object> entry : ventasPorMetodo.entrySet()) {
+                    for (Map.Entry<String, BigDecimal> entry : ventasPorMetodo.entrySet()) {
                         table.addCell(entry.getKey());
                         
-                        Object valueObj = entry.getValue();
-                        double value = (valueObj instanceof Number) ? ((Number) valueObj).doubleValue() : 0;
+                        double value = entry.getValue() != null ? entry.getValue().doubleValue() : 0;
                         table.addCell(new Phrase("S/ " + String.format("%.2f", value), normalFont));
                         
                         double porcentaje = totalVentas > 0 ? (value / totalVentas) * 100 : 0;

@@ -107,7 +107,17 @@ public class VentaController {
                 ventaCreada = ventaRepository.save(ventaCreada); // Guardar la relación con la sesión de caja
             }
             
-            Venta ventaProcesada = ventaService.procesarComprobanteElectronico(ventaCreada);
+            Venta ventaProcesada = null;
+            try {
+                ventaProcesada = ventaService.procesarComprobanteElectronico(ventaCreada);
+            } catch (Exception ex) {
+                // Mantener la venta creada aunque falle la emisión SUNAT/PDF/XML
+                logger.error("Error procesando comprobante electrónico (la venta queda registrada sin comprobante)", ex);
+                ventaCreada.setEstadoSunat("error");
+                ventaCreada.setNota("Error emisión comprobante: " + (ex.getMessage() != null ? ex.getMessage() : "sin detalle"));
+                ventaProcesada = ventaRepository.save(ventaCreada);
+            }
+
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);

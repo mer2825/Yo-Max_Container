@@ -15,6 +15,54 @@ import static org.junit.jupiter.api.Assertions.*;
 class ApisunatServiceTest {
 
     @Test
+    void convertirNumeroALetrasShouldHandleSmallAmounts() {
+        ApisunatService service = new ApisunatService("https://back.apisunat.com", "token-123", "persona-123", "token-123", "20567890123", "/personas/v1/sendBill");
+        
+        // Test con monto pequeño (S/ 15.50)
+        String resultado = service.convertirNumeroALetras(new java.math.BigDecimal("15.50"));
+        assertTrue(resultado.contains("QUINCE"));
+        assertTrue(resultado.contains("CON 50/100 SOLES"));
+    }
+
+    @Test
+    void convertirNumeroALetrasShouldHandleLargeAmounts() {
+        ApisunatService service = new ApisunatService("https://back.apisunat.com", "token-123", "persona-123", "token-123", "20567890123", "/personas/v1/sendBill");
+        
+        // Test con monto grande (S/ 150.00) - este causaba el error IndexOutOfBoundsException
+        String resultado = service.convertirNumeroALetras(new java.math.BigDecimal("150.00"));
+        // Para montos > 999 retorna formato numérico, pero 150 está en rango permitido
+        assertTrue(resultado.contains("SOLES"));
+        assertTrue(resultado.contains("CON 0/100 SOLES"));
+    }
+
+    @Test
+    void convertirNumeroALetrasShouldHandleVeryLargeAmounts() {
+        ApisunatService service = new ApisunatService("https://back.apisunat.com", "token-123", "persona-123", "token-123", "20567890123", "/personas/v1/sendBill");
+        
+        // Test con monto muy grande (S/ 1500.00) - mayor a 999
+        String resultado = service.convertirNumeroALetras(new java.math.BigDecimal("1500.00"));
+        assertTrue(resultado.contains("1500"));
+        assertTrue(resultado.contains("SOLES"));
+    }
+
+    @Test
+    void convertirNumeroALetrasShouldHandleEdgeCases() {
+        ApisunatService service = new ApisunatService("https://back.apisunat.com", "token-123", "persona-123", "token-123", "20567890123", "/personas/v1/sendBill");
+        
+        // Test con S/ 100 exactos
+        String resultado100 = service.convertirNumeroALetras(new java.math.BigDecimal("100.00"));
+        assertTrue(resultado100.contains("CIEN"));
+        
+        // Test con S/ 105.75
+        String resultado105 = service.convertirNumeroALetras(new java.math.BigDecimal("105.75"));
+        assertTrue(resultado105.contains("CON 75/100 SOLES"));
+        
+        // Test con S/ 0.50 (cero soles)
+        String resultadoCero = service.convertirNumeroALetras(new java.math.BigDecimal("0.50"));
+        assertTrue(resultadoCero.contains("CON 50/100 SOLES"));
+    }
+
+    @Test
     void buildSendBillRequestBodyShouldUsePersonasEndpointShape() {
         ApisunatService service = new ApisunatService("https://back.apisunat.com", "token-123", "persona-123", "token-123", "20567890123", "/personas/v1/sendBill");
 
