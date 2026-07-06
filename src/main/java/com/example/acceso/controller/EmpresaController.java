@@ -97,7 +97,7 @@ public class EmpresaController {
                     System.err.println("Error al eliminar el logo antiguo de Cloudinary: " + e.getMessage());
                 }
             }
-            
+
             response.put("success", true);
             response.put("message", "Logo subido y guardado correctamente.");
             response.put("imageUrl", newImageUrl);
@@ -139,7 +139,7 @@ public class EmpresaController {
                     System.err.println("Error al eliminar el QR Yape antiguo de Cloudinary: " + e.getMessage());
                 }
             }
-            
+
             response.put("success", true);
             response.put("message", "QR de Yape subido y guardado correctamente.");
             response.put("imageUrl", newImageUrl);
