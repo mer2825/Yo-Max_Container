@@ -41,7 +41,9 @@ $(document).ready(function() {
             const target = $(this).data('bs-target');
             $(target).collapse('toggle');
         });
-
+        $('#btnVolver').on('click', function () {
+            window.parent.postMessage('cerrarModal', '*');
+        });
         $('#tipoDocumento').on('change', aplicarValidacionDocumento);
         $('#numeroDocumento').on('input', function() {
             this.value = this.value.replace(/[^0-9]/g, '');

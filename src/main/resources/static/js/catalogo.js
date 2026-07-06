@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function checkUserAuth() {
-        // Verificar si hay usuario logueado
         fetch('/api/usuario-actual')
             .then(response => {
                 if (response.ok) {
@@ -21,16 +20,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error('No autenticado');
             })
             .then(data => {
-                // Usuario logueado
                 const authBtn = document.getElementById('auth-btn');
-                
                 if (authBtn) {
                     authBtn.textContent = 'Cerrar Sesión';
                     authBtn.href = '/logout';
                 }
             })
             .catch(error => {
-                // Usuario no logueado - mantener botón de login
                 console.log('Usuario no autenticado');
             });
     }
@@ -117,7 +113,6 @@ document.addEventListener('DOMContentLoaded', function() {
         carouselWrapper.addEventListener('mouseenter', stopAutoSlide);
         carouselWrapper.addEventListener('mouseleave', startAutoSlide);
 
-        // Inicializar
         moveToIndex(0);
         startAutoSlide();
     }
@@ -134,11 +129,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function filterAndDisplayProducts() {
         const nombreFilter = filterNombre ? filterNombre.value.toLowerCase() : '';
-        
-        // Validación para asegurar que los precios no sean negativos
         const precioMinFilter = filterPrecioMin ? Math.max(0, parseFloat(filterPrecioMin.value) || 0) : 0;
         const precioMaxFilter = filterPrecioMax ? Math.max(0, parseFloat(filterPrecioMax.value) || Infinity) : Infinity;
-
         const activeCategoryButton = categoryFilterButtonsContainer ? categoryFilterButtonsContainer.querySelector('.active') : null;
         const activeCategoryId = activeCategoryButton ? activeCategoryButton.getAttribute('data-category-id') : 'all';
 
@@ -163,7 +155,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Evento para los botones de categoría
     if (categoryFilterButtonsContainer) {
         categoryFilterButtonsContainer.addEventListener('click', function(e) {
             if (e.target.matches('.btn-outline-primary')) {
@@ -211,6 +202,7 @@ document.addEventListener('DOMContentLoaded', function() {
         updateCartUI();
     };
 
+    // NUEVA VALIDACIÓN: Verifica que no se exceda el stock máximo disponible al editar la cantidad
     const updateQuantity = (productId, newQuantity) => {
         const quantity = parseInt(newQuantity, 10);
         const item = cart.find(item => item.id === productId);
@@ -218,6 +210,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (item) {
             if (isNaN(quantity) || quantity < 1) {
                 removeFromCart(productId);
+            } else if (quantity > item.stock) {
+                alert(`Lo sentimos, el stock máximo disponible para "${item.name}" es de ${item.stock} unidades.`);
+                item.quantity = item.stock; // Forzamos la cantidad al límite máximo real
+                updateCartUI();
             } else {
                 item.quantity = quantity;
                 updateCartUI();
@@ -241,6 +237,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const cartItemElement = document.createElement('div');
                 cartItemElement.classList.add('cart-item', 'mb-3', 'p-2', 'border', 'rounded');
                 cartItemElement.dataset.productId = item.id;
+
+                // Se agrega el atributo 'max="${item.stock}"' al input para limitar las flechas nativas del navegador
                 cartItemElement.innerHTML = `
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="fw-bold text-truncate" style="max-width: 150px;">${item.name}</span>
@@ -249,7 +247,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="d-flex justify-content-between align-items-center mt-2">
                         <div class="input-group input-group-sm" style="width: 120px;">
                             <button class="btn btn-outline-secondary change-quantity" type="button" data-change="-1">-</button>
-                            <input type="number" class="form-control text-center quantity-input" value="${item.quantity}" min="1" aria-label="Cantidad">
+                            <input type="number" class="form-control text-center quantity-input" value="${item.quantity}" min="1" max="${item.stock}" aria-label="Cantidad">
                             <button class="btn btn-outline-secondary change-quantity" type="button" data-change="1">+</button>
                         </div>
                         <span class="fw-bold">S/ ${itemTotal.toFixed(2)}</span>
@@ -270,13 +268,23 @@ document.addEventListener('DOMContentLoaded', function() {
         cartCount.textContent = totalItems;
     };
 
-    const addToCart = (productId, name, price) => {
+    // NUEVA VALIDACIÓN: Guarda el parámetro 'stock' en el array y valida el remanente antes de sumar
+    const addToCart = (productId, name, price, stock) => {
         const existingItem = cart.find(item => item.id === productId);
-
         if (existingItem) {
-            existingItem.quantity++;
+            if (existingItem.quantity < stock) {
+                existingItem.quantity++;
+            } else {
+                alert(`Lo sentimos, no quedan más unidades disponibles de "${name}" (Stock máximo: ${stock}).`);
+                return; // Detiene la ejecución para no recalcular ni abrir el carrito innecesariamente
+            }
         } else {
-            cart.push({ id: productId, name, price, quantity: 1 });
+            if (stock > 0) {
+                cart.push({ id: productId, name, price, quantity: 1, stock: stock });
+            } else {
+                alert(`El producto "${name}" se encuentra agotado.`);
+                return;
+            }
         }
 
         updateCartUI();
@@ -290,32 +298,23 @@ document.addEventListener('DOMContentLoaded', function() {
         cartCloseButton.addEventListener('click', () => toggleCart());
     }
 
-    // Event listener para los botones "Agregar al carrito" en la vista de catálogo (modal de producto)
-    // Este ya no es necesario ya que el botón "Ver producto" fue eliminado y la tarjeta es clickeable
-    /*
-    document.querySelectorAll('.product-item .add-to-cart-btn').forEach(button => {
-        button.addEventListener('click', (e) => {
-            const productId = e.target.dataset.productId;
-            const productElement = e.target.closest('.product-item');
-            const name = productElement.querySelector('.card-title').textContent;
-            const price = parseFloat(productElement.dataset.productPrice);
-            addToCart(productId, name, price);
-        });
-    });
-    */
-
-    // NUEVO: Event listener para los botones "Añadir" en las tarjetas de producto
+    // ACTUALIZADO: Captura el botón adaptándose dinámicamente al icono interno y extrae el stock desde la tarjeta padre
     document.querySelectorAll('.add-to-cart-card-btn').forEach(button => {
         button.addEventListener('click', (e) => {
-            e.stopPropagation(); // <--- AÑADIDO: Detener la propagación del evento
-            const productId = e.target.dataset.productId;
-            const productName = e.target.dataset.productName;
-            const productPrice = parseFloat(e.target.dataset.productPrice);
-            addToCart(productId, productName, productPrice);
-            toggleCart(true); // Abrir el carrito al añadir desde la tarjeta
+            e.stopPropagation();
+            const targetBtn = e.target.closest('.add-to-cart-card-btn');
+            const productId = targetBtn.dataset.productId;
+            const productName = targetBtn.dataset.productName;
+            const productPrice = parseFloat(targetBtn.dataset.productPrice);
+
+            // Buscamos el contenedor padre '.product-card' para leer su atributo 'data-product-stock'
+            const productCard = targetBtn.closest('.product-card');
+            const productStock = productCard ? parseInt(productCard.getAttribute('data-product-stock'), 10) : 0;
+
+            addToCart(productId, productName, productPrice, productStock);
+            toggleCart(true);
         });
     });
-
 
     cartItemsContainer.addEventListener('click', (e) => {
         const target = e.target;
@@ -349,10 +348,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btnFinalizarCompra) {
         btnFinalizarCompra.addEventListener('click', () => {
             if (cart.length === 0) {
-                // Mostrar modal estilizado en lugar de alert básica
                 const modalHTML = `
                     <div class="modal fade" id="emptyCartModal" tabindex="-1" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered">
+                         <div class="modal-dialog modal-dialog-centered">
                             <div class="modal-content border-0 shadow-lg">
                                 <div class="modal-header border-bottom-0 bg-danger text-white">
                                     <h5 class="modal-title"><i class="bi bi-cart-x"></i> Carrito Vacío</h5>
@@ -372,40 +370,30 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             </div>
                         </div>
-                    </div>
+                     </div>
                 `;
-                
-                // Eliminar modal existente si hay uno
+
                 const existingModal = document.getElementById('emptyCartModal');
                 if (existingModal) {
                     existingModal.remove();
                 }
-                
-                // Agregar nuevo modal
+
                 document.body.insertAdjacentHTML('beforeend', modalHTML);
-                
-                // Mostrar el modal
                 const modal = new bootstrap.Modal(document.getElementById('emptyCartModal'));
                 modal.show();
                 return;
             }
 
-            // Guardar el carrito en localStorage para el checkout
             localStorage.setItem('cart', JSON.stringify(cart));
-
-            // Aplicar descuento si corresponde
             let totalItems = 0;
             cart.forEach(item => {
                 totalItems += item.quantity;
             });
-
             let hasDiscount = false;
             if (discountApplied && totalItems >= 3) {
                 hasDiscount = true;
             }
             localStorage.setItem('discountApplied', hasDiscount);
-
-            // Redirigir al checkout
             window.location.href = '/checkout';
         });
     }
@@ -423,7 +411,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const modalAddToCartBtn = document.getElementById('modalAddToCartBtn');
 
         productDetailModal.addEventListener('show.bs.modal', function (event) {
-            const relatedTarget = event.relatedTarget; // Ahora será la tarjeta clickeada
+            const relatedTarget = event.relatedTarget;
             const productId = relatedTarget.getAttribute('data-product-id');
             const productName = relatedTarget.getAttribute('data-product-name');
             const productDescription = relatedTarget.getAttribute('data-product-description');
@@ -436,7 +424,6 @@ document.addEventListener('DOMContentLoaded', function() {
             modalProductDescription.textContent = productDescription;
             modalProductPrice.textContent = productPrice;
             modalProductStock.textContent = productStock;
-
             productCarouselInner.innerHTML = '';
 
             if (productImages.length > 0 && productImages[0]) {
@@ -468,15 +455,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 productCarouselInner.appendChild(carouselItem);
             }
 
-            // Lógica para el botón "Agregar al carrito"
+            // ACTUALIZADO: Envía el parámetro 'productStock' al hacer clic en agregar desde el modal
             if (productStock > 0) {
                 modalAddToCartBtn.disabled = false;
                 modalAddToCartBtn.innerHTML = '<i class="bi bi-cart-plus-fill me-2"></i>Agregar al carrito';
                 modalAddToCartBtn.onclick = () => {
-                    addToCart(productId, productName, parseFloat(productPrice));
+                    addToCart(productId, productName, parseFloat(productPrice), productStock);
                     const bsModal = bootstrap.Modal.getInstance(productDetailModal);
                     bsModal.hide();
-                    toggleCart();
+                    toggleCart(true); // Se fuerza la apertura del carrito para dar feedback al usuario
                 };
             } else {
                 modalAddToCartBtn.disabled = true;
@@ -488,7 +475,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- LÓGICA DE OPINIONES (NUEVO FLUJO DE VALIDACIÓN) ---
     const opinionesModal = document.getElementById('opinionesModal');
-
     if (opinionesModal) {
         const newOpinionSection = document.getElementById('new-opinion-section');
         const opinionesList = document.getElementById('opiniones-list');
@@ -503,7 +489,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const opiniones = await response.json();
                 opinionesList.innerHTML = '';
-
                 if (opiniones.length === 0) {
                     opinionesList.innerHTML = '<p class="text-center">Aún no hay opiniones. ¡Sé el primero en dejar una!</p>';
                 } else {
@@ -535,7 +520,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const authStatus = await response.json();
 
                 if (authStatus.isAuthenticated) {
-                    // VISTA 1: Usuario completamente autenticado -> Formulario para opinar
                     newOpinionSection.innerHTML = `
                         <form id="opinion-form-loggedin">
                             <div class="user-info">
@@ -555,7 +539,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('opinion-form-loggedin').addEventListener('submit', handleOpinionSubmit);
 
                 } else if (authStatus.isDocumentVerified) {
-                    // VISTA 2: Documento verificado, pero no logueado con Google -> Botón de Google
                     newOpinionSection.innerHTML = `
                         <div class="text-center">
                             <p class="text-success">¡Documento verificado!</p>
@@ -569,7 +552,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     opinionSeparator.style.display = 'none';
 
                 } else {
-                    // VISTA 3: Usuario no ha hecho nada -> Formulario de DNI/RUC
                     newOpinionSection.innerHTML = `
                         <form id="document-verify-form">
                             <p class="text-muted text-center">Para opinar, primero debemos verificar que eres cliente.</p>
@@ -609,7 +591,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const result = await response.json();
 
                 if (response.ok) {
-                    // Si la verificación es exitosa, actualizamos la vista para mostrar el botón de Google
                     actualizarVistaDeOpinion();
                 } else {
                     messageDiv.innerHTML = `<div class="alert alert-danger">${result.message}</div>`;
@@ -633,7 +614,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ opinion: opinionTexto }) // Ya no enviamos el documento
+                    body: JSON.stringify({ opinion: opinionTexto })
                 });
                 const result = await response.json();
 
@@ -657,7 +638,6 @@ document.addEventListener('DOMContentLoaded', function() {
             actualizarVistaDeOpinion();
         });
 
-        // Abrir modal si la URL contiene el hash #opinionesModal
         if (window.location.hash === '#opinionesModal') {
             const modal = new bootstrap.Modal(opinionesModal);
             modal.show();
@@ -694,7 +674,6 @@ document.addEventListener('DOMContentLoaded', function() {
             matchedPairs = 0;
             gameCards = [...cardIcons, ...cardIcons];
             shuffle(gameCards);
-
             gameCards.forEach(iconClass => {
                 const card = document.createElement('div');
                 card.classList.add('memory-card');
@@ -734,8 +713,6 @@ document.addEventListener('DOMContentLoaded', function() {
             isMatch ? disableCards() : unflipCards();
         }
 
-
-
         function disableCards() {
             firstCard.removeEventListener('click', flipCard);
             secondCard.removeEventListener('click', flipCard);
@@ -766,7 +743,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const bsModal = bootstrap.Modal.getInstance(memoryGameModal);
             bsModal.hide();
             updateCartUI();
-            toggleCart(true); // Forzar apertura del carrito
+            toggleCart(true);
         });
 
         memoryGameModal.addEventListener('show.bs.modal', () => {
@@ -783,29 +760,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     return response.json();
                 })
                 .then(empresa => {
-                    // Actualizar Título
                     document.title = empresa.nombre || 'Catálogo';
 
-                    // Actualizar Header
                     const logoImg = document.querySelector('.navbar-brand img');
                     const nombreSpan = document.querySelector('.navbar-brand span');
                     if (logoImg) logoImg.src = empresa.logoUrl || '';
                     if (nombreSpan) nombreSpan.textContent = empresa.nombre || 'Catálogo';
 
-                    // Actualizar sección "Nosotros"
                     const nosotrosP = document.querySelector('#nosotros p');
                     if (nosotrosP) nosotrosP.textContent = empresa.nosotros || 'Descripción de la empresa no disponible.';
 
-                    // Actualizar teléfono en botón de WhatsApp
                     const btnWhatsapp = document.getElementById('btn-finalizar-compra');
                     if (btnWhatsapp) btnWhatsapp.dataset.telefono = empresa.telefono || '';
 
-                    // Lógica para reconstruir el carrusel
                     const carruselContainer = document.getElementById('productos-destacados');
                     if (carruselContainer) {
                         const track = carruselContainer.querySelector('.cover-flow-carousel-track');
                         if(track) {
-                            track.innerHTML = ''; // Limpiar carrusel antiguo
+                            track.innerHTML = '';
                             if (empresa.productosDestacados && empresa.productosDestacados.length > 0) {
                                 empresa.productosDestacados.forEach(producto => {
                                     const item = document.createElement('div');
@@ -822,9 +794,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                     track.appendChild(item);
                                 });
                                 carruselContainer.style.display = 'block';
-                                inicializarCarrusel(); // Re-inicializar la lógica del carrusel
+                                inicializarCarrusel();
                             } else {
-                                carruselContainer.style.display = 'none'; // Ocultar si no hay productos
+                                carruselContainer.style.display = 'none';
                             }
                         }
                     }
@@ -832,8 +804,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 .catch(error => console.error('Error al refrescar datos de la empresa:', error));
         } else if (event.key === 'productosActualizados') {
             console.log('Productos actualizados en otra pestaña. No se recarga automáticamente para no interrumpir la sesión.');
-            // Aquí se podría implementar una actualización parcial de productos si se desea,
-            // pero por ahora evitamos una recarga completa que genera sobrecarga al cargar la página.
         }
     });
 });
