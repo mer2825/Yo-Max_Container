@@ -4,6 +4,7 @@ package com.example.acceso;
 // Importaciones de clases necesarias de Spring Boot.
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import io.github.cdimascio.dotenv.Dotenv;
 
@@ -20,9 +21,6 @@ public class AccesoApplication {
 	// El método main es el punto de entrada estándar de cualquier aplicación Java.
 	// Es lo primero que se ejecuta al iniciar el programa.
 	public static void main(String[] args) {
-        // Carga las variables de entorno desde el archivo .env
-        Dotenv.load();
-
 		// SpringApplication.run(...) es el método que inicia toda la aplicación Spring
 		// Boot.
 		// Realiza varias tareas, como crear el contexto de la aplicación,
@@ -31,4 +29,9 @@ public class AccesoApplication {
 		SpringApplication.run(AccesoApplication.class, args);
 		System.out.println("CONEXIÓN EXITOSA");
 	}
+
+    @Bean
+    public Dotenv dotenv() {
+        return Dotenv.load();
+    }
 }
