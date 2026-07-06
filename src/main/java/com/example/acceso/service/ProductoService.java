@@ -89,15 +89,6 @@ public class ProductoService {
         if (producto.getNombre() == null || producto.getNombre().trim().isEmpty()) {
             throw new IllegalArgumentException("El nombre del producto es obligatorio");
         }
-        if (producto.getPrecio() == null || producto.getPrecio().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("El precio debe ser mayor a cero");
-        }
-        if (producto.getStock() == null || producto.getStock() < 0) {
-            throw new IllegalArgumentException("El stock no puede ser negativo");
-        }
-        if (producto.getStockMinimo() == null || producto.getStockMinimo() < 0) {
-            throw new IllegalArgumentException("El stock mínimo no puede ser negativo");
-        }
         if (producto.getCategoria() == null || producto.getCategoria().getId() == null) {
             throw new IllegalArgumentException("La categoría es obligatoria");
         }
@@ -107,6 +98,15 @@ public class ProductoService {
         if (isNew) {
             if (existingProductByName.isPresent()) {
                 throw new IllegalArgumentException("No se puede crear, ya existe un producto con el mismo nombre.");
+            }
+            if (producto.getPrecio() == null || producto.getPrecio().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("El precio debe ser mayor a cero");
+            }
+            if (producto.getStock() == null || producto.getStock() < 0) {
+                throw new IllegalArgumentException("El stock no puede ser negativo");
+            }
+            if (producto.getStockMinimo() == null || producto.getStockMinimo() < 0) {
+                throw new IllegalArgumentException("El stock mínimo no puede ser negativo");
             }
             producto.setEstado(1);
             producto.setUltimaAccion("Creación");
@@ -118,14 +118,21 @@ public class ProductoService {
             Producto productoExistente = productoRepository.findById(producto.getId())
                     .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado para actualizar"));
 
-            producto.setImagenes(productoExistente.getImagenes());
-            
             productoExistente.setNombre(producto.getNombre().trim());
             productoExistente.setDescripcion(producto.getDescripcion() != null ? producto.getDescripcion().trim() : null);
-            productoExistente.setPrecio(producto.getPrecio());
-            productoExistente.setStock(producto.getStock());
-            productoExistente.setStockMinimo(producto.getStockMinimo());
             productoExistente.setCategoria(producto.getCategoria());
+            
+            // Solo actualizar si los valores no son nulos
+            if (producto.getPrecio() != null) {
+                productoExistente.setPrecio(producto.getPrecio());
+            }
+            if (producto.getStock() != null) {
+                productoExistente.setStock(producto.getStock());
+            }
+            if (producto.getStockMinimo() != null) {
+                productoExistente.setStockMinimo(producto.getStockMinimo());
+            }
+
             productoExistente.setUltimaAccion("Edición");
             
             producto = productoExistente;

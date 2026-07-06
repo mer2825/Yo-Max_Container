@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -20,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/productos")
@@ -32,10 +34,6 @@ public class ProductoController {
         this.productoService = productoService;
         this.categoriaService = categoriaService;
     }
-
-    // Se elimina el método tienePermisoParaGestionar(HttpSession session)
-    // ya que la lógica de permisos ahora se maneja en SessionInterceptor
-    // y la verificación en el controlador era redundante y errónea.
 
     @GetMapping("/listar")
     public String listarProductos(Model model) {
@@ -86,14 +84,28 @@ public class ProductoController {
     @ResponseBody
     public ResponseEntity<?> guardarProductoAjax(@Valid @RequestBody Producto producto, BindingResult bindingResult) {
         Map<String, Object> response = new HashMap<>();
+
         if (bindingResult.hasErrors()) {
-            Map<String, String> errores = new HashMap<>();
-            bindingResult.getFieldErrors().forEach(error -> errores.put(error.getField(), error.getDefaultMessage()));
-            response.put("success", false);
-            response.put("message", "Datos de producto inválidos");
-            response.put("errors", errores);
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
+            List<FieldError> errors = bindingResult.getFieldErrors();
+            boolean isEdit = producto.getId() != null;
+
+            // Si es una edición, filtramos los errores de los campos que no se envían desde el formulario.
+            if (isEdit) {
+                errors = errors.stream()
+                    .filter(error -> !"stock".equals(error.getField()) && !"stockMinimo".equals(error.getField()))
+                    .collect(Collectors.toList());
+            }
+
+            if (!errors.isEmpty()) {
+                Map<String, String> errorMap = new HashMap<>();
+                errors.forEach(error -> errorMap.put(error.getField(), error.getDefaultMessage()));
+                response.put("success", false);
+                response.put("message", "Datos de producto inválidos");
+                response.put("errors", errorMap);
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
+            }
         }
+
         try {
             Producto productoGuardado = productoService.guardarProducto(producto);
             response.put("success", true);

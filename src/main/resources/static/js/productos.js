@@ -136,13 +136,12 @@ $(document).ready(function() {
                 id: productoId || null,
                 nombre: $('#nombre').val(),
                 descripcion: $('#descripcion').val(),
-                categoria: { id: $('#id_categoria').val() }
+                categoria: { id: $('#id_categoria').val() },
+                precio: $('#precio').val() // Siempre enviar el precio
             };
 
-            // Solo enviar precio, stock y stockMinimo si es un nuevo producto
-            // En edición, estos campos no se modifican desde gestión de productos
+            // Solo enviar stock y stockMinimo si es un nuevo producto
             if (!isEdit) {
-                productoData.precio = $('#precio').val();
                 productoData.stock = $('#stock').val();
                 productoData.stockMinimo = $('#stockMinimo').val();
             }
@@ -155,6 +154,11 @@ $(document).ready(function() {
             const saveResult = await saveResponse.json();
 
             if (!saveResult.success) {
+                // Mostrar errores de validación específicos
+                if (saveResult.errors) {
+                    let errorMessages = Object.values(saveResult.errors).join('<br>');
+                    throw new Error(`Datos de producto inválidos:<br>${errorMessages}`);
+                }
                 throw new Error(saveResult.message || 'Error al guardar el producto.');
             }
 
@@ -294,6 +298,8 @@ $(document).ready(function() {
     function openModalForNew() {
         clearForm();
         $('#modalTitle').text('Agregar Producto');
+        // Habilitar todos los campos para nuevo producto
+        $('#precio, #stock, #stockMinimo').prop('disabled', false);
         productoModal.show();
     }
 
@@ -307,6 +313,10 @@ $(document).ready(function() {
         $('#stock').val(producto.stock);
         $('#stockMinimo').val(producto.stockMinimo);
         $('#id_categoria').val(producto.categoria.id);
+
+        // Deshabilitar solo los campos de cantidad
+        $('#stock, #stockMinimo').prop('disabled', true);
+        $('#precio').prop('disabled', false); // Asegurarse de que el precio esté habilitado
         
         renderizarGaleria(producto.imagenes);
         initSortable();
@@ -375,6 +385,9 @@ $(document).ready(function() {
         $('#formProducto')[0].reset();
         $('#id').val('');
         
+        // Habilitar todos los campos por defecto al limpiar
+        $('#precio, #stock, #stockMinimo').prop('disabled', false);
+
         if (sortableGaleria) {
             sortableGaleria.destroy();
             sortableGaleria = null;
