@@ -159,21 +159,41 @@ public class ClienteController {
                 String source = (String) dniResult.get("source");
                 Cliente clienteData = (Cliente) dniResult.get("data");
 
-                if ("local".equals(source)) {
-                    response.put("success", true);
-                    response.put("isNewClient", false);
-                    response.put("cliente", clienteData);
-                    response.put("message", "Cliente DNI encontrado localmente.");
-                    return ResponseEntity.ok(response);
-                } else { // source is "external"
-                    if (forceCreate) {
+                if ("local".equals(source) || "fallback".equals(source)) {
+                    if (forceCreate || "fallback".equals(source)) {
                         try {
-                            // Asegurarse de que el cliente de la API externa tenga el tipo y número correctos
                             clienteData.setTipoDocumento(tipo.toUpperCase());
                             clienteData.setNumeroDocumento(numero);
                             Cliente savedCliente = clienteService.guardarCliente(clienteData);
                             response.put("success", true);
-                            response.put("isNewClient", false); // Ya no es "nuevo" para el sistema, está guardado
+                            response.put("isNewClient", false);
+                            response.put("cliente", savedCliente);
+                            response.put("message", "Cliente DNI registrado y asignado.");
+                            return ResponseEntity.ok(response);
+                        } catch (DataIntegrityViolationException e) {
+                            response.put("success", false);
+                            response.put("message", "Error al guardar el cliente DNI: ya existe un cliente con este documento.");
+                            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+                        } catch (Exception e) {
+                            response.put("success", false);
+                            response.put("message", "Error inesperado al guardar el cliente DNI: " + e.getMessage());
+                            return ResponseEntity.internalServerError().body(response);
+                        }
+                    }
+
+                    response.put("success", true);
+                    response.put("isNewClient", false);
+                    response.put("cliente", clienteData);
+                    response.put("message", "Cliente DNI disponible para usar.");
+                    return ResponseEntity.ok(response);
+                } else {
+                    if (forceCreate) {
+                        try {
+                            clienteData.setTipoDocumento(tipo.toUpperCase());
+                            clienteData.setNumeroDocumento(numero);
+                            Cliente savedCliente = clienteService.guardarCliente(clienteData);
+                            response.put("success", true);
+                            response.put("isNewClient", false);
                             response.put("cliente", savedCliente);
                             response.put("message", "Cliente DNI registrado desde API externa y asignado.");
                             return ResponseEntity.ok(response);
@@ -187,7 +207,6 @@ public class ClienteController {
                             return ResponseEntity.internalServerError().body(response);
                         }
                     } else {
-                        // Devolver datos del cliente externo, pero marcar como nuevo para que el frontend pregunte si desea guardar
                         response.put("success", true);
                         response.put("isNewClient", true);
                         response.put("cliente", clienteData);
@@ -196,9 +215,8 @@ public class ClienteController {
                     }
                 }
             } else {
-                // DNI no encontrado en ninguna parte
                 response.put("success", false);
-                response.put("message", dniResult.get("message")); // Mensaje de consultarDni
+                response.put("message", dniResult.get("message"));
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
         } else if ("ruc".equalsIgnoreCase(tipo)) {

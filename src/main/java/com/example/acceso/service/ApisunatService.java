@@ -8,6 +8,7 @@ import com.example.acceso.model.NotasCredito;
 import com.example.acceso.dto.NotaCreditoItemDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpEntity;
@@ -41,25 +42,69 @@ public class ApisunatService {
     private final String apisunatPersonaToken;
     private final String apisunatRuc;
     private final String documentsUri;
+    private final String provider;
+    private final String miapiBaseUrl;
+    private final String miapiToken;
+    private final String miapiSecretKey;
+    private final String miapiCreditNoteUri;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    @Autowired
     public ApisunatService(@Value("${apisunat.url}") String apisunatUrl,
                            @Value("${apisunat.token}") String apisunatToken,
                            @Value("${apisunat.persona-id:}") String apisunatPersonaId,
                            @Value("${apisunat.persona-token:${apisunat.token}}") String apisunatPersonaToken,
                            @Value("${apisunat.ruc:}") String apisunatRuc,
-                           @Value("${apisunat.documents-uri:/personas/v1/sendBill}") String documentsUri) {
+                           @Value("${apisunat.documents-uri:/personas/v1/sendBill}") String documentsUri,
+                           @Value("${facturacion.provider:miapi}") String provider,
+                           @Value("${miapi.secret-key:}") String miapiSecretKey,
+                           @Value("${miapi.base-url:https://miapi.cloud}") String miapiBaseUrl,
+                           @Value("${miapi.credit-note-uri:/apifact/creditnote/create}") String miapiCreditNoteUri,
+                           @Value("${miapi.token:${apisunat.token}}") String miapiToken) {
         this.apisunatUrl = apisunatUrl;
         this.apisunatToken = apisunatToken;
         this.apisunatPersonaId = apisunatPersonaId;
         this.apisunatPersonaToken = apisunatPersonaToken;
         this.apisunatRuc = apisunatRuc;
         this.documentsUri = documentsUri;
+        this.provider = provider != null ? provider.toLowerCase() : "apisunat";
+        this.miapiBaseUrl = (miapiBaseUrl != null && !miapiBaseUrl.isBlank()) ? miapiBaseUrl : "https://miapi.cloud";
+        this.miapiToken = miapiToken != null && !miapiToken.isBlank() ? miapiToken : apisunatToken;
+        this.miapiSecretKey = miapiSecretKey != null ? miapiSecretKey : "";
+        this.miapiCreditNoteUri = (miapiCreditNoteUri != null && !miapiCreditNoteUri.isBlank()) ? miapiCreditNoteUri : "/apifact/creditnote/create";
         this.restTemplate = new RestTemplate();
     }
 
+    public ApisunatService(String apisunatUrl,
+                           String apisunatToken,
+                           String apisunatPersonaId,
+                           String apisunatPersonaToken,
+                           String apisunatRuc,
+                           String documentsUri) {
+        this(apisunatUrl, apisunatToken, apisunatPersonaId, apisunatPersonaToken, apisunatRuc, documentsUri,
+            "apisunat", "", "https://miapi.cloud", "/apifact/creditnote/create", null);
+    }
+
+    public ApisunatService(String apisunatUrl,
+                           String apisunatToken,
+                           String apisunatPersonaId,
+                           String apisunatPersonaToken,
+                           String apisunatRuc,
+                           String documentsUri,
+                           String provider,
+                           String miapiSecretKey,
+                           String miapiBaseUrl,
+                           String miapiCreditNoteUri) {
+        this(apisunatUrl, apisunatToken, apisunatPersonaId, apisunatPersonaToken, apisunatRuc, documentsUri,
+            provider, miapiSecretKey, miapiBaseUrl, miapiCreditNoteUri, null);
+    }
+
     public ApisunatResult emitirBoleta(Venta venta, Empresa empresa, String serie, int correlativo) {
+        if (useMiApiProvider()) {
+            return emitirDocumentoMiApi(venta, empresa, "03", serie, correlativo, null, null, null);
+        }
+
         Cliente cliente = venta.getCliente();
         String tipoDoc;
         String numDoc;
@@ -79,6 +124,10 @@ public class ApisunatService {
     }
 
     public ApisunatResult emitirFactura(Venta venta, Empresa empresa, String serie, int correlativo) {
+        if (useMiApiProvider()) {
+            return emitirDocumentoMiApi(venta, empresa, "01", serie, correlativo, null, null, null);
+        }
+
         Cliente cliente = venta.getCliente();
         String tipoDoc = "6";
         String numDoc = null;
@@ -105,6 +154,10 @@ public class ApisunatService {
                                              String motivo,
                                              List<NotaCreditoItemDTO> items,
                                              Empresa empresa) {
+
+        if (useMiApiProvider()) {
+            return emitirNotaCreditoMiApi(ventaOriginal, serie, correlativo, tipoNota, motivo, items, empresa);
+        }
 
         Map<String, Object> documentBody = new LinkedHashMap<>();
 
@@ -431,6 +484,84 @@ public class ApisunatService {
         }
     }
 
+    private ApisunatResult emitirDocumentoMiApi(Venta venta,
+                                                 Empresa empresa,
+                                                 String tipoDocumento,
+                                                 String serie,
+                                                 int correlativo,
+                                                 String tipoDoc,
+                                                 String numDoc,
+                                                 String rzSocial) {
+        Map<String, Object> requestPayload = buildMiApiInvoiceRequestBody(venta, empresa, tipoDocumento, serie, correlativo, tipoDoc, numDoc, rzSocial);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(miapiToken);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestPayload, headers);
+
+        try {
+            String url = buildMiApiUrl("/apifact/invoice/create");
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            Map<?, ?> body = response.getBody();
+            String rawResponse = body != null ? body.toString() : "";
+            if (response.getStatusCode().is2xxSuccessful() && body != null) {
+                Map<?, ?> respuesta = body instanceof Map ? (Map<?, ?>) body.get("respuesta") : null;
+                boolean success = respuesta != null && Boolean.TRUE.equals(respuesta.get("success"));
+                String status = success ? "ACEPTADO" : "EXCEPCION";
+                String pdfUrl = extractMiApiUrl(respuesta, "pdf-a4", "pdf-ticket");
+                String xmlUrl = extractMiApiUrl(respuesta, "xml-firmado", "xml-sin-firmar");
+                String message = extractMiApiString(respuesta, "mensaje");
+                String documentId = buildMiApiDocumentId(tipoDocumento, serie, correlativo);
+                logger.info("MIAPI emitirDocumento -> status={} pdfUrl={} xmlUrl={}", status, pdfUrl, xmlUrl);
+                return new ApisunatResult(status, pdfUrl, xmlUrl, null, message, rawResponse, documentId);
+            }
+            return new ApisunatResult("EXCEPCION", null, null, null, extractMiApiString(body, "mensaje"), rawResponse, null);
+        } catch (HttpClientErrorException | HttpServerErrorException ex) {
+            logger.error("MIAPI emitirDocumento failed status={} body={}", ex.getStatusCode(), ex.getResponseBodyAsString());
+            return new ApisunatResult("EXCEPCION", null, null, null, String.valueOf(ex.getStatusCode()), ex.getResponseBodyAsString(), null);
+        } catch (Exception ex) {
+            logger.error("MIAPI emitirDocumento unexpected error", ex);
+            return new ApisunatResult("EXCEPCION", null, null, null, ex.getMessage(), ex.toString(), null);
+        }
+    }
+
+    private ApisunatResult emitirNotaCreditoMiApi(Venta ventaOriginal,
+                                                 String serie,
+                                                 int correlativo,
+                                                 String tipoNota,
+                                                 String motivo,
+                                                 List<NotaCreditoItemDTO> items,
+                                                 Empresa empresa) {
+        Map<String, Object> requestPayload = buildMiApiCreditNoteRequestBody(ventaOriginal, serie, correlativo, tipoNota, motivo, items, empresa);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(miapiToken);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestPayload, headers);
+
+        try {
+            String url = buildMiApiUrl(miapiCreditNoteUri);
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            Map<?, ?> body = response.getBody();
+            String rawResponse = body != null ? body.toString() : "";
+            if (response.getStatusCode().is2xxSuccessful() && body != null) {
+                Map<?, ?> respuesta = body instanceof Map ? (Map<?, ?>) body.get("respuesta") : null;
+                boolean success = respuesta != null && Boolean.TRUE.equals(respuesta.get("success"));
+                String status = success ? "ACEPTADO" : "EXCEPCION";
+                String message = extractMiApiString(respuesta, "mensaje");
+                String documentId = buildMiApiDocumentId("07", serie, correlativo);
+                return new ApisunatResult(status, null, null, null, message, rawResponse, documentId);
+            }
+            return new ApisunatResult("EXCEPCION", null, null, null, extractMiApiString(body, "mensaje"), rawResponse, null);
+        } catch (HttpClientErrorException | HttpServerErrorException ex) {
+            logger.error("MIAPI emitirNotaCredito failed status={} body={}", ex.getStatusCode(), ex.getResponseBodyAsString());
+            return new ApisunatResult("EXCEPCION", null, null, null, String.valueOf(ex.getStatusCode()), ex.getResponseBodyAsString(), null);
+        } catch (Exception ex) {
+            logger.error("MIAPI emitirNotaCredito unexpected error", ex);
+            return new ApisunatResult("EXCEPCION", null, null, null, ex.getMessage(), ex.toString(), null);
+        }
+    }
+
     private ApisunatResult emitirDocumento(Venta venta,
                                            Empresa empresa,
                                            String tipoDocumento,
@@ -492,6 +623,11 @@ public class ApisunatService {
     }
 
     public Integer getLastDocument(String tipoDocumento, String serie) {
+        if (useMiApiProvider()) {
+            logger.info("MIAPI getLastDocument -> se omite la consulta remota porque el correlativo se maneja localmente.");
+            return null;
+        }
+
         if (apisunatPersonaId == null || apisunatPersonaId.isBlank() || apisunatPersonaToken == null || apisunatPersonaToken.isBlank()) {
             logger.error("APISUNAT getLastDocument: personaId o personaToken no configurados");
             return null;
@@ -596,6 +732,26 @@ public class ApisunatService {
     }
 
     public ApisunatConnectionResult testConnection() {
+        if (useMiApiProvider()) {
+            if (miapiToken == null || miapiToken.isBlank()) {
+                return new ApisunatConnectionResult(false, "MiAPI token no configurado.");
+            }
+            try {
+                HttpHeaders headers = new HttpHeaders();
+                headers.setBearerAuth(miapiToken);
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<Void> request = new HttpEntity<>(headers);
+                ResponseEntity<String> response = restTemplate.exchange(buildMiApiUrl("/apifact/invoice/create"), HttpMethod.OPTIONS, request, String.class);
+                if (response.getStatusCode().is2xxSuccessful() || response.getStatusCodeValue() == 405) {
+                    return new ApisunatConnectionResult(true, "Conexión MiAPI Cloud exitosa.");
+                }
+                return new ApisunatConnectionResult(false, "No se pudo validar la conexión con MiAPI Cloud.");
+            } catch (Exception ex) {
+                logger.error("MIAPI testConnection unexpected error", ex);
+                return new ApisunatConnectionResult(false, "Error al conectar con MiAPI Cloud: " + ex.getMessage());
+            }
+        }
+
         if (apisunatToken == null || apisunatToken.isBlank()) {
             return new ApisunatConnectionResult(false, "APISUNAT token no configurado.");
         }
@@ -637,6 +793,46 @@ public class ApisunatService {
         return base + path;
     }
 
+    private boolean useMiApiProvider() {
+        return "miapi".equalsIgnoreCase(provider);
+    }
+
+    private String buildMiApiUrl(String path) {
+        String base = (miapiBaseUrl != null && !miapiBaseUrl.isBlank()) ? miapiBaseUrl : "https://miapi.cloud";
+        base = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
+        String uri = path.startsWith("/") ? path : "/" + path;
+        return base + uri;
+    }
+
+    private String buildMiApiDocumentId(String tipoDocumento, String serie, int correlativo) {
+        return String.format("%s-%s-%d", tipoDocumento, serie, correlativo);
+    }
+
+    private String extractMiApiString(Map<?, ?> body, String... keys) {
+        if (body == null) {
+            return null;
+        }
+        for (String key : keys) {
+            if (body.containsKey(key) && body.get(key) != null) {
+                return body.get(key).toString();
+            }
+        }
+        return null;
+    }
+
+    private String extractMiApiUrl(Map<?, ?> body, String... keys) {
+        if (body == null) {
+            return null;
+        }
+        for (String key : keys) {
+            Object value = body.get(key);
+            if (value != null) {
+                return value.toString();
+            }
+        }
+        return null;
+    }
+
     public Map<String, Object> buildSendBillRequestBody(Venta venta,
                                                          Empresa empresa,
                                                          String tipoDocumento,
@@ -669,6 +865,132 @@ public class ApisunatService {
         }
 
         return requestBody;
+    }
+
+    public Map<String, Object> buildMiApiInvoiceRequestBody(Venta venta,
+                                                             Empresa empresa,
+                                                             String tipoDocumento,
+                                                             String serie,
+                                                             int correlativo,
+                                                             String tipoDoc,
+                                                             String numDoc,
+                                                             String rzSocial) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("claveSecreta", miapiSecretKey != null ? miapiSecretKey : "");
+
+        Map<String, Object> comprobante = new LinkedHashMap<>();
+        comprobante.put("tipoOperacion", "0101");
+        comprobante.put("tipoDoc", tipoDocumento);
+        comprobante.put("serie", serie);
+        comprobante.put("correlativo", String.valueOf(correlativo));
+        comprobante.put("fechaEmision", LocalDate.now().toString());
+        comprobante.put("horaEmision", java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
+        comprobante.put("tipoMoneda", "PEN");
+        comprobante.put("tipoPago", "Contado");
+        comprobante.put("observacion", "Venta generada por sistema");
+        body.put("comprobante", comprobante);
+
+        Cliente cliente = venta != null ? venta.getCliente() : null;
+        Map<String, Object> clientePayload = new LinkedHashMap<>();
+        clientePayload.put("codigoPais", "PE");
+        clientePayload.put("tipoDoc", tipoDoc != null && !tipoDoc.isBlank() ? tipoDoc : "0");
+        clientePayload.put("numDoc", numDoc != null && !numDoc.isBlank() ? numDoc : "");
+        clientePayload.put("rznSocial", rzSocial != null && !rzSocial.isBlank()
+            ? rzSocial
+            : (cliente != null && cliente.getNombre() != null ? cliente.getNombre() : "CONSUMIDOR FINAL"));
+        clientePayload.put("direccion", empresa != null && empresa.getDireccion() != null ? empresa.getDireccion() : "");
+        body.put("cliente", clientePayload);
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        if (venta != null && venta.getDetalles() != null) {
+            for (DetalleVenta detalle : venta.getDetalles()) {
+                BigDecimal precioUnitario = detalle.getPrecioUnitario() != null ? detalle.getPrecioUnitario() : BigDecimal.ZERO;
+                BigDecimal cantidad = BigDecimal.valueOf(detalle.getCantidad());
+                BigDecimal valorUnitario = precioUnitario.divide(BigDecimal.valueOf(1.18), 2, RoundingMode.HALF_UP);
+                BigDecimal baseIgv = valorUnitario.multiply(cantidad).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal igv = baseIgv.multiply(BigDecimal.valueOf(0.18)).setScale(2, RoundingMode.HALF_UP);
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("codProducto", detalle.getProducto() != null && detalle.getProducto().getId() != null ? detalle.getProducto().getId().toString() : "PROD");
+                item.put("descripcion", detalle.getProducto() != null && detalle.getProducto().getNombre() != null ? detalle.getProducto().getNombre() : "Producto");
+                item.put("unidad", "NIU");
+                item.put("cantidad", detalle.getCantidad());
+                item.put("mtoBaseIgv", baseIgv);
+                item.put("mtoValorUnitario", valorUnitario);
+                item.put("mtoPrecioUnitario", precioUnitario);
+                item.put("codeAfect", "10");
+                item.put("igvPorcent", 18);
+                item.put("igv", igv);
+                items.add(item);
+            }
+        }
+        body.put("items", items);
+
+        BigDecimal descuento = venta != null && venta.getDescuento() != null ? venta.getDescuento() : BigDecimal.ZERO;
+        if (descuento.compareTo(BigDecimal.ZERO) > 0) {
+            Map<String, Object> descuentoPayload = new LinkedHashMap<>();
+            descuentoPayload.put("motivoCodigo", "02");
+            descuentoPayload.put("factor", BigDecimal.valueOf(0.05));
+            descuentoPayload.put("monto", descuento.setScale(2, RoundingMode.HALF_UP));
+            descuentoPayload.put("base", descuento.setScale(2, RoundingMode.HALF_UP));
+            body.put("descuentos", List.of(descuentoPayload));
+        }
+
+        return body;
+    }
+
+    private Map<String, Object> buildMiApiCreditNoteRequestBody(Venta ventaOriginal,
+                                                               String serie,
+                                                               int correlativo,
+                                                               String tipoNota,
+                                                               String motivo,
+                                                               List<NotaCreditoItemDTO> items,
+                                                               Empresa empresa) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("claveSecreta", miapiSecretKey != null ? miapiSecretKey : "");
+
+        Map<String, Object> comprobante = new LinkedHashMap<>();
+        comprobante.put("tipoOperacion", "0101");
+        comprobante.put("tipoDoc", "07");
+        comprobante.put("serie", serie);
+        comprobante.put("correlativo", String.valueOf(correlativo));
+        comprobante.put("fechaEmision", LocalDate.now().toString());
+        comprobante.put("horaEmision", java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
+        comprobante.put("tipoMoneda", "PEN");
+        comprobante.put("tipoPago", "Contado");
+        comprobante.put("observacion", motivo != null ? motivo : "Nota de crédito");
+        body.put("comprobante", comprobante);
+
+        Cliente cliente = ventaOriginal != null ? ventaOriginal.getCliente() : null;
+        Map<String, Object> clientePayload = new LinkedHashMap<>();
+        clientePayload.put("codigoPais", "PE");
+        clientePayload.put("tipoDoc", cliente != null && cliente.getTipoDocumento() != null ? cliente.getTipoDocumento() : "0");
+        clientePayload.put("numDoc", cliente != null && cliente.getNumeroDocumento() != null ? cliente.getNumeroDocumento() : "");
+        clientePayload.put("rznSocial", cliente != null && cliente.getNombre() != null ? cliente.getNombre() : "CONSUMIDOR FINAL");
+        clientePayload.put("direccion", empresa != null && empresa.getDireccion() != null ? empresa.getDireccion() : "");
+        body.put("cliente", clientePayload);
+
+        List<Map<String, Object>> payloadItems = new ArrayList<>();
+        if (items != null) {
+            for (NotaCreditoItemDTO item : items) {
+                BigDecimal precioUnitario = item.getPrecioUnitario() != null ? item.getPrecioUnitario() : BigDecimal.ZERO;
+                BigDecimal cantidad = BigDecimal.valueOf(item.getCantidad());
+                Map<String, Object> payloadItem = new LinkedHashMap<>();
+                payloadItem.put("codProducto", item.getDescripcion() != null ? item.getDescripcion() : "NC");
+                payloadItem.put("descripcion", item.getDescripcion() != null ? item.getDescripcion() : "Nota de crédito");
+                payloadItem.put("unidad", "NIU");
+                payloadItem.put("cantidad", item.getCantidad());
+                payloadItem.put("mtoBaseIgv", precioUnitario.multiply(cantidad).setScale(2, RoundingMode.HALF_UP));
+                payloadItem.put("mtoValorUnitario", precioUnitario);
+                payloadItem.put("mtoPrecioUnitario", precioUnitario);
+                payloadItem.put("codeAfect", "10");
+                payloadItem.put("igvPorcent", 18);
+                payloadItem.put("igv", precioUnitario.multiply(cantidad).multiply(BigDecimal.valueOf(0.18)).setScale(2, RoundingMode.HALF_UP));
+                payloadItems.add(payloadItem);
+            }
+        }
+        body.put("items", payloadItems);
+        body.put("documentoReferencia", ventaOriginal != null ? ventaOriginal.getSerieCorrelativo() : null);
+        return body;
     }
 
     private Map<String, Object> buildDocumentBody(Venta venta,

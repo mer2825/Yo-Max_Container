@@ -348,26 +348,21 @@
             return false;
         }
 
-        const endpoint = tipo === 'dni'
-            ? `https://api.apis.net.pe/v1/dni?numero=${numero}`
-            : `https://api.apis.net.pe/v1/ruc?numero=${numero}`;
-
         try {
-            const response = await fetch(endpoint);
-            if (!response.ok) {
-                throw new Error('No se pudo obtener información desde el servicio externo.');
+            const response = await fetch(`/clientes/api/consultar-dni/${numero}`, { credentials: 'include' });
+            const result = await response.json();
+
+            if (response.ok && result.success && result.data) {
+                const cliente = result.data;
+                $('#clienteNombreInput').val(cliente.nombre || '');
+                $('#clienteDireccionInput').val(cliente.direccion || '');
+                $('#clienteId').val(cliente.id || '');
+                showNotification('Datos del cliente cargados desde MiAPI.', 'success');
+                return true;
             }
-            const data = await response.json();
-            if (tipo === 'dni') {
-                const nombre = [data.nombres, data.apellidoPaterno, data.apellidoMaterno].filter(Boolean).join(' ').trim();
-                $('#clienteNombreInput').val(nombre || '');
-                showNotification('Datos encontrados. Complete los campos si es necesario.', 'success');
-            } else {
-                $('#clienteNombreInput').val(data.nombre || data.razonSocial || '');
-                $('#clienteDireccionInput').val(data.direccion || '');
-                showNotification('RUC encontrado. Verifique la razón social y dirección.', 'success');
-            }
-            return true;
+
+            showNotification(result.message || 'No se encontraron datos para ese documento.', 'warning');
+            return false;
         } catch (error) {
             showNotification('No se pudo traer los datos externos. Puede completar manualmente.', 'warning');
             return false;

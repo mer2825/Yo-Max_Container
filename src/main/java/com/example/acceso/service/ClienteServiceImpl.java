@@ -8,10 +8,12 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
@@ -26,7 +28,13 @@ public class ClienteServiceImpl implements ClienteService {
     private final ClienteRepository clienteRepository;
     private final RestTemplate restTemplate;
 
-    @Value("${api.external.token}")
+    @Value("${miapi.base-url:https://miapi.cloud}")
+    private String miapiBaseUrl;
+
+    @Value("${miapi.token:}")
+    private String miapiToken;
+
+    @Value("${api.external.token:}")
     private String apiToken;
 
     @Autowired
@@ -152,8 +160,20 @@ public class ClienteServiceImpl implements ClienteService {
     public Map<String, Object> consultarDni(String dni) {
         Map<String, Object> response = new HashMap<>();
 
-        // 1. Buscar en la base de datos local
-        Optional<Cliente> clienteExistente = findByNumeroDocumento(dni); // Este usa findByNumeroDocumentoAndEstadoNot(dni, 2)
+        if (dni == null || dni.isBlank()) {
+            response.put("success", false);
+            response.put("message", "El número de documento es requerido.");
+            return response;
+        }
+
+        String dniNormalizado = dni.replaceAll("\\D", "");
+        if (dniNormalizado.isBlank()) {
+            response.put("success", false);
+            response.put("message", "El número de documento debe contener solo dígitos.");
+            return response;
+        }
+
+        Optional<Cliente> clienteExistente = findByNumeroDocumento(dniNormalizado);
         if (clienteExistente.isPresent()) {
             response.put("success", true);
             response.put("source", "local");
@@ -161,10 +181,14 @@ public class ClienteServiceImpl implements ClienteService {
             return response;
         }
 
-        // 2. Si no existe, buscar en la API externa
-        String url = "https://miapi.cloud/v1/dni/" + dni;
+        String url = buildMiApiUrl("/v1/dni/" + dniNormalizado);
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + apiToken);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        if (miapiToken != null && !miapiToken.isBlank()) {
+            headers.setBearerAuth(miapiToken);
+        } else if (apiToken != null && !apiToken.isBlank()) {
+            headers.setBearerAuth(apiToken);
+        }
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
         try {
@@ -172,32 +196,87 @@ public class ClienteServiceImpl implements ClienteService {
 
             if (apiResponse.getStatusCode() == HttpStatus.OK && apiResponse.getBody() != null) {
                 Map<String, Object> externalBody = apiResponse.getBody();
-                if (Boolean.TRUE.equals(externalBody.get("success"))) {
-                    Map<String, Object> datos = (Map<String, Object>) externalBody.get("datos");
-                    String nombreCompleto = String.format("%s %s %s", datos.get("nombres"), datos.get("ape_paterno"), datos.get("ape_materno")).trim();
-                    
-                    Cliente clienteNoRegistrado = new Cliente();
-                    clienteNoRegistrado.setTipoDocumento("DNI");
-                    clienteNoRegistrado.setNumeroDocumento(dni);
-                    clienteNoRegistrado.setNombre(nombreCompleto);
+                Map<String, Object> dataBody = extractNestedMap(externalBody, "data", "datos", "result", "resultado");
 
+                String nombres = extractString(dataBody, externalBody, "nombres", "nombre", "fullName", "full_name", "nombres_completos", "nombres_completo");
+                String apePaterno = extractString(dataBody, externalBody, "apellidoPaterno", "ape_paterno", "apellido_paterno", "apellido-paterno");
+                String apeMaterno = extractString(dataBody, externalBody, "apellidoMaterno", "ape_materno", "apellido_materno", "apellido-materno");
+
+                String nombreCompleto = String.format("%s %s %s", nombres, apePaterno, apeMaterno).trim();
+                if (nombreCompleto.isBlank()) {
+                    nombreCompleto = extractString(dataBody, externalBody, "nombre", "razonSocial", "razon_social", "fullName", "full_name");
+                }
+
+                if (nombreCompleto.isBlank()) {
                     response.put("success", true);
-                    response.put("source", "external");
-                    response.put("data", clienteNoRegistrado);
+                    response.put("source", "fallback");
+                    response.put("message", "No se encontraron datos externos, se creó un registro provisional para el DNI.");
+                    response.put("data", crearClienteProvisional(dniNormalizado));
                     return response;
                 }
+
+                Cliente clienteNoRegistrado = new Cliente();
+                clienteNoRegistrado.setTipoDocumento("DNI");
+                clienteNoRegistrado.setNumeroDocumento(dniNormalizado);
+                clienteNoRegistrado.setNombre(nombreCompleto);
+
+                response.put("success", true);
+                response.put("source", "external");
+                response.put("data", clienteNoRegistrado);
+                return response;
             }
-        } catch (HttpClientErrorException e) {
-            // Si la API externa da un error (ej. 404 Not Found), lo consideramos como no encontrado
-            System.err.println("API externa no encontró el DNI o hubo un error: " + e.getMessage());
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            System.err.println("API MiAPI DNI devolvió error para DNI " + dniNormalizado + ": " + e.getMessage());
         } catch (ResourceAccessException e) {
-            // Error de conexión
-            System.err.println("Error de conexión con la API externa: " + e.getMessage());
+            System.err.println("Error de conexión con MiAPI DNI: " + e.getMessage());
         }
-        
-        // 3. Si no se encontró en ninguna parte
-        response.put("success", false);
-        response.put("message", "DNI no encontrado en la base de datos local ni en el servicio externo.");
+
+        response.put("success", true);
+        response.put("source", "fallback");
+        response.put("message", "No se pudo validar el DNI con MiAPI; se creó un registro provisional para seguir con la venta.");
+        response.put("data", crearClienteProvisional(dniNormalizado));
         return response;
+    }
+
+    private String extractString(Map<String, Object> primary, Map<String, Object> secondary, String... keys) {
+        for (String key : keys) {
+            if (primary != null && primary.containsKey(key) && primary.get(key) != null) {
+                return primary.get(key).toString().trim();
+            }
+            if (secondary != null && secondary.containsKey(key) && secondary.get(key) != null) {
+                return secondary.get(key).toString().trim();
+            }
+        }
+        return "";
+    }
+
+    private Map<String, Object> extractNestedMap(Map<String, Object> main, String... keys) {
+        if (main == null) {
+            return null;
+        }
+        for (String key : keys) {
+            Object value = main.get(key);
+            if (value instanceof Map) {
+                return (Map<String, Object>) value;
+            }
+        }
+        return main;
+    }
+
+    private String buildMiApiUrl(String path) {
+        String base = (miapiBaseUrl != null && !miapiBaseUrl.isBlank()) ? miapiBaseUrl : "https://miapi.cloud";
+        if (path.startsWith("/")) {
+            return base + path;
+        }
+        return base + "/" + path;
+    }
+
+    private Cliente crearClienteProvisional(String dni) {
+        Cliente cliente = new Cliente();
+        cliente.setTipoDocumento("DNI");
+        cliente.setNumeroDocumento(dni);
+        cliente.setNombre("Cliente " + dni);
+        cliente.setEstado(1);
+        return cliente;
     }
 }

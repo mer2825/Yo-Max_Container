@@ -50,6 +50,9 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
 
     Optional<Venta> findTopByNumeroVentaStartingWithOrderByNumeroVentaDesc(String prefijo);
 
+    @Query(value = "SELECT COALESCE(MAX(CAST(REGEXP_REPLACE(numero_venta, '[^0-9]', '', 'g') AS INTEGER)), 0) FROM ventas WHERE numero_venta LIKE CONCAT(:prefijo, '%')", nativeQuery = true)
+    Integer findMaxCorrelativoByNumeroVentaPrefijo(@Param("prefijo") String prefijo);
+
     List<Venta> findBySesionCajaIdAndMetodoPago(Long sesionCajaId, String metodoPago);
 
     List<Venta> findBySesionCajaId(Long sesionCajaId);

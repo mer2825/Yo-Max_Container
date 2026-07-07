@@ -42,13 +42,15 @@ public class SessionInterceptor implements HandlerInterceptor {
             "/ventas_web/api/detalle",
             "/ventas_web/api/aprobar",
             "/ventas_web/api/rechazar",
-            "/clientes/api/consultar-dni/"
+            "/clientes/api/consultar-dni/",
+            "/clientes/api/buscar-o-crear"
     );
 
     // Rutas de API internas que deben ser accesibles para usuarios autenticados (no solo admins)
     private static final Set<String> RUTAS_API_PERMITIDAS = Set.of(
             "/caja/api/",
-            "/ventas/api/"
+            "/ventas/api/",
+            "/clientes/api/"
     );
     
     // Rutas adicionales permitidas para usuarios autenticados

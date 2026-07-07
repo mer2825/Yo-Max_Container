@@ -154,24 +154,14 @@ public class VentaServiceImpl implements VentaService {
                 prefijo = "V";
         }
 
-        DateTimeFormatter mesFormatter = DateTimeFormatter.ofPattern("MM");
-        String mes = LocalDateTime.now().format(mesFormatter);
-        String prefijoBusqueda = prefijo + mes + "-";
-
-        Optional<Venta> ultimaVenta = ventaRepository.findTopByNumeroVentaStartingWithOrderByNumeroVentaDesc(prefijoBusqueda);
+        Integer maxCorrelativo = ventaRepository.findMaxCorrelativoByNumeroVentaPrefijo(prefijo);
 
         int correlativo = 1;
-        if (ultimaVenta.isPresent()) {
-            String ultimoNumero = ultimaVenta.get().getNumeroVenta();
-            try {
-                String correlativoStr = ultimoNumero.substring(ultimoNumero.lastIndexOf('-') + 1);
-                correlativo = Integer.parseInt(correlativoStr) + 1;
-            } catch (NumberFormatException | IndexOutOfBoundsException e) {
-                correlativo = 1;
-            }
+        if (maxCorrelativo != null && maxCorrelativo >= 0) {
+            correlativo = maxCorrelativo + 1;
         }
 
-        return String.format("%s%s-%04d", prefijo, mes, correlativo);
+        return String.format("%s%04d", prefijo, correlativo);
     }
 
     @Transactional

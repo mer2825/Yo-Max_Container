@@ -290,24 +290,33 @@ public class PedidoWebServiceImpl implements PedidoWebService {
 
     private String generarNumeroVenta() {
         String prefijo = "N";
-        DateTimeFormatter mesFormatter = DateTimeFormatter.ofPattern("MM");
-        String mes = LocalDateTime.now().format(mesFormatter);
-        String prefijoBusqueda = prefijo + mes + "-";
 
-        Optional<Venta> ultimaVenta = ventaRepository.findTopByNumeroVentaStartingWithOrderByNumeroVentaDesc(prefijoBusqueda);
+        Optional<Venta> ultimaVenta = ventaRepository.findTopByNumeroVentaStartingWithOrderByNumeroVentaDesc(prefijo);
 
         int correlativo = 1;
         if (ultimaVenta.isPresent()) {
-            String ultimoNumero = ultimaVenta.get().getNumeroVenta();
-            try {
-                String correlativoStr = ultimoNumero.substring(ultimoNumero.lastIndexOf('-') + 1);
-                correlativo = Integer.parseInt(correlativoStr) + 1;
-            } catch (NumberFormatException | IndexOutOfBoundsException e) {
+            correlativo = parseCorrelativoFromNumeroVenta(ultimaVenta.get().getNumeroVenta()) + 1;
+            if (correlativo <= 0) {
                 correlativo = 1;
             }
         }
 
-        return String.format("%s%s-%04d", prefijo, mes, correlativo);
+        return String.format("%s%04d", prefijo, correlativo);
+    }
+
+    private int parseCorrelativoFromNumeroVenta(String numeroVenta) {
+        if (numeroVenta == null || numeroVenta.isBlank()) {
+            return 0;
+        }
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(\\d+)$").matcher(numeroVenta);
+        if (matcher.find()) {
+            try {
+                return Integer.parseInt(matcher.group(1));
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        }
+        return 0;
     }
 
     @Override

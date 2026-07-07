@@ -100,4 +100,55 @@ class ApisunatServiceTest {
         assertEquals("juan@test.com", body.get("customerEmail"));
         assertTrue(body.get("fileName").toString().startsWith("20567890123-"));
     }
+
+    @Test
+    void buildMiApiInvoiceRequestBodyShouldUseMiApiCloudShape() {
+        ApisunatService service = new ApisunatService(
+            "https://miapi.cloud",
+            "token-123",
+            "persona-123",
+            "token-123",
+            "20567890123",
+            "/apifact/invoice/create",
+            "miapi",
+            "miap-r4a-t9v-35e",
+            "https://miapi.cloud",
+            "/apifact/creditnote/create"
+        );
+
+        Venta venta = new Venta();
+        Cliente cliente = new Cliente();
+        cliente.setNombre("Juan Perez");
+        cliente.setTipoDocumento("DNI");
+        cliente.setNumeroDocumento("12345678");
+        cliente.setRuc("20567890123");
+        cliente.setRazonSocial("Juan Perez");
+        venta.setCliente(cliente);
+        venta.setDescuento(BigDecimal.valueOf(10));
+
+        Producto producto = new Producto();
+        producto.setNombre("Cafe");
+
+        DetalleVenta detalle = new DetalleVenta();
+        detalle.setProducto(producto);
+        detalle.setCantidad(2);
+        detalle.setPrecioUnitario(BigDecimal.valueOf(118));
+        venta.setDetalles(java.util.List.of(detalle));
+
+        Empresa empresa = new Empresa();
+        empresa.setRucEmpresa("20567890123");
+        empresa.setRazonSocialEmpresa("Mi Empresa");
+        empresa.setDireccion("Av. Principal 123");
+
+        Map<String, Object> body = service.buildMiApiInvoiceRequestBody(venta, empresa, "01", "F001", 1, "6", "20567890123", "Juan Perez");
+
+        assertEquals("miap-r4a-t9v-35e", body.get("claveSecreta"));
+        assertTrue(body.containsKey("comprobante"));
+        Map<?, ?> comprobante = (Map<?, ?>) body.get("comprobante");
+        assertEquals("01", comprobante.get("tipoDoc"));
+        assertEquals("F001", comprobante.get("serie"));
+        assertEquals("1", comprobante.get("correlativo"));
+        assertTrue(body.containsKey("items"));
+        assertTrue(((java.util.List<?>) body.get("items")).size() > 0);
+    }
 }
