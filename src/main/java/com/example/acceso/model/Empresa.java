@@ -44,6 +44,13 @@ public class Empresa {
     @Column(columnDefinition = "integer default 1")
     private Integer correlativoFactura = 1;
 
+    // Serie para Notas de Crédito (por defecto "B001" para NC de boleta, "F001" para NC de factura)
+    @Column(length = 20, columnDefinition = "varchar(20) default 'B001'")
+    private String serieNotaCreditoBoleta = "B001";
+
+    @Column(length = 20, columnDefinition = "varchar(20) default 'F001'")
+    private String serieNotaCreditoFactura = "F001";
+
     // Correlativos de Notas de Crédito (boleta / factura)
     @Column(columnDefinition = "integer default 1")
     private Integer correlativoNotaCreditoBoleta = 1;
@@ -182,6 +189,22 @@ public class Empresa {
 
     public void setCorrelativoFactura(Integer correlativoFactura) {
         this.correlativoFactura = correlativoFactura;
+    }
+
+    public String getSerieNotaCreditoBoleta() {
+        return serieNotaCreditoBoleta;
+    }
+
+    public void setSerieNotaCreditoBoleta(String serieNotaCreditoBoleta) {
+        this.serieNotaCreditoBoleta = serieNotaCreditoBoleta;
+    }
+
+    public String getSerieNotaCreditoFactura() {
+        return serieNotaCreditoFactura;
+    }
+
+    public void setSerieNotaCreditoFactura(String serieNotaCreditoFactura) {
+        this.serieNotaCreditoFactura = serieNotaCreditoFactura;
     }
 
     public Integer getCorrelativoNotaCreditoBoleta() {

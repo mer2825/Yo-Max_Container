@@ -43,6 +43,7 @@ public class SessionInterceptor implements HandlerInterceptor {
             "/ventas_web/api/aprobar",
             "/ventas_web/api/rechazar",
             "/clientes/api/consultar-dni/",
+            "/clientes/api/consultar-ruc/",
             "/clientes/api/buscar-o-crear"
     );
 

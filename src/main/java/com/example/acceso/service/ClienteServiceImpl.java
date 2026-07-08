@@ -238,6 +238,98 @@ public class ClienteServiceImpl implements ClienteService {
         return response;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> consultarRuc(String ruc) {
+        Map<String, Object> response = new HashMap<>();
+
+        if (ruc == null || ruc.isBlank()) {
+            response.put("success", false);
+            response.put("message", "El número de documento es requerido.");
+            return response;
+        }
+
+        String rucNormalizado = ruc.replaceAll("\\D", "");
+        if (rucNormalizado.isBlank()) {
+            response.put("success", false);
+            response.put("message", "El número de documento debe contener solo dígitos.");
+            return response;
+        }
+
+        Optional<Cliente> clienteExistente = findByNumeroDocumento(rucNormalizado);
+        if (clienteExistente.isPresent()) {
+            response.put("success", true);
+            response.put("source", "local");
+            response.put("data", clienteExistente.get());
+            return response;
+        }
+
+        String url = buildMiApiUrl("/v1/ruc/" + rucNormalizado);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        if (miapiToken != null && !miapiToken.isBlank()) {
+            headers.setBearerAuth(miapiToken);
+        } else if (apiToken != null && !apiToken.isBlank()) {
+            headers.setBearerAuth(apiToken);
+        }
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<Map> apiResponse = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
+
+            if (apiResponse.getStatusCode() == HttpStatus.OK && apiResponse.getBody() != null) {
+                Map<String, Object> externalBody = apiResponse.getBody();
+                Map<String, Object> dataBody = extractNestedMap(externalBody, "data", "datos", "result", "resultado");
+
+                String razonSocial = extractString(dataBody, externalBody,
+                        "razonSocial", "razon_social", "razon_social_empresa", "nombre", "nombre_comercial", "companyName", "fullName", "full_name");
+                String direccionFiscal = extractString(dataBody, externalBody,
+                        "direccion", "direccionFiscal", "direccion_fiscal", "domicilioFiscal", "direccion_domicilio", "direccion_domic");
+
+                if (razonSocial.isBlank()) {
+                    response.put("success", true);
+                    response.put("source", "fallback");
+                    response.put("message", "No se encontraron datos externos para RUC; se creó un registro provisional para seguir con la venta.");
+                    response.put("data", crearClienteProvisionalRuc(rucNormalizado));
+                    return response;
+                }
+
+                Cliente clienteNoRegistrado = new Cliente();
+                clienteNoRegistrado.setTipoDocumento("RUC");
+                clienteNoRegistrado.setNumeroDocumento(rucNormalizado);
+                clienteNoRegistrado.setNombre(razonSocial);
+                clienteNoRegistrado.setRazonSocial(razonSocial);
+                clienteNoRegistrado.setDireccion(direccionFiscal.isBlank() ? null : direccionFiscal);
+                clienteNoRegistrado.setDireccionFiscal(direccionFiscal.isBlank() ? null : direccionFiscal);
+
+                response.put("success", true);
+                response.put("source", "external");
+                response.put("data", clienteNoRegistrado);
+                return response;
+            }
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            System.err.println("API MiAPI RUC devolvió error para RUC " + rucNormalizado + ": " + e.getMessage());
+        } catch (ResourceAccessException e) {
+            System.err.println("Error de conexión con MiAPI RUC: " + e.getMessage());
+        }
+
+        response.put("success", true);
+        response.put("source", "fallback");
+        response.put("message", "No se pudo validar el RUC con MiAPI; se creó un registro provisional para seguir con la venta.");
+        response.put("data", crearClienteProvisionalRuc(rucNormalizado));
+        return response;
+    }
+
+    private Cliente crearClienteProvisionalRuc(String ruc) {
+        Cliente cliente = new Cliente();
+        cliente.setTipoDocumento("RUC");
+        cliente.setNumeroDocumento(ruc);
+        cliente.setNombre("RUC " + ruc);
+        cliente.setRazonSocial("RUC " + ruc);
+        cliente.setEstado(1);
+        return cliente;
+    }
+
     private String extractString(Map<String, Object> primary, Map<String, Object> secondary, String... keys) {
         for (String key : keys) {
             if (primary != null && primary.containsKey(key) && primary.get(key) != null) {

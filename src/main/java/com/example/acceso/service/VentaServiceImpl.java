@@ -170,6 +170,14 @@ public class VentaServiceImpl implements VentaService {
             return venta;
         }
 
+        // Asegurar que la venta tenga cargados todos los detalles y productos
+        if (venta.getDetalles() == null || venta.getDetalles().isEmpty() || 
+            (venta.getDetalles().get(0).getProducto() == null)) {
+            Venta ventaCompleta = ventaRepository.findByIdWithDetallesAndProductos(venta.getId())
+                    .orElseThrow(() -> new RuntimeException("Venta no encontrada con id: " + venta.getId()));
+            venta.setDetalles(ventaCompleta.getDetalles());
+        }
+
         String tipoComprobante = normalizeTipoComprobante(venta.getTipoComprobante());
         venta.setTipoComprobante(tipoComprobante);
 

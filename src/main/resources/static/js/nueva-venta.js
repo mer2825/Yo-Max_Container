@@ -349,7 +349,8 @@
         }
 
         try {
-            const response = await fetch(`/clientes/api/consultar-dni/${numero}`, { credentials: 'include' });
+            const endpoint = tipo === 'ruc' ? `/clientes/api/consultar-ruc/${numero}` : `/clientes/api/consultar-dni/${numero}`;
+            const response = await fetch(endpoint, { credentials: 'include' });
             const result = await response.json();
 
             if (response.ok && result.success && result.data) {

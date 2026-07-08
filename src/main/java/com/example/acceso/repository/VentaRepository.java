@@ -90,4 +90,7 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
            "WHERE d.venta.fechaVenta >= :fecha")
     List<Long> findProductoIdsVendidosDespues(
         @Param("fecha") LocalDateTime fecha);
+
+    @Query("SELECT v FROM Venta v JOIN FETCH v.cliente JOIN FETCH v.detalles d JOIN FETCH d.producto WHERE v.id = :id")
+    Optional<Venta> findByIdWithDetallesAndProductos(@Param("id") Long id);
 }

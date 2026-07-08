@@ -69,6 +69,17 @@ public class ClienteController {
         }
     }
 
+    @GetMapping("/api/consultar-ruc/{ruc}")
+    @ResponseBody
+    public ResponseEntity<?> consultarRucEndpoint(@PathVariable String ruc) {
+        Map<String, Object> result = clienteService.consultarRuc(ruc);
+        if (Boolean.TRUE.equals(result.get("success"))) {
+            return ResponseEntity.ok(result);
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
+        }
+    }
+
     @DeleteMapping("/api/eliminar/{id}")
     @ResponseBody
     public ResponseEntity<?> eliminarCliente(@PathVariable Long id) {
@@ -220,49 +231,70 @@ public class ClienteController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
         } else if ("ruc".equalsIgnoreCase(tipo)) {
-            // Para RUC, por ahora, solo buscamos en la base de datos local.
-            // Si se necesita una API externa para RUC, se debería implementar en ClienteService.
-            Optional<Cliente> clienteExistente = clienteService.findByNumeroDocumento(numero);
-            if (clienteExistente.isPresent()) {
-                response.put("success", true);
-                response.put("isNewClient", false);
-                response.put("cliente", clienteExistente.get());
-                response.put("message", "Cliente RUC encontrado localmente.");
-                return ResponseEntity.ok(response);
-            } else {
-                if (forceCreate) {
-                    Cliente newCliente = new Cliente();
-                    newCliente.setTipoDocumento(tipo.toUpperCase());
-                    newCliente.setNumeroDocumento(numero);
-                    newCliente.setNombre("RUC " + numero); // Nombre por defecto para RUC no encontrado externamente
-                    try {
-                        Cliente savedCliente = clienteService.guardarCliente(newCliente);
-                        response.put("success", true);
-                        response.put("isNewClient", false);
-                        response.put("cliente", savedCliente);
-                        response.put("message", "Cliente RUC registrado y asignado.");
-                        return ResponseEntity.ok(response);
-                    } catch (DataIntegrityViolationException e) {
-                        response.put("success", false);
-                        response.put("message", "Error al guardar el cliente RUC: ya existe un cliente con este documento.");
-                        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
-                    } catch (Exception e) {
-                        response.put("success", false);
-                        response.put("message", "Error inesperado al guardar el cliente RUC: " + e.getMessage());
-                        return ResponseEntity.internalServerError().body(response);
+            Map<String, Object> rucResult = clienteService.consultarRuc(numero);
+            if (Boolean.TRUE.equals(rucResult.get("success"))) {
+                String source = (String) rucResult.get("source");
+                Cliente clienteData = (Cliente) rucResult.get("data");
+
+                if ("local" .equals(source) || "fallback".equals(source)) {
+                    if (forceCreate || "fallback".equals(source)) {
+                        try {
+                            clienteData.setTipoDocumento(tipo.toUpperCase());
+                            clienteData.setNumeroDocumento(numero);
+                            Cliente savedCliente = clienteService.guardarCliente(clienteData);
+                            response.put("success", true);
+                            response.put("isNewClient", false);
+                            response.put("cliente", savedCliente);
+                            response.put("message", "Cliente RUC registrado y asignado.");
+                            return ResponseEntity.ok(response);
+                        } catch (DataIntegrityViolationException e) {
+                            response.put("success", false);
+                            response.put("message", "Error al guardar el cliente RUC: ya existe un cliente con este documento.");
+                            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+                        } catch (Exception e) {
+                            response.put("success", false);
+                            response.put("message", "Error inesperado al guardar el cliente RUC: " + e.getMessage());
+                            return ResponseEntity.internalServerError().body(response);
+                        }
                     }
-                } else {
-                    // RUC no encontrado localmente, sugerir creación
-                    Cliente tempCliente = new Cliente();
-                    tempCliente.setTipoDocumento(tipo.toUpperCase());
-                    tempCliente.setNumeroDocumento(numero);
-                    tempCliente.setNombre("RUC " + numero); // Nombre temporal para mostrar
+
                     response.put("success", true);
-                    response.put("isNewClient", true);
-                    response.put("cliente", tempCliente);
-                    response.put("message", "Cliente RUC no encontrado localmente. Sugerir registro.");
+                    response.put("isNewClient", false);
+                    response.put("cliente", clienteData);
+                    response.put("message", "Cliente RUC disponible para usar.");
                     return ResponseEntity.ok(response);
+                } else {
+                    if (forceCreate) {
+                        try {
+                            clienteData.setTipoDocumento(tipo.toUpperCase());
+                            clienteData.setNumeroDocumento(numero);
+                            Cliente savedCliente = clienteService.guardarCliente(clienteData);
+                            response.put("success", true);
+                            response.put("isNewClient", false);
+                            response.put("cliente", savedCliente);
+                            response.put("message", "Cliente RUC registrado desde API externa y asignado.");
+                            return ResponseEntity.ok(response);
+                        } catch (DataIntegrityViolationException e) {
+                            response.put("success", false);
+                            response.put("message", "Error al guardar el cliente RUC: ya existe un cliente con este documento.");
+                            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+                        } catch (Exception e) {
+                            response.put("success", false);
+                            response.put("message", "Error inesperado al guardar el cliente RUC: " + e.getMessage());
+                            return ResponseEntity.internalServerError().body(response);
+                        }
+                    } else {
+                        response.put("success", true);
+                        response.put("isNewClient", true);
+                        response.put("cliente", clienteData);
+                        response.put("message", "Cliente RUC encontrado en API externa, pero no registrado localmente.");
+                        return ResponseEntity.ok(response);
+                    }
                 }
+            } else {
+                response.put("success", false);
+                response.put("message", rucResult.get("message"));
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
         } else {
             response.put("success", false);

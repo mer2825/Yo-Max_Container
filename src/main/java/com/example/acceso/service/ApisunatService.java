@@ -101,10 +101,6 @@ public class ApisunatService {
     }
 
     public ApisunatResult emitirBoleta(Venta venta, Empresa empresa, String serie, int correlativo) {
-        if (useMiApiProvider()) {
-            return emitirDocumentoMiApi(venta, empresa, "03", serie, correlativo, null, null, null);
-        }
-
         Cliente cliente = venta.getCliente();
         String tipoDoc;
         String numDoc;
@@ -113,21 +109,23 @@ public class ApisunatService {
         if (cliente != null && "DNI".equalsIgnoreCase(cliente.getTipoDocumento()) && cliente.getNumeroDocumento() != null) {
             tipoDoc = "1";
             numDoc = cliente.getNumeroDocumento();
-            rzSocial = cliente.getNombre();
+            rzSocial = cliente.getNombre() != null && !cliente.getNombre().isBlank() ? cliente.getNombre() : "CONSUMIDOR FINAL";
         } else {
             tipoDoc = "0";
             numDoc = "";
-            rzSocial = cliente != null ? cliente.getNombre() : "CONSUMIDOR FINAL";
+            rzSocial = (cliente != null && cliente.getNombre() != null && !cliente.getNombre().isBlank()) 
+                ? cliente.getNombre() 
+                : "CONSUMIDOR FINAL";
+        }
+
+        if (useMiApiProvider()) {
+            return emitirDocumentoMiApi(venta, empresa, "03", serie, correlativo, tipoDoc, numDoc, rzSocial);
         }
 
         return emitirDocumento(venta, empresa, "03", serie, correlativo, tipoDoc, numDoc, rzSocial);
     }
 
     public ApisunatResult emitirFactura(Venta venta, Empresa empresa, String serie, int correlativo) {
-        if (useMiApiProvider()) {
-            return emitirDocumentoMiApi(venta, empresa, "01", serie, correlativo, null, null, null);
-        }
-
         Cliente cliente = venta.getCliente();
         String tipoDoc = "6";
         String numDoc = null;
@@ -142,6 +140,10 @@ public class ApisunatService {
             if (rzSocial == null || rzSocial.isBlank()) {
                 rzSocial = cliente.getNombre();
             }
+        }
+
+        if (useMiApiProvider()) {
+            return emitirDocumentoMiApi(venta, empresa, "01", serie, correlativo, tipoDoc, numDoc, rzSocial);
         }
 
         return emitirDocumento(venta, empresa, "01", serie, correlativo, tipoDoc, numDoc, rzSocial);
@@ -533,6 +535,14 @@ public class ApisunatService {
                                                  List<NotaCreditoItemDTO> items,
                                                  Empresa empresa) {
         Map<String, Object> requestPayload = buildMiApiCreditNoteRequestBody(ventaOriginal, serie, correlativo, tipoNota, motivo, items, empresa);
+        // Log del payload
+        try {
+            String json = objectMapper.writeValueAsString(requestPayload);
+            logger.info("MIAPI emitirNotaCredito -> payload: {}", json);
+        } catch (Exception e) {
+            logger.error("MIAPI emitirNotaCredito -> error serializando payload", e);
+        }
+        
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(miapiToken);
@@ -541,21 +551,28 @@ public class ApisunatService {
 
         try {
             String url = buildMiApiUrl(miapiCreditNoteUri);
+            logger.info("MIAPI emitirNotaCredito -> URL={}", url);
             ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
             Map<?, ?> body = response.getBody();
             String rawResponse = body != null ? body.toString() : "";
+            logger.info("MIAPI emitirNotaCredito -> response status={} body={}", response.getStatusCode(), rawResponse);
+            
             if (response.getStatusCode().is2xxSuccessful() && body != null) {
                 Map<?, ?> respuesta = body instanceof Map ? (Map<?, ?>) body.get("respuesta") : null;
                 boolean success = respuesta != null && Boolean.TRUE.equals(respuesta.get("success"));
                 String status = success ? "ACEPTADO" : "EXCEPCION";
+                String pdfUrl = extractMiApiUrl(respuesta, "pdf-a4", "pdf-ticket");
+                String xmlUrl = extractMiApiUrl(respuesta, "xml-firmado", "xml-sin-firmar");
                 String message = extractMiApiString(respuesta, "mensaje");
                 String documentId = buildMiApiDocumentId("07", serie, correlativo);
-                return new ApisunatResult(status, null, null, null, message, rawResponse, documentId);
+                logger.info("MIAPI emitirNotaCredito -> status={} pdfUrl={} xmlUrl={}", status, pdfUrl, xmlUrl);
+                return new ApisunatResult(status, pdfUrl, xmlUrl, null, message, rawResponse, documentId);
             }
             return new ApisunatResult("EXCEPCION", null, null, null, extractMiApiString(body, "mensaje"), rawResponse, null);
         } catch (HttpClientErrorException | HttpServerErrorException ex) {
-            logger.error("MIAPI emitirNotaCredito failed status={} body={}", ex.getStatusCode(), ex.getResponseBodyAsString());
-            return new ApisunatResult("EXCEPCION", null, null, null, String.valueOf(ex.getStatusCode()), ex.getResponseBodyAsString(), null);
+            String errorBody = ex.getResponseBodyAsString();
+            logger.error("MIAPI emitirNotaCredito failed status={} body={}", ex.getStatusCode(), errorBody);
+            return new ApisunatResult("EXCEPCION", null, null, null, String.valueOf(ex.getStatusCode()), errorBody, null);
         } catch (Exception ex) {
             logger.error("MIAPI emitirNotaCredito unexpected error", ex);
             return new ApisunatResult("EXCEPCION", null, null, null, ex.getMessage(), ex.toString(), null);
@@ -842,7 +859,7 @@ public class ApisunatService {
                                                          String numDoc,
                                                          String rzSocial) {
         Map<String, Object> documentBody = buildDocumentBody(
-            venta, tipoDocumento, serie, correlativo, tipoDoc, numDoc, rzSocial
+            venta, empresa, tipoDocumento, serie, correlativo, tipoDoc, numDoc, rzSocial
         );
 
         String ruc = (apisunatRuc != null && !apisunatRuc.isBlank())
@@ -886,7 +903,11 @@ public class ApisunatService {
         comprobante.put("fechaEmision", LocalDate.now().toString());
         comprobante.put("horaEmision", java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
         comprobante.put("tipoMoneda", "PEN");
-        comprobante.put("tipoPago", "Contado");
+        // Usar el método de pago real de la venta
+        String metodoPago = (venta != null && venta.getMetodoPago() != null && !venta.getMetodoPago().isBlank()) 
+            ? venta.getMetodoPago() 
+            : "Contado";
+        comprobante.put("tipoPago", metodoPago);
         comprobante.put("observacion", "Venta generada por sistema");
         body.put("comprobante", comprobante);
 
@@ -895,10 +916,18 @@ public class ApisunatService {
         clientePayload.put("codigoPais", "PE");
         clientePayload.put("tipoDoc", tipoDoc != null && !tipoDoc.isBlank() ? tipoDoc : "0");
         clientePayload.put("numDoc", numDoc != null && !numDoc.isBlank() ? numDoc : "");
-        clientePayload.put("rznSocial", rzSocial != null && !rzSocial.isBlank()
-            ? rzSocial
-            : (cliente != null && cliente.getNombre() != null ? cliente.getNombre() : "CONSUMIDOR FINAL"));
-        clientePayload.put("direccion", empresa != null && empresa.getDireccion() != null ? empresa.getDireccion() : "");
+        // Usar el nombre real del cliente
+        String nombreCliente = (rzSocial != null && !rzSocial.isBlank()) 
+            ? rzSocial 
+            : (cliente != null && cliente.getNombre() != null && !cliente.getNombre().isBlank() 
+                ? cliente.getNombre() 
+                : "CONSUMIDOR FINAL");
+        clientePayload.put("rznSocial", nombreCliente);
+        // Usar la dirección real del cliente si está disponible, sino la de la empresa
+        String direccionCliente = (cliente != null && cliente.getDireccion() != null && !cliente.getDireccion().isBlank())
+            ? cliente.getDireccion()
+            : (empresa != null && empresa.getDireccion() != null ? empresa.getDireccion() : "");
+        clientePayload.put("direccion", direccionCliente);
         body.put("cliente", clientePayload);
 
         List<Map<String, Object>> items = new ArrayList<>();
@@ -910,8 +939,23 @@ public class ApisunatService {
                 BigDecimal baseIgv = valorUnitario.multiply(cantidad).setScale(2, RoundingMode.HALF_UP);
                 BigDecimal igv = baseIgv.multiply(BigDecimal.valueOf(0.18)).setScale(2, RoundingMode.HALF_UP);
                 Map<String, Object> item = new LinkedHashMap<>();
-                item.put("codProducto", detalle.getProducto() != null && detalle.getProducto().getId() != null ? detalle.getProducto().getId().toString() : "PROD");
-                item.put("descripcion", detalle.getProducto() != null && detalle.getProducto().getNombre() != null ? detalle.getProducto().getNombre() : "Producto");
+                // Usar ID real del producto o fallback
+                String codProducto = (detalle.getProducto() != null && detalle.getProducto().getId() != null) 
+                    ? detalle.getProducto().getId().toString() 
+                    : "PROD";
+                item.put("codProducto", codProducto);
+                // Usar el nombre real del producto con fallback a descripción
+                String descripcionProducto = "Producto";
+                if (detalle.getProducto() != null) {
+                    String nombre = detalle.getProducto().getNombre();
+                    String descripcion = detalle.getProducto().getDescripcion();
+                    descripcionProducto = (nombre != null && !nombre.isBlank()) 
+                        ? nombre 
+                        : (descripcion != null && !descripcion.isBlank() 
+                            ? descripcion 
+                            : ("Producto " + detalle.getProducto().getId()));
+                }
+                item.put("descripcion", descripcionProducto);
                 item.put("unidad", "NIU");
                 item.put("cantidad", detalle.getCantidad());
                 item.put("mtoBaseIgv", baseIgv);
@@ -948,52 +992,141 @@ public class ApisunatService {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("claveSecreta", miapiSecretKey != null ? miapiSecretKey : "");
 
-        Map<String, Object> comprobante = new LinkedHashMap<>();
-        comprobante.put("tipoOperacion", "0101");
-        comprobante.put("tipoDoc", "07");
-        comprobante.put("serie", serie);
-        comprobante.put("correlativo", String.valueOf(correlativo));
-        comprobante.put("fechaEmision", LocalDate.now().toString());
-        comprobante.put("horaEmision", java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
-        comprobante.put("tipoMoneda", "PEN");
-        comprobante.put("tipoPago", "Contado");
-        comprobante.put("observacion", motivo != null ? motivo : "Nota de crédito");
-        body.put("comprobante", comprobante);
-
-        Cliente cliente = ventaOriginal != null ? ventaOriginal.getCliente() : null;
-        Map<String, Object> clientePayload = new LinkedHashMap<>();
-        clientePayload.put("codigoPais", "PE");
-        clientePayload.put("tipoDoc", cliente != null && cliente.getTipoDocumento() != null ? cliente.getTipoDocumento() : "0");
-        clientePayload.put("numDoc", cliente != null && cliente.getNumeroDocumento() != null ? cliente.getNumeroDocumento() : "");
-        clientePayload.put("rznSocial", cliente != null && cliente.getNombre() != null ? cliente.getNombre() : "CONSUMIDOR FINAL");
-        clientePayload.put("direccion", empresa != null && empresa.getDireccion() != null ? empresa.getDireccion() : "");
-        body.put("cliente", clientePayload);
-
+        // Calcular totales
+        BigDecimal totalOperGravadas = BigDecimal.ZERO;
+        BigDecimal totalIgv = BigDecimal.ZERO;
+        BigDecimal totalGeneral = BigDecimal.ZERO;
+        
         List<Map<String, Object>> payloadItems = new ArrayList<>();
         if (items != null) {
             for (NotaCreditoItemDTO item : items) {
-                BigDecimal precioUnitario = item.getPrecioUnitario() != null ? item.getPrecioUnitario() : BigDecimal.ZERO;
+                BigDecimal precioUnitarioConIgv = item.getPrecioUnitario() != null ? item.getPrecioUnitario() : BigDecimal.ZERO;
                 BigDecimal cantidad = BigDecimal.valueOf(item.getCantidad());
+                // Valor unitario SIN IGV
+                BigDecimal valorUnitario = precioUnitarioConIgv
+                    .divide(BigDecimal.valueOf(1.18), 6, RoundingMode.HALF_UP);
+                // Base IGV = valorUnitario * cantidad
+                BigDecimal mtoBaseIgv = valorUnitario.multiply(cantidad).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal igv = mtoBaseIgv.multiply(BigDecimal.valueOf(0.18)).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal totalItem = precioUnitarioConIgv.multiply(cantidad).setScale(2, RoundingMode.HALF_UP);
+                
+                totalOperGravadas = totalOperGravadas.add(mtoBaseIgv);
+                totalIgv = totalIgv.add(igv);
+                totalGeneral = totalGeneral.add(totalItem);
+                
                 Map<String, Object> payloadItem = new LinkedHashMap<>();
                 payloadItem.put("codProducto", item.getDescripcion() != null ? item.getDescripcion() : "NC");
                 payloadItem.put("descripcion", item.getDescripcion() != null ? item.getDescripcion() : "Nota de crédito");
                 payloadItem.put("unidad", "NIU");
                 payloadItem.put("cantidad", item.getCantidad());
-                payloadItem.put("mtoBaseIgv", precioUnitario.multiply(cantidad).setScale(2, RoundingMode.HALF_UP));
-                payloadItem.put("mtoValorUnitario", precioUnitario);
-                payloadItem.put("mtoPrecioUnitario", precioUnitario);
-                payloadItem.put("codeAfect", "10");
-                payloadItem.put("igvPorcent", 18);
-                payloadItem.put("igv", precioUnitario.multiply(cantidad).multiply(BigDecimal.valueOf(0.18)).setScale(2, RoundingMode.HALF_UP));
+                payloadItem.put("mtoValorUnitario", valorUnitario.setScale(2, RoundingMode.HALF_UP));
+                payloadItem.put("mtoPrecioUnitario", precioUnitarioConIgv);
+                payloadItem.put("igv", igv);
                 payloadItems.add(payloadItem);
             }
         }
+        
+        // Determinar tipo de comprobante original
+        String tipoCompOriginal = "03"; // default boleta
+        String serieRef = "";
+        String correlativoRef = "";
+        if (ventaOriginal != null) {
+            String tc = ventaOriginal.getTipoComprobante();
+            if ("01".equals(tc) || "Factura".equalsIgnoreCase(tc)) {
+                tipoCompOriginal = "01";
+            }
+            // Extraer serie y correlativo del serieCorrelativo (ej: "F001-00000001")
+            String sc = ventaOriginal.getSerieCorrelativo();
+            if (sc != null && sc.contains("-")) {
+                String[] partes = sc.split("-");
+                serieRef = partes[0];
+                correlativoRef = partes.length > 1 ? String.valueOf(Integer.parseInt(partes[1])) : "0";
+            } else {
+                serieRef = sc != null ? sc : "";
+                correlativoRef = "0";
+            }
+        }
+        
+        // Construir comprobante según documentación MiAPI
+        Map<String, Object> comprobante = new LinkedHashMap<>();
+        comprobante.put("tipoDoc", "07");
+        comprobante.put("serie", serie);
+        comprobante.put("correlativo", String.valueOf(correlativo));
+        comprobante.put("codmotivo", tipoNota);
+        comprobante.put("descripcion", motivo != null ? motivo : "Nota de crédito");
+        comprobante.put("serieRef", serieRef);
+        comprobante.put("correlativoRef", correlativoRef);
+        comprobante.put("tipoCompRef", tipoCompOriginal);
+        comprobante.put("fechaEmision", LocalDate.now().toString());
+        comprobante.put("horaEmision", java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
+        comprobante.put("tipoMoneda", "PEN");
+        comprobante.put("total", totalGeneral.setScale(2, RoundingMode.HALF_UP));
+        comprobante.put("mtoIGV", totalIgv.setScale(2, RoundingMode.HALF_UP));
+        comprobante.put("mtoOperGravadas", totalOperGravadas.setScale(2, RoundingMode.HALF_UP));
+        comprobante.put("totalTexto", convertirNumeroALetras(totalGeneral));
+        body.put("comprobante", comprobante);
+
+        // Cliente
+        Cliente cliente = ventaOriginal != null ? ventaOriginal.getCliente() : null;
+        
+        String tipoDocCliente = "0";
+        String numDocCliente = "";
+        String rznSocialCliente = "CONSUMIDOR FINAL";
+        String direccionCliente = "";
+        
+        if (cliente != null) {
+            String tipoDocRaw = cliente.getTipoDocumento();
+            if ("DNI".equalsIgnoreCase(tipoDocRaw)) {
+                tipoDocCliente = "1";
+                numDocCliente = cliente.getNumeroDocumento() != null ? cliente.getNumeroDocumento() : "";
+            } else if ("RUC".equalsIgnoreCase(tipoDocRaw) || "6".equals(tipoDocRaw)) {
+                tipoDocCliente = "6";
+                numDocCliente = (cliente.getRuc() != null && !cliente.getRuc().isBlank()) 
+                    ? cliente.getRuc() 
+                    : (cliente.getNumeroDocumento() != null ? cliente.getNumeroDocumento() : "");
+            } else {
+                if ("01".equals(tipoCompOriginal)) {
+                    tipoDocCliente = "6";
+                    numDocCliente = (cliente.getRuc() != null && !cliente.getRuc().isBlank())
+                        ? cliente.getRuc()
+                        : (cliente.getNumeroDocumento() != null ? cliente.getNumeroDocumento() : "");
+                } else {
+                    tipoDocCliente = "1";
+                    numDocCliente = cliente.getNumeroDocumento() != null ? cliente.getNumeroDocumento() : "00000000";
+                }
+            }
+            
+            if ("01".equals(tipoCompOriginal)) {
+                rznSocialCliente = (cliente.getRazonSocial() != null && !cliente.getRazonSocial().isBlank())
+                    ? cliente.getRazonSocial()
+                    : (cliente.getNombre() != null ? cliente.getNombre() : "CONSUMIDOR FINAL");
+            } else {
+                rznSocialCliente = (cliente.getNombre() != null && !cliente.getNombre().isBlank())
+                    ? cliente.getNombre()
+                    : (cliente.getRazonSocial() != null ? cliente.getRazonSocial() : "CONSUMIDOR FINAL");
+            }
+            
+            direccionCliente = (cliente.getDireccion() != null && !cliente.getDireccion().isBlank())
+                ? cliente.getDireccion()
+                : (empresa != null && empresa.getDireccion() != null ? empresa.getDireccion() : "");
+        } else if (empresa != null) {
+            direccionCliente = empresa.getDireccion() != null ? empresa.getDireccion() : "";
+        }
+        
+        Map<String, Object> clientePayload = new LinkedHashMap<>();
+        clientePayload.put("tipoDoc", tipoDocCliente);
+        clientePayload.put("numDoc", numDocCliente);
+        clientePayload.put("rznSocial", rznSocialCliente);
+        clientePayload.put("direccion", direccionCliente);
+        body.put("cliente", clientePayload);
+
         body.put("items", payloadItems);
-        body.put("documentoReferencia", ventaOriginal != null ? ventaOriginal.getSerieCorrelativo() : null);
+        
         return body;
     }
 
     private Map<String, Object> buildDocumentBody(Venta venta,
+                                                  Empresa empresa,
                                                   String tipoDocumento,
                                                   String serie,
                                                   int correlativo,
@@ -1019,40 +1152,68 @@ public class ApisunatService {
         // Agregar monto en letras como Note
         // Calcularemos el total después de procesar los items
 
-        // AccountingSupplierParty (emisor)
+        // AccountingSupplierParty (emisor) - Usar datos reales de la empresa
         Map<String, Object> supplierParty = new LinkedHashMap<>();
         Map<String, Object> supplierPartyParty = new LinkedHashMap<>();
         Map<String, Object> supplierPartyIdentification = new LinkedHashMap<>();
         Map<String, Object> supplierId = new LinkedHashMap<>();
         supplierId.put("_attributes", Map.of("schemeID", "6"));
-        supplierId.put("_text", apisunatRuc != null && !apisunatRuc.isBlank() ? apisunatRuc : "20556548745");
+        
+        // Obtener datos reales de la empresa con fallback a valores por defecto
+        String rucEmpresa = (empresa != null && empresa.getRucEmpresa() != null && !empresa.getRucEmpresa().isBlank())
+            ? empresa.getRucEmpresa()
+            : (apisunatRuc != null && !apisunatRuc.isBlank() ? apisunatRuc : "20556548745");
+        supplierId.put("_text", rucEmpresa);
+        
         supplierPartyIdentification.put("cbc:ID", supplierId);
         supplierPartyParty.put("cac:PartyIdentification", supplierPartyIdentification);
         
         Map<String, Object> supplierPartyLegalEntity = new LinkedHashMap<>();
-        supplierPartyLegalEntity.put("cbc:RegistrationName", Map.of("_text", "TIenda de Importaciones Yo'Max"));
+        String nombreEmpresa = (empresa != null && empresa.getRazonSocialEmpresa() != null && !empresa.getRazonSocialEmpresa().isBlank())
+            ? empresa.getRazonSocialEmpresa()
+            : (empresa != null && empresa.getNombre() != null && !empresa.getNombre().isBlank() ? empresa.getNombre() : "TIenda de Importaciones Yo'Max");
+        supplierPartyLegalEntity.put("cbc:RegistrationName", Map.of("_text", nombreEmpresa));
+        
         Map<String, Object> supplierRegistrationAddress = new LinkedHashMap<>();
         supplierRegistrationAddress.put("cbc:AddressTypeCode", Map.of("_text", "0000"));
-        supplierRegistrationAddress.put("cac:AddressLine", Map.of("cbc:Line", Map.of("_text", "963 Monseñor Francisco Gonzales, Pueblo Nuevo, Ferreñafe")));
+        String direccionEmpresa = (empresa != null && empresa.getDireccion() != null && !empresa.getDireccion().isBlank())
+            ? empresa.getDireccion()
+            : "963 Monseñor Francisco Gonzales, Pueblo Nuevo, Ferreñafe";
+        supplierRegistrationAddress.put("cac:AddressLine", Map.of("cbc:Line", Map.of("_text", direccionEmpresa)));
         supplierPartyLegalEntity.put("cac:RegistrationAddress", supplierRegistrationAddress);
         supplierPartyParty.put("cac:PartyLegalEntity", supplierPartyLegalEntity);
         
         supplierParty.put("cac:Party", supplierPartyParty);
         payload.put("cac:AccountingSupplierParty", supplierParty);
 
-        // AccountingCustomerParty (cliente)
+        // AccountingCustomerParty (cliente) - Usar datos reales del cliente
         Map<String, Object> customerParty = new LinkedHashMap<>();
         Map<String, Object> customerPartyParty = new LinkedHashMap<>();
         Map<String, Object> customerPartyIdentification = new LinkedHashMap<>();
         Map<String, Object> customerId = new LinkedHashMap<>();
         customerId.put("_attributes", Map.of("schemeID", tipoDoc));
-        customerId.put("_text", numDoc != null && !numDoc.isBlank() ? numDoc : "00000000");
+        
+        // Usar número de documento real del cliente
+        String numDocCliente = (numDoc != null && !numDoc.isBlank()) ? numDoc : "00000000";
+        customerId.put("_text", numDocCliente);
         customerPartyIdentification.put("cbc:ID", customerId);
         customerPartyParty.put("cac:PartyIdentification", customerPartyIdentification);
         
         Map<String, Object> customerPartyLegalEntity = new LinkedHashMap<>();
+        // Usar el rzSocial que ya fue procesado en emitirBoleta/emitirFactura
         String customerName = (rzSocial != null && !rzSocial.isBlank()) ? rzSocial : "CONSUMIDOR FINAL";
         customerPartyLegalEntity.put("cbc:RegistrationName", Map.of("_text", customerName));
+        
+        // Agregar dirección del cliente si está disponible
+        if (venta.getCliente() != null && venta.getCliente().getDireccion() != null && !venta.getCliente().getDireccion().isBlank()) {
+            Map<String, Object> customerRegistrationAddress = new LinkedHashMap<>();
+            customerRegistrationAddress.put("cbc:AddressTypeCode", Map.of("_text", "0000"));
+            Map<String, Object> addressLine = new LinkedHashMap<>();
+            addressLine.put("cbc:Line", Map.of("_text", venta.getCliente().getDireccion()));
+            customerRegistrationAddress.put("cac:AddressLine", addressLine);
+            customerPartyLegalEntity.put("cac:RegistrationAddress", customerRegistrationAddress);
+        }
+        
         customerPartyParty.put("cac:PartyLegalEntity", customerPartyLegalEntity);
         
         customerParty.put("cac:Party", customerPartyParty);
@@ -1142,11 +1303,18 @@ public class ApisunatService {
                 lineTaxTotal.put("cac:TaxSubtotal", lineTaxSubtotals);
                 invoiceLine.put("cac:TaxTotal", lineTaxTotal);
                 
-                // Item
+                // Item - Usar nombre real del producto con fallback
                 Map<String, Object> item = new LinkedHashMap<>();
-                String nombreProducto = (detalle.getProducto() != null && detalle.getProducto().getNombre() != null && !detalle.getProducto().getNombre().isBlank())
-                    ? detalle.getProducto().getNombre()
-                    : "Producto";
+                String nombreProducto = "Producto";
+                if (detalle.getProducto() != null) {
+                    String nombre = detalle.getProducto().getNombre();
+                    String descripcion = detalle.getProducto().getDescripcion();
+                    nombreProducto = (nombre != null && !nombre.isBlank()) 
+                        ? nombre 
+                        : (descripcion != null && !descripcion.isBlank() 
+                            ? descripcion 
+                            : ("Producto " + detalle.getProducto().getId()));
+                }
                 item.put("cbc:Description", Map.of("_text", nombreProducto));
                 invoiceLine.put("cac:Item", item);
                 

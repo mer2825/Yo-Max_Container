@@ -59,18 +59,29 @@ $(document).ready(function() {
                             <button class="btn btn-sm btn-info action-view-voucher" data-id="${row.id}" data-voucher="${row.voucherImagen}" title="Ver Voucher"><i class="bi bi-eye"></i></button>
                             <button class="btn btn-sm btn-primary action-view-detail" data-id="${row.id}" title="Ver Detalle"><i class="bi bi-list-ul"></i></button>
                         `;
-                        // Mostrar botones de aprobar, anular y eliminar solo si el estado no es APROBADO o ANULADO
-                        if (row.estado !== 'APROBADO' && row.estado !== 'ANULADO') {
+
+                        const puedeAprobar = row.estado === 'PENDIENTE' || row.estado === 'EN_REVISION';
+                        const puedeAnular = row.estado !== 'ANULADO' && row.estado !== 'PROCESADO';
+                        const puedeEliminar = row.estado === 'ANULADO' || row.estado === 'PROCESADO' || row.estado === 'RECHAZADO';
+
+                        if (puedeAprobar) {
                             buttons += `
                                 <button class="btn btn-sm btn-success action-approve" data-id="${row.id}" title="Aprobar"><i class="bi bi-check-lg"></i></button>
-                                <button class="btn btn-sm btn-warning action-anular" data-id="${row.id}" title="Anular"><i class="bi bi-x-lg"></i></button>
-                                <button class="btn btn-sm btn-danger action-eliminar" data-id="${row.id}" title="Eliminar"><i class="bi bi-trash"></i></button>
                             `;
-                        } else if (row.estado === 'ANULADO') { // Si está anulado, solo permitir eliminar permanentemente
-                             buttons += `
+                        }
+
+                        if (puedeAnular) {
+                            buttons += `
+                                <button class="btn btn-sm btn-warning action-anular" data-id="${row.id}" title="Anular"><i class="bi bi-x-lg"></i></button>
+                            `;
+                        }
+
+                        if (puedeEliminar) {
+                            buttons += `
                                 <button class="btn btn-sm btn-danger action-eliminar" data-id="${row.id}" title="Eliminar"><i class="bi bi-trash"></i></button>
                             `;
                         }
+
                         return buttons;
                     }
                 }

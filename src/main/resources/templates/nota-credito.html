@@ -658,30 +658,24 @@
                                             <input type="checkbox"
                                                    th:id="'check-' + ${iter.index}"
                                                    th:value="${iter.index}"
-                                                   th:attr="data-idx=${iter.index}"
                                                    class="nc-checkbox item-check"
                                                    aria-label="Seleccionar producto">
-                                            <input type="hidden"
-                                                   th:name="'items[' + ${detalle.id} + '].id'"
-                                                   th:value="${detalle.id}">
-                                            <input type="hidden"
-                                                   th:name="'items[' + ${detalle.id} + '].precio'"
-                                                   th:value="${detalle.precioUnitario}">
                                         </td>
                                         <td th:text="${detalle.producto.nombre}" class="product-name"></td>
                                         <td class="text-center" th:text="${detalle.cantidad}"></td>
                                         <td class="text-center">
                                             <input type="number"
                                                    th:id="'cant-' + ${iter.index}"
-                                                   th:name="'items[' + ${detalle.id} + '].cantidad'"
+                                                   name="cantidad"
+                                                   th:data-detalle-id="${detalle.id}"
+                                                   th:data-precio="${detalle.precioUnitario}"
                                                    th:max="${detalle.cantidad}"
                                                    min="0" value="0"
-                                                   th:attr="data-idx=${iter.index}"
                                                    class="nc-quantity-input cant-input"
                                                    disabled>
                                         </td>
                                         <td class="text-end nc-price" th:text="${'S/ ' + detalle.precioUnitario}"></td>
-                                        <td id="'sub-' + ${iter.index}" class="text-end nc-subtotal">S/ 0.00</td>
+                                        <td th:id="'sub-' + ${iter.index}" class="text-end nc-subtotal">S/ 0.00</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -731,21 +725,11 @@
 
     <script>
         // ─── Utilidades ───────────────────────────────────────────────
-        function getFila(idx) {
-            return document.querySelector('#tabla-items tbody tr[data-idx="' + idx + '"]');
-        }
-
-        function getCantInput(idx) {
-            return document.querySelector('#cant-' + idx) || document.querySelector('input[name="items[' + idx + '].cantidad"]');
-        }
-
         function recalcularSubtotalFila(idx) {
-            const fila  = getFila(idx);
             const input = document.querySelector('#cant-' + idx);
+            if (!input) return;
 
-            if (!fila || !input) return;
-
-            const precio = parseFloat(fila.getAttribute('data-precio')) || 0;
+            const precio = parseFloat(input.getAttribute('data-precio')) || 0;
             const cant = parseInt(input.value, 10) || 0;
             const sub = precio * cant;
 
@@ -770,10 +754,7 @@
             // cantidadItemsSeleccionados
             let itemsSeleccionados = 0;
             document.querySelectorAll('.item-check:checked').forEach(function(cb) {
-                const idx = cb.getAttribute('data-idx');
-                const inp = document.getElementById('cant-' + idx);
-                const cant = parseInt(inp?.value || '0', 10);
-                if (cant > 0) itemsSeleccionados++;
+                itemsSeleccionados++;
             });
 
             document.getElementById('cantidadItemsSeleccionados').textContent = itemsSeleccionados;
@@ -783,18 +764,16 @@
         // ─── Evento: cambio en checkbox ───────────────────────────────
         document.querySelectorAll('.item-check').forEach(function(cb) {
             cb.addEventListener('change', function() {
-                // Si el checkbox está deshabilitado, no hacer nada
                 if (this.disabled) return;
 
-                const idx = this.getAttribute('data-idx');
-                const input = document.getElementById('cant-' + idx);
+                const idx = this.value;
+                const input = document.querySelector('#cant-' + idx);
                 if (!input) return;
 
                 if (this.checked) {
                     input.disabled = false;
-
                     if (parseInt(input.value, 10) === 0) {
-                        input.value = 1; // mínimo útil
+                        input.value = 1;
                     }
                 } else {
                     input.disabled = true;
@@ -807,68 +786,53 @@
         // ─── Evento: cambio en cantidad ───────────────────────────────
         document.querySelectorAll('.cant-input').forEach(function(input) {
             input.addEventListener('input', function() {
-                const idx = this.getAttribute('data-idx');
                 const max = parseInt(this.getAttribute('max'), 10) || 0;
-
                 let v = parseInt(this.value, 10);
                 if (Number.isNaN(v)) v = 0;
-
                 if (v > max) v = max;
                 if (v < 0) v = 0;
-
                 this.value = v;
-                recalcularSubtotalFila(idx);
+                recalcularSubtotalFila(this.id.replace('cant-', ''));
             });
         });
 
         // ─── Evento: cambio en tipo de NC ────────────────────────────
-        document.getElementById('tipoNota').addEventListener('change', function() {
-            const tipo = this.value;
-
-            // Según lo que pediste:
-            // - Solo permite editar cantidades para 07
-            // - Para otros tipos (01/02/06/09) se mantiene lectura
+        function actualizarComportamiento(tipo) {
             const es07 = (tipo === '07');
-            const esTotal = ['01', '06'].includes(tipo); // si quieres forzar todo en algunos totales
+            const esTotal = ['01', '06'].includes(tipo);
 
             document.querySelectorAll('#tabla-items tbody tr').forEach(function(fila) {
                 const idx = fila.getAttribute('data-idx');
-                const cb = fila.querySelector('.item-check');
-                const input = document.getElementById('cant-' + idx);
+                const cb = document.querySelector('#check-' + idx);
+                const input = document.querySelector('#cant-' + idx);
 
                 if (!cb || !input) return;
 
                 if (esTotal && !es07) {
-                    // Anulación total: todos seleccionados y bloqueados
+                    // Anulación total: todos seleccionados con cantidad máxima
                     cb.checked = true;
-                    cb.disabled = true; // Bloquear checkbox
+                    cb.disabled = true;
                     input.disabled = true;
                     input.value = input.max || 0;
                 } else if (es07) {
-                    // 07: edición parcial - permitir selección
+                    // 07: edición parcial
                     cb.checked = false;
-                    cb.disabled = false; // Habilitar checkbox
-                    input.disabled = false;
+                    cb.disabled = false;
+                    input.disabled = true;
                     input.value = 0;
-
-                    const subCell = document.getElementById('sub-' + idx);
-                    if (subCell) subCell.textContent = 'S/ 0.00';
                 } else {
                     // otros: solo lectura (reset)
                     cb.checked = false;
-                    cb.disabled = true; // Bloquear checkbox
+                    cb.disabled = true;
                     input.disabled = true;
                     input.value = 0;
-
-                    const subCell = document.getElementById('sub-' + idx);
-                    if (subCell) subCell.textContent = 'S/ 0.00';
                 }
 
                 recalcularSubtotalFila(idx);
             });
 
             recalcularTotal();
-        });
+        }
 
         // ─── Validación antes de enviar ───────────────────────────────
         document.getElementById('formNotaCredito').addEventListener('submit', function(e) {
@@ -886,24 +850,35 @@
                 return;
             }
 
-            // Habilitar todos los campos cantidad para que se envíen en el formulario
-            document.querySelectorAll('.cant-input').forEach(function(input) {
-                input.disabled = false;
+            // Habilitar campos de cantidad y agregar hidden para enviar datos
+            const itemsData = [];
+            document.querySelectorAll('.item-check').forEach(function(cb) {
+                const idx = cb.value;
+                const input = document.querySelector('#cant-' + idx);
+                if (!input) return;
+
+                const detalleId = input.getAttribute('data-detalle-id');
+                const cantidad = parseInt(input.value, 10) || 0;
+
+                if (cb.checked && cantidad > 0) {
+                    itemsData.push(detalleId + ':' + cantidad);
+                }
             });
 
-            const hayItems = Array.from(document.querySelectorAll('.item-check:checked'))
-                .some(function(cb) {
-                    const idx = cb.getAttribute('data-idx');
-                    const inp = document.getElementById('cant-' + idx);
-                    return parseInt(inp?.value || '0', 10) > 0;
-                });
-
-            if (!hayItems) {
+            if (itemsData.length === 0) {
                 e.preventDefault();
                 alert('Debes seleccionar al menos un producto con cantidad mayor a 0 para emitir la nota de crédito.');
                 return;
             }
 
+            // Crear campo hidden con datos serializados
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'itemsData';
+            hiddenInput.value = itemsData.join(',');
+            this.appendChild(hiddenInput);
+
+            // Calcular total
             const total = document.getElementById('total-nc').textContent;
             const tipoEl = document.getElementById('tipoNota');
             const tipoTexto = tipoEl.options[tipoEl.selectedIndex]?.text || '';
@@ -917,7 +892,7 @@
             if (!ok) e.preventDefault();
         });
 
-        // Inicializar estados (por si el usuario abre la página y cambia rápido)
+        // Inicializar
         recalcularTotal();
     </script>
 </body>

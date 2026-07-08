@@ -6,6 +6,7 @@ import com.example.acceso.model.Empresa;
 import com.example.acceso.model.NotasCredito;
 import com.example.acceso.model.Usuario;
 import com.example.acceso.model.Venta;
+import com.example.acceso.repository.DetalleVentaRepository;
 import com.example.acceso.repository.EmpresaRepository;
 import com.example.acceso.repository.NotasCreditoRepository;
 import com.example.acceso.service.ApisunatService;
@@ -28,10 +29,12 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Controller
 @RequestMapping("/ventas/nota-credito")
@@ -42,16 +45,19 @@ public class NotaCreditoController {
     private final ApisunatService apisunatService;
     private final NotasCreditoRepository notasCreditoRepository;
     private final EmpresaRepository empresaRepository;
+    private final DetalleVentaRepository detalleVentaRepository;
 
     @Autowired
     public NotaCreditoController(VentaService ventaService,
                                  ApisunatService apisunatService,
                                  NotasCreditoRepository notasCreditoRepository,
-                                 EmpresaRepository empresaRepository) {
+                                 EmpresaRepository empresaRepository,
+                                 DetalleVentaRepository detalleVentaRepository) {
         this.ventaService = ventaService;
         this.apisunatService = apisunatService;
         this.notasCreditoRepository = notasCreditoRepository;
         this.empresaRepository = empresaRepository;
+        this.detalleVentaRepository = detalleVentaRepository;
     }
 
     @GetMapping("/{id}")
@@ -61,9 +67,6 @@ public class NotaCreditoController {
             return ventaService.obtenerVentaDetalladaPorId(id)
                     .map(ventaMap -> {
                         logger.info("Venta encontrada: {}", ventaMap);
-                        logger.info("numeroVenta: {}", ventaMap.get("numeroVenta"));
-                        logger.info("total: {}", ventaMap.get("total"));
-                        logger.info("cliente: {}", ventaMap.get("cliente"));
                         
                         // Validación 1: solo boletas y facturas
                         String tipoComprobante = (String) ventaMap.get("tipoComprobante");
@@ -136,19 +139,19 @@ public class NotaCreditoController {
     public String procesarNC(@PathVariable Long id,
                              @RequestParam String tipoNota,
                              @RequestParam String motivo,
-                             @RequestParam(required = false) Map<String, String> items,
+                             @RequestParam(required = false) String itemsData,
                              HttpServletRequest request,
                              Model model,
                              RedirectAttributes redirectAttributes) {
         logger.info("=== INICIO PROCESAMIENTO NC ===");
         logger.info("Procesando NC para venta ID: {}, tipo: {}, motivo: {}", id, tipoNota, motivo);
-        logger.info("Items recibidos: {}", items != null ? items.keySet() : "null");
+        logger.info("itemsData recibido: {}", itemsData);
         try {
-            // Obtener la entidad Venta completa
+            // Obtener la entidad Venta completa con sus detalles
             Venta venta = ventaService.obtenerEntidadVentaPorId(id)
                     .orElseThrow(() -> new RuntimeException("Venta no encontrada"));
             
-            // Revalidar elegibilidad (por si acaso el usuario fue directo al POST)
+            // Revalidar elegibilidad
             if ("nota_venta".equalsIgnoreCase(venta.getTipoComprobante())
                 || "rechazado".equalsIgnoreCase(venta.getEstadoSunat())
                 || "TOTAL".equalsIgnoreCase(venta.getEstadoNotaCredito())) {
@@ -160,45 +163,60 @@ public class NotaCreditoController {
             Empresa empresa = empresaRepository.findFirstByOrderByIdAsc()
                     .orElseThrow(() -> new RuntimeException("No hay empresa configurada"));
             
-            // Procesar ítems seleccionados
+            // Procesar itemsData (formato: "detalleId:cantidad,detalleId:cantidad")
             List<NotaCreditoItemDTO> itemsSeleccionados = new ArrayList<>();
             BigDecimal totalAcreditado = BigDecimal.ZERO;
             
-            if (items != null && !items.isEmpty()) {
-                // Los items vienen como items[detalleId].id y items[detalleId].cantidad
-                for (Map.Entry<String, String> entry : items.entrySet()) {
-                    String key = entry.getKey();
-                    if (key.endsWith(".id")) {
-                        // Extraer el ID del formato items[detalleId].id
-                        int startIdx = key.indexOf('[');
-                        int endIdx = key.indexOf(']');
-                        String detalleIdStr = key.substring(startIdx + 1, endIdx);
-                        Long detalleId = Long.parseLong(detalleIdStr);
-                        String cantidadStr = items.get("items[" + detalleIdStr + "].cantidad");
-                        int cantidad = Integer.parseInt(cantidadStr);
+            if (itemsData != null && !itemsData.isBlank()) {
+                String[] pares = itemsData.split(",");
+                for (String par : pares) {
+                    String[] partes = par.split(":");
+                    if (partes.length != 2) continue;
+                    
+                    try {
+                        Long detalleId = Long.parseLong(partes[0].trim());
+                        Integer cantidad = Integer.parseInt(partes[1].trim());
                         
-                        // Validar que al menos un ítem fue seleccionado con cantidad > 0
-                        if (cantidad > 0) {
-                            // Buscar el detalle en la venta
-                            if (venta.getDetalles() != null) {
-                                for (DetalleVenta detalle : venta.getDetalles()) {
-                                    if (detalle.getId().equals(detalleId)) {
-                                        NotaCreditoItemDTO itemDTO = new NotaCreditoItemDTO();
-                                        itemDTO.setDetalleVentaId(detalleId);
-                                        itemDTO.setCantidad(cantidad);
-                                        itemDTO.setDescripcion(detalle.getProducto() != null 
-                                            ? detalle.getProducto().getNombre() : "Producto");
-                                        itemDTO.setPrecioUnitario(detalle.getPrecioUnitario());
-                                        
-                                        itemsSeleccionados.add(itemDTO);
-                                        totalAcreditado = totalAcreditado.add(
-                                            detalle.getPrecioUnitario().multiply(BigDecimal.valueOf(cantidad))
-                                        );
-                                        break;
-                                    }
-                                }
-                            }
+                        if (cantidad <= 0) continue;
+                        
+                        // Buscar el detalle en la venta
+                        Optional<DetalleVenta> detalleOpt = detalleVentaRepository.findById(detalleId);
+                        if (detalleOpt.isPresent()) {
+                            DetalleVenta detalle = detalleOpt.get();
+                            NotaCreditoItemDTO itemDTO = new NotaCreditoItemDTO();
+                            itemDTO.setDetalleVentaId(detalleId);
+                            itemDTO.setCantidad(cantidad);
+                            itemDTO.setDescripcion(detalle.getProducto() != null 
+                                ? detalle.getProducto().getNombre() : "Producto");
+                            itemDTO.setPrecioUnitario(detalle.getPrecioUnitario());
+                            
+                            itemsSeleccionados.add(itemDTO);
+                            totalAcreditado = totalAcreditado.add(
+                                detalle.getPrecioUnitario().multiply(BigDecimal.valueOf(cantidad))
+                            );
+                        } else {
+                            logger.warn("Detalle de venta no encontrado: {}", detalleId);
                         }
+                    } catch (NumberFormatException e) {
+                        logger.warn("Error parseando item: {}", par);
+                    }
+                }
+            } else {
+                // Si no hay itemsData (anulación total), usar todos los detalles
+                logger.info("Sin itemsData explicitos, usando todos los detalles de la venta (anulación total)");
+                if (venta.getDetalles() != null) {
+                    for (DetalleVenta detalle : venta.getDetalles()) {
+                        NotaCreditoItemDTO itemDTO = new NotaCreditoItemDTO();
+                        itemDTO.setDetalleVentaId(detalle.getId());
+                        itemDTO.setCantidad(detalle.getCantidad());
+                        itemDTO.setDescripcion(detalle.getProducto() != null 
+                            ? detalle.getProducto().getNombre() : "Producto");
+                        itemDTO.setPrecioUnitario(detalle.getPrecioUnitario());
+                        
+                        itemsSeleccionados.add(itemDTO);
+                        totalAcreditado = totalAcreditado.add(
+                            detalle.getPrecioUnitario().multiply(BigDecimal.valueOf(detalle.getCantidad()))
+                        );
                     }
                 }
             }
@@ -209,26 +227,36 @@ public class NotaCreditoController {
                 return "redirect:/ventas/nota-credito/" + id;
             }
             
+            logger.info("Items seleccionados: {} items, total a acreditar: S/{}", 
+                itemsSeleccionados.size(), totalAcreditado);
+            
             // Obtener usuario actual
             Usuario usuarioActual = obtenerUsuarioActual(request);
             
             // Obtener serie y correlativo para la nota de crédito
-            String serie = empresa.getSerieBoleta(); // Por defecto usar serie de boleta
-            if ("01".equals(venta.getTipoComprobante())) {
-                serie = empresa.getSerieFactura();
-            }
+            boolean esFacturaOriginal = "01".equals(venta.getTipoComprobante()) 
+                || "Factura".equalsIgnoreCase(venta.getTipoComprobante());
             
-            // Obtener siguiente correlativo
+            String serie;
             Integer correlativo;
-            if ("01".equals(venta.getTipoComprobante())) {
+            
+            if (esFacturaOriginal) {
+                serie = empresa.getSerieNotaCreditoFactura();
                 correlativo = empresa.getCorrelativoNotaCreditoFactura();
             } else {
+                serie = empresa.getSerieNotaCreditoBoleta();
                 correlativo = empresa.getCorrelativoNotaCreditoBoleta();
             }
             
-            if (correlativo == null) {
+            if (serie == null || serie.isBlank()) {
+                serie = esFacturaOriginal ? empresa.getSerieFactura() : empresa.getSerieBoleta();
+            }
+            
+            if (correlativo == null || correlativo < 1) {
                 correlativo = 1;
             }
+            
+            logger.info("NC serie: {}, correlativo: {}", serie, correlativo);
             
             // Determinar si es anulación total o parcial
             boolean esAnulacionTotal = "01".equals(tipoNota) || "06".equals(tipoNota);
@@ -241,48 +269,59 @@ public class NotaCreditoController {
             notaCredito.setSerie(serie);
             notaCredito.setCorrelativo(correlativo);
             notaCredito.setSerieCorrelativo(serie + "-" + String.format("%08d", correlativo));
-            notaCredito.setTotalAcreditado(totalAcreditado);
+            notaCredito.setTotalAcreditado(totalAcreditado.setScale(2, RoundingMode.HALF_UP));
             notaCredito.setEstadoSunat("pendiente");
             notaCredito.setEmitidaPorUsuario(usuarioActual);
             notaCredito.setFechaEmision(LocalDateTime.now());
             
-            // Guardar nota de crédito en BD
+            // Guardar nota de crédito en BD primero
             notaCredito = notasCreditoRepository.save(notaCredito);
-            logger.info("Nota de crédito guardada en BD con ID: {}", notaCredito.getId());
+            logger.info("Nota de crédito guardada en BD con ID: {} - serieCorrelativo: {}", 
+                notaCredito.getId(), notaCredito.getSerieCorrelativo());
             
-            // Emitir en APISUNAT
-            logger.info("Enviando a APISUNAT...");
+            // Emitir en MiAPI Cloud
+            logger.info("Enviando a MiAPI Cloud...");
             ApisunatService.ApisunatResult resultado = apisunatService.emitirNotaCredito(
                 venta, serie, correlativo, tipoNota, motivo, itemsSeleccionados, empresa
             );
             
-            logger.info("Resultado APISUNAT: status={}, pdfUrl={}, xmlUrl={}, documentId={}", 
-                resultado.getStatus(), resultado.getPdfUrl(), resultado.getXmlUrl(), resultado.getDocumentId());
+            logger.info("Resultado MiAPI: status={}, pdfUrl={}, xmlUrl={}, documentId={}, error={}", 
+                resultado.getStatus(), resultado.getPdfUrl(), resultado.getXmlUrl(), 
+                resultado.getDocumentId(), resultado.getErrorCode());
             
-            // Actualizar nota de crédito con respuesta de APISUNAT
-            notaCredito.setEstadoSunat(resultado.getStatus());
+            // Actualizar nota de crédito con respuesta de MiAPI
+            notaCredito.setEstadoSunat(resultado.getStatus() != null ? resultado.getStatus().toLowerCase() : "error");
             notaCredito.setNubefactId(resultado.getDocumentId());
             notaCredito.setPdfUrl(resultado.getPdfUrl());
             notaCredito.setXmlUrl(resultado.getXmlUrl());
             notaCredito.setHashCdr(resultado.getHashCdr());
             notaCredito.setRawResponse(resultado.getRawResponse());
             
-            // Actualizar correlativo en empresa
-            if ("01".equals(venta.getTipoComprobante())) {
-                empresa.setCorrelativoNotaCreditoFactura(correlativo + 1);
-            } else {
-                empresa.setCorrelativoNotaCreditoBoleta(correlativo + 1);
-            }
-            empresaRepository.save(empresa);
+            boolean esAceptado = "ACEPTADO".equalsIgnoreCase(resultado.getStatus());
             
-            // Actualizar estado de la venta original SOLO para NC (no recalcular ni limpiar detalles)
+            // Actualizar correlativo en empresa solo si fue exitoso o rechazado (no en excepción)
+            if (esAceptado || "RECHAZADO".equalsIgnoreCase(resultado.getStatus())) {
+                if (esFacturaOriginal) {
+                    empresa.setCorrelativoNotaCreditoFactura(correlativo + 1);
+                    logger.info("Correlativo NC Factura actualizado a: {}", correlativo + 1);
+                } else {
+                    empresa.setCorrelativoNotaCreditoBoleta(correlativo + 1);
+                    logger.info("Correlativo NC Boleta actualizado a: {}", correlativo + 1);
+                }
+                empresaRepository.save(empresa);
+            }
+            
+            // Actualizar estado de la venta original
             String estadoNCVenta = esAnulacionTotal ? "TOTAL" : "PARCIAL";
-            ventaService.aplicarNotaCredito(id, estadoNCVenta, itemsSeleccionados);
+            if (esAceptado) {
+                ventaService.aplicarNotaCredito(id, estadoNCVenta, itemsSeleccionados);
+            }
             
             // Guardar cambios finales en nota de crédito
             notasCreditoRepository.save(notaCredito);
             
-            logger.info("Nota de crédito procesada exitosamente. Estado SUNAT: {}", resultado.getStatus());
+            logger.info("Nota de crédito procesada exitosamente. Estado SUNAT: {}, URL PDF: {}", 
+                resultado.getStatus(), resultado.getPdfUrl());
             
             // Redirigir a vista de comprobante
             model.addAttribute("venta", ventaService.obtenerVentaDetalladaPorId(id).orElse(null));
@@ -293,11 +332,14 @@ public class NotaCreditoController {
             model.addAttribute("totalAcreditado", totalAcreditado);
             model.addAttribute("resultadoSunat", resultado);
             
-            if ("ACEPTADO".equals(resultado.getStatus())) {
-                model.addAttribute("mensaje", "Nota de Crédito emitida y aceptada por SUNAT exitosamente");
+            if (esAceptado) {
+                model.addAttribute("mensaje", "✅ Nota de Crédito emitida y aceptada por SUNAT exitosamente");
             } else if ("RECHAZADO".equals(resultado.getStatus())) {
-                model.addAttribute("mensaje", "Nota de Crédito emitida pero RECHAZADA por SUNAT");
+                model.addAttribute("mensaje", "❌ Nota de Crédito emitida pero RECHAZADA por SUNAT");
                 model.addAttribute("errorDetalle", resultado.getErrorCode());
+            } else if ("EXCEPCION".equals(resultado.getStatus())) {
+                model.addAttribute("mensaje", "⚠️ Nota de Crédito con estado: " + resultado.getStatus());
+                model.addAttribute("errorDetalle", resultado.getErrorCode() != null ? resultado.getErrorCode() : resultado.getRawResponse());
             } else {
                 model.addAttribute("mensaje", "Nota de Crédito emitida con estado: " + resultado.getStatus());
             }
@@ -377,7 +419,6 @@ public class NotaCreditoController {
                 return (Usuario) usuarioObj;
             }
         }
-        // Si no hay usuario en sesión, retornar null (se manejará en la lógica de negocio)
         return null;
     }
 }

@@ -29,20 +29,26 @@ public class PedidoWebServiceImpl implements PedidoWebService {
     private final ProductoRepository productoRepository;
     private final ClienteRepository clienteRepository;
     private final com.example.acceso.repository.VentaRepository ventaRepository;
-    private final CloudinaryService cloudinaryService; // Inyectar CloudinaryService
+    private final VentaService ventaService;
+    private final CloudinaryService cloudinaryService;
+    private final CajaService cajaService;
 
     public PedidoWebServiceImpl(PedidoWebRepository pedidoWebRepository,
                                 UsuarioRepository usuarioRepository,
                                 ProductoRepository productoRepository,
                                 ClienteRepository clienteRepository,
                                 com.example.acceso.repository.VentaRepository ventaRepository,
-                                CloudinaryService cloudinaryService) { // Añadir al constructor
+                                VentaService ventaService,
+                                CloudinaryService cloudinaryService,
+                                CajaService cajaService) {
         this.pedidoWebRepository = pedidoWebRepository;
         this.usuarioRepository = usuarioRepository;
         this.productoRepository = productoRepository;
         this.clienteRepository = clienteRepository;
         this.ventaRepository = ventaRepository;
+        this.ventaService = ventaService;
         this.cloudinaryService = cloudinaryService;
+        this.cajaService = cajaService;
     }
 
     private String generarPdfKey() {
@@ -204,55 +210,74 @@ public class PedidoWebServiceImpl implements PedidoWebService {
             throw new RuntimeException("Solo se pueden aprobar pedidos en estado PENDIENTE o EN_REVISION");
         }
 
-        // Obtener verificador si se proporciona ID
         Usuario verificador = null;
         if (verificadoPorId != null) {
             verificador = usuarioRepository.findById(verificadoPorId)
                     .orElseThrow(() -> new RuntimeException("Usuario verificador no encontrado con id: " + verificadoPorId));
         }
 
-        // Crear venta a partir del pedido
+        pedido.setEstado(EstadoPedidoWeb.APROBADO);
+        pedido.setFechaVerificacion(LocalDateTime.now());
+        if (verificador != null) {
+            pedido.setVerificadoPor(verificador);
+        }
+        pedidoWebRepository.save(pedido);
+
+        Venta venta = crearVentaDesdePedido(pedido);
+
+        // Vincular la venta a la sesión de caja activa si existe
+        Optional<SesionCaja> sesionActiva = cajaService.obtenerSesionActiva();
+        if (sesionActiva.isPresent()) {
+            venta.setSesionCaja(sesionActiva.get());
+            venta = ventaRepository.save(venta);
+        }
+
+        Venta ventaProcesada;
+        try {
+            ventaProcesada = ventaService.procesarComprobanteElectronico(venta);
+        } catch (Exception e) {
+            venta.setEstadoSunat("error");
+            venta.setNota("Error al emitir comprobante electrónico: " + e.getMessage());
+            ventaProcesada = ventaRepository.save(venta);
+        }
+
+        pedido.setVenta(ventaProcesada);
+        pedido.setEstado(EstadoPedidoWeb.PROCESADO);
+
+        return pedidoWebRepository.save(pedido);
+    }
+
+    private Venta crearVentaDesdePedido(PedidoWeb pedido) {
         Venta venta = new Venta();
-        venta.setTotal(pedido.getTotal());
-        venta.setSubtotal(pedido.getSubtotal());
-        venta.setDescuento(pedido.getDescuento());
-        venta.setMetodoPago(pedido.getMetodoPago());
-        venta.setTipoComprobante("Nota de Venta");
         venta.setOrigen("web");
-        venta.setEstado(1); // Activa (ya procesada)
-        venta.setFechaVenta(LocalDateTime.now());
-        venta.setPdfKey(pedido.getPdfKey()); // Traspasar la key
+        venta.setMetodoPago("Yape");
+        venta.setTipoComprobante(determinarTipoComprobante(pedido.getDniCliente()));
+        venta.setPdfKey(pedido.getPdfKey());
+        venta.setNota("Pedido web " + pedido.getNumeroPedido());
+        venta.setDescuento(pedido.getDescuento());
 
-        // Generar número de venta
-        String numeroVenta = generarNumeroVenta();
-        venta.setNumeroVenta(numeroVenta);
-
-        // Buscar o crear cliente
         Cliente cliente = clienteRepository.findByNumeroDocumento(pedido.getDniCliente())
                 .orElseGet(() -> {
                     Cliente nuevoCliente = new Cliente();
                     nuevoCliente.setNombre(pedido.getNombreCliente());
                     nuevoCliente.setNumeroDocumento(pedido.getDniCliente());
-                    nuevoCliente.setTipoDocumento("DNI");
+                    nuevoCliente.setTipoDocumento(pedido.getDniCliente() != null && pedido.getDniCliente().matches("\\d{11}") ? "RUC" : "DNI");
                     nuevoCliente.setEstado(1);
                     return clienteRepository.save(nuevoCliente);
                 });
 
         venta.setCliente(cliente);
 
-        // Crear detalles de venta y actualizar stock
         List<DetalleVenta> detallesVenta = new ArrayList<>();
         for (DetallePedidoWeb detalleWeb : pedido.getItems()) {
             Producto producto = productoRepository.findById(detalleWeb.getProducto().getId())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + detalleWeb.getProducto().getId()));
 
-            // Validar stock suficiente
             if (producto.getStock() < detalleWeb.getCantidad()) {
                 throw new RuntimeException("Stock insuficiente para el producto: " + producto.getNombre() +
-                        ". Stock disponible: " + producto.getStock() + ", Cantidad solicitada: " + detalleWeb.getCantidad());
+                        ". Disponible: " + producto.getStock() + ", solicitado: " + detalleWeb.getCantidad());
             }
 
-            // Restar stock
             producto.setStock(producto.getStock() - detalleWeb.getCantidad());
             productoRepository.save(producto);
 
@@ -260,48 +285,23 @@ public class PedidoWebServiceImpl implements PedidoWebService {
             detalleVenta.setProducto(producto);
             detalleVenta.setCantidad(detalleWeb.getCantidad());
             detalleVenta.setPrecioUnitario(detalleWeb.getPrecioUnitario());
-            detalleVenta.setSubtotal(detalleWeb.getSubtotal());
             detalleVenta.setVenta(venta);
             detallesVenta.add(detalleVenta);
         }
         venta.setDetalles(detallesVenta);
 
-        // Guardar la venta directamente en el repositorio
-        Venta ventaGuardada = ventaRepository.save(venta);
-
-        // Actualizar el pedido a APROBADO primero
-        pedido.setEstado(EstadoPedidoWeb.APROBADO);
-        pedido.setFechaVerificacion(LocalDateTime.now());
-        if (verificador != null) {
-            pedido.setVerificadoPor(verificador);
-        }
-        pedido.setVenta(ventaGuardada);
-
-        // Luego cambiar a PROCESADO
-        pedido.setEstado(EstadoPedidoWeb.PROCESADO);
-
-        // Enviar email de notificación al cliente (COMENTADO - Requiere configuración de email)
-        // if (pedido.getCliente() != null && pedido.getCliente().getCorreo() != null) {
-        //     emailService.enviarEmailAprobacion(pedido.getCliente().getCorreo(), pedido.getNumeroPedido());
-        // }
-
-        return pedidoWebRepository.save(pedido);
+        return ventaService.crearVenta(venta);
     }
 
-    private String generarNumeroVenta() {
-        String prefijo = "N";
-
-        Optional<Venta> ultimaVenta = ventaRepository.findTopByNumeroVentaStartingWithOrderByNumeroVentaDesc(prefijo);
-
-        int correlativo = 1;
-        if (ultimaVenta.isPresent()) {
-            correlativo = parseCorrelativoFromNumeroVenta(ultimaVenta.get().getNumeroVenta()) + 1;
-            if (correlativo <= 0) {
-                correlativo = 1;
-            }
+    private String determinarTipoComprobante(String documento) {
+        if (documento == null) {
+            return "Boleta";
         }
-
-        return String.format("%s%04d", prefijo, correlativo);
+        String trimmed = documento.trim();
+        if (trimmed.matches("\\d{11}")) {
+            return "Factura";
+        }
+        return "Boleta";
     }
 
     private int parseCorrelativoFromNumeroVenta(String numeroVenta) {

@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const cartItem = document.createElement('div');
             cartItem.className = 'cart-item';
             cartItem.innerHTML = `
-                <div>
+                <div style="flex: 1;">
                     <strong>${nombre}</strong>
                     <div class="d-flex align-items-center gap-2 mt-1">
                         <button type="button" class="btn btn-sm btn-outline-secondary btn-decrease-cart" data-index="${index}" ${cantidad <= 1 ? 'disabled' : ''}>−</button>
@@ -113,7 +113,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <small class="text-muted d-block">S/ ${precio.toFixed(2)} c/u</small>
                 </div>
-                <span class="fw-bold">S/ ${itemTotal.toFixed(2)}</span>
+                <div class="text-end">
+                    <span class="fw-bold">S/ ${itemTotal.toFixed(2)}</span>
+                </div>
             `;
             cartItems.appendChild(cartItem);
         });

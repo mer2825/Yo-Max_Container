@@ -25,4 +25,7 @@ public interface ClienteService {
 
     // Consulta DNI en local y luego en API externa
     Map<String, Object> consultarDni(String dni);
+
+    // Consulta RUC en local y luego en API externa
+    Map<String, Object> consultarRuc(String ruc);
 }
