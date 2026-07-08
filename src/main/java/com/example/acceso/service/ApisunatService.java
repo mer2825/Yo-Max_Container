@@ -551,13 +551,48 @@ public class ApisunatService {
 
         try {
             String url = buildMiApiUrl(miapiCreditNoteUri);
-            logger.info("MIAPI emitirNotaCredito -> URL={}", url);
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
-            Map<?, ?> body = response.getBody();
-            String rawResponse = body != null ? body.toString() : "";
-            logger.info("MIAPI emitirNotaCredito -> response status={} body={}", response.getStatusCode(), rawResponse);
+            logger.warn("MIAPI emitirNotaCredito -> URL={}", url);
+            logger.warn("MIAPI emitirNotaCredito -> miapiCreditNoteUri configurado: {}", miapiCreditNoteUri);
+            logger.warn("MIAPI emitirNotaCredito -> miapiBaseUrl configurado: {}", miapiBaseUrl);
             
-            if (response.getStatusCode().is2xxSuccessful() && body != null) {
+            // Intentar obtener la respuesta como String primero para ver qué devuelve
+            ResponseEntity<String> stringResponse = restTemplate.postForEntity(url, request, String.class);
+            String responseBody = stringResponse.getBody();
+            logger.warn("MIAPI emitirNotaCredito -> response status={}", stringResponse.getStatusCode());
+            logger.warn("MIAPI emitirNotaCredito -> response body (primeros 500 chars): {}", 
+                responseBody != null ? responseBody.substring(0, Math.min(500, responseBody.length())) : "null");
+            
+            // Intentar parsear como JSON si es posible
+            Map<?, ?> body = null;
+            String rawResponse = responseBody != null ? responseBody : "";
+            
+            if (stringResponse.getStatusCode().is2xxSuccessful() && responseBody != null && !responseBody.isBlank()) {
+                try {
+                    // Intentar parsear directamente primero
+                    try {
+                        body = objectMapper.readValue(responseBody, Map.class);
+                    } catch (Exception e) {
+                        // Si falla, buscar el JSON dentro de la respuesta (puede tener warnings de PHP/HTML)
+                        logger.warn("MIAPI emitirNotaCredito -> Primer intento de parseo falló, buscando JSON en la respuesta...");
+                        int jsonStart = responseBody.indexOf("{");
+                        int jsonEnd = responseBody.lastIndexOf("}");
+                        if (jsonStart >= 0 && jsonEnd > jsonStart) {
+                            String jsonLimpio = responseBody.substring(jsonStart, jsonEnd + 1);
+                            logger.warn("MIAPI emitirNotaCredito -> JSON extraído: {}", jsonLimpio.substring(0, Math.min(200, jsonLimpio.length())));
+                            try {
+                                body = objectMapper.readValue(jsonLimpio, Map.class);
+                                logger.info("MIAPI emitirNotaCredito -> JSON parseado exitosamente después de limpiar");
+                            } catch (Exception e2) {
+                                logger.error("MIAPI emitirNotaCredito -> No se pudo parsear JSON limpio: {}", e2.getMessage());
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.error("MIAPI emitirNotaCredito -> Error inesperado al parsear: {}", e.getMessage());
+                }
+            }
+            
+            if (body != null) {
                 Map<?, ?> respuesta = body instanceof Map ? (Map<?, ?>) body.get("respuesta") : null;
                 boolean success = respuesta != null && Boolean.TRUE.equals(respuesta.get("success"));
                 String status = success ? "ACEPTADO" : "EXCEPCION";
@@ -565,17 +600,32 @@ public class ApisunatService {
                 String xmlUrl = extractMiApiUrl(respuesta, "xml-firmado", "xml-sin-firmar");
                 String message = extractMiApiString(respuesta, "mensaje");
                 String documentId = buildMiApiDocumentId("07", serie, correlativo);
-                logger.info("MIAPI emitirNotaCredito -> status={} pdfUrl={} xmlUrl={}", status, pdfUrl, xmlUrl);
+                logger.info("MIAPI emitirNotaCredito -> status={} pdfUrl={} xmlUrl={} documentId={}", status, pdfUrl, xmlUrl, documentId);
                 return new ApisunatResult(status, pdfUrl, xmlUrl, null, message, rawResponse, documentId);
+            } else {
+                // No se pudo parsear la respuesta
+                String documentIdError = buildMiApiDocumentId("07", serie, correlativo);
+                logger.warn("MIAPI emitirNotaCredito -> Respuesta no es JSON válido, generando documentId={}", documentIdError);
+                return new ApisunatResult("EXCEPCION", null, null, null, 
+                    "Respuesta no válida de MiAPI (no es JSON)", rawResponse, documentIdError);
             }
-            return new ApisunatResult("EXCEPCION", null, null, null, extractMiApiString(body, "mensaje"), rawResponse, null);
         } catch (HttpClientErrorException | HttpServerErrorException ex) {
             String errorBody = ex.getResponseBodyAsString();
-            logger.error("MIAPI emitirNotaCredito failed status={} body={}", ex.getStatusCode(), errorBody);
-            return new ApisunatResult("EXCEPCION", null, null, null, String.valueOf(ex.getStatusCode()), errorBody, null);
+            String documentIdError = buildMiApiDocumentId("07", serie, correlativo);
+            logger.error("MIAPI emitirNotaCredito failed status={} body={} documentId={}", 
+                ex.getStatusCode(), errorBody, documentIdError);
+            logger.error("MIAPI emitirNotaCredito -> Posibles causas:");
+            logger.error("  1. El endpoint '{}' no existe en tu plan de MiAPI", miapiCreditNoteUri);
+            logger.error("  2. Tu plan de MiAPI no incluye emisión de notas de crédito");
+            logger.error("  3. La URL base '{}' es incorrecta", miapiBaseUrl);
+            logger.error("  4. Contacta a MiAPI para verificar la ruta correcta");
+            return new ApisunatResult("EXCEPCION", null, null, null, 
+                String.valueOf(ex.getStatusCode()), errorBody, documentIdError);
         } catch (Exception ex) {
-            logger.error("MIAPI emitirNotaCredito unexpected error", ex);
-            return new ApisunatResult("EXCEPCION", null, null, null, ex.getMessage(), ex.toString(), null);
+            String documentIdError = buildMiApiDocumentId("07", serie, correlativo);
+            logger.error("MIAPI emitirNotaCredito unexpected error documentId={}", ex);
+            return new ApisunatResult("EXCEPCION", null, null, null,
+                ex.getMessage(), ex.toString(), documentIdError);
         }
     }
 
@@ -1021,7 +1071,10 @@ public class ApisunatService {
                 payloadItem.put("cantidad", item.getCantidad());
                 payloadItem.put("mtoValorUnitario", valorUnitario.setScale(2, RoundingMode.HALF_UP));
                 payloadItem.put("mtoPrecioUnitario", precioUnitarioConIgv);
+                payloadItem.put("mtoBaseIgv", mtoBaseIgv);
                 payloadItem.put("igv", igv);
+                payloadItem.put("codeAfect", "10");
+                payloadItem.put("igvPorcent", 18);
                 payloadItems.add(payloadItem);
             }
         }
