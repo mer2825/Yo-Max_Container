@@ -1041,14 +1041,9 @@ public class CajaServiceImpl implements CajaService {
     @Override
     @Transactional(readOnly = true)
     public boolean haySesionDelDiaAnteriorSinCerrar() {
-        return sesionCajaRepository.findByEstado("ABIERTA")
-            .map(sesion -> {
-                LocalDate fechaApertura = sesion.getFechaApertura().toLocalDate();
-                LocalDate hoy = LocalDate.now();
-                // Si la sesión se abrió antes de hoy, está sin cerrar
-                return fechaApertura.isBefore(hoy);
-            })
-            .orElse(false);
+        // La caja nunca se cierra automáticamente por cambio de día.
+        // El usuario debe cerrarla manualmente cuando lo decida.
+        return false;
     }
 
     @Override

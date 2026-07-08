@@ -31,14 +31,4 @@ public class CajaScheduler {
         });
     }
 
-    // Corre a las 12:01 AM para detectar sesiones del día anterior sin cerrar
-    @Scheduled(cron = "0 1 0 * * *")
-    public void detectarSesionSinCerrar() {
-        if (cajaService.haySesionDelDiaAnteriorSinCerrar()) {
-            logger.error(
-                "CAJA: Hay una sesión de caja del día anterior sin cerrar. "
-                + "Se requiere intervención manual del administrador."
-            );
-        }
-    }
 }

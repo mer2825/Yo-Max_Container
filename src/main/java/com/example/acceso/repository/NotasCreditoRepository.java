@@ -16,4 +16,8 @@ public interface NotasCreditoRepository extends JpaRepository<NotasCredito, Long
     List<NotasCredito> findByVenta_SesionCaja_Id(Long sesionCajaId);
 
     List<NotasCredito> findByFechaEmisionBetween(LocalDateTime desde, LocalDateTime hasta);
+
+    List<NotasCredito> findAllByOrderByFechaEmisionDesc();
+
+    List<NotasCredito> findByFechaEmisionBetweenOrderByFechaEmisionDesc(LocalDateTime desde, LocalDateTime hasta);
 }

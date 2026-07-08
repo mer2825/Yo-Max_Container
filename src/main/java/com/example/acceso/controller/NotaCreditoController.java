@@ -30,15 +30,31 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/ventas/nota-credito")
 public class NotaCreditoController {
+
+    private static final Map<String, String> TIPOS_NC_DESCRIPCION = Map.of(
+        "01", "Anulación de la operación",
+        "02", "Anulación por error en el RUC",
+        "03", "Corrección por error en la descripción",
+        "04", "Sustitución de serie/num. comprobante",
+        "05", "Descuento global",
+        "06", "Devolución total",
+        "07", "Devolución parcial",
+        "08", "Sustitución de datos del cliente",
+        "09", "Disminución en el valor",
+        "10", "Otros"
+    );
 
     private static final Logger logger = LoggerFactory.getLogger(NotaCreditoController.class);
     private final VentaService ventaService;
@@ -58,6 +74,121 @@ public class NotaCreditoController {
         this.notasCreditoRepository = notasCreditoRepository;
         this.empresaRepository = empresaRepository;
         this.detalleVentaRepository = detalleVentaRepository;
+    }
+
+    /**
+     * Muestra la página de listado de todas las notas de crédito.
+     */
+    @GetMapping("")
+    public String listarNotasCredito() {
+        return "lista-notas-credito";
+    }
+
+    /**
+     * API: Lista todas las notas de crédito para DataTables.
+     */
+    @GetMapping("/api/listar")
+    @ResponseBody
+    public ResponseEntity<?> listarNotasCreditoApi(
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        List<NotasCredito> notas;
+        if (desde != null && hasta != null) {
+            LocalDateTime fechaInicio = desde.atStartOfDay();
+            LocalDateTime fechaFin = hasta.atTime(23, 59, 59);
+            notas = notasCreditoRepository.findByFechaEmisionBetweenOrderByFechaEmisionDesc(fechaInicio, fechaFin);
+        } else {
+            notas = notasCreditoRepository.findAllByOrderByFechaEmisionDesc();
+        }
+
+        List<Map<String, Object>> data = notas.stream().map(nc -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", nc.getId());
+            map.put("serieCorrelativo", nc.getSerieCorrelativo());
+            map.put("tipoNota", nc.getTipoNota());
+            map.put("descripcionTipo", TIPOS_NC_DESCRIPCION.getOrDefault(nc.getTipoNota(), nc.getDescripcionTipo()));
+            map.put("motivo", nc.getMotivo());
+            map.put("totalAcreditado", nc.getTotalAcreditado());
+            map.put("estadoSunat", nc.getEstadoSunat());
+            map.put("fechaEmision", nc.getFechaEmision());
+            map.put("pdfUrl", nc.getPdfUrl());
+            map.put("xmlUrl", nc.getXmlUrl());
+
+            // Datos de la venta asociada
+            Venta v = nc.getVenta();
+            if (v != null) {
+                map.put("numeroVenta", v.getNumeroVenta());
+                map.put("serieCorrelativoVenta", v.getSerieCorrelativo());
+                map.put("totalVenta", v.getTotal());
+                if (v.getCliente() != null) {
+                    map.put("nombreCliente", v.getCliente().getNombre());
+                    map.put("docCliente", v.getCliente().getNumeroDocumento());
+                }
+            }
+
+            // Usuario que emitió
+            if (nc.getEmitidaPorUsuario() != null) {
+                map.put("emitidoPor", nc.getEmitidaPorUsuario().getUsuario());
+            }
+
+            return map;
+        }).collect(Collectors.toList());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("data", data);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * API: Obtiene detalle completo de una nota de crédito por su ID.
+     */
+    @GetMapping("/api/detalle/{id}")
+    @ResponseBody
+    public ResponseEntity<?> detalleNotaCredito(@PathVariable Long id) {
+        return notasCreditoRepository.findById(id)
+                .map(nc -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", nc.getId());
+                    map.put("serieCorrelativo", nc.getSerieCorrelativo());
+                    map.put("tipoNota", nc.getTipoNota());
+                    map.put("descripcionTipo", TIPOS_NC_DESCRIPCION.getOrDefault(nc.getTipoNota(), nc.getDescripcionTipo()));
+                    map.put("motivo", nc.getMotivo());
+                    map.put("totalAcreditado", nc.getTotalAcreditado());
+                    map.put("estadoSunat", nc.getEstadoSunat());
+                    map.put("fechaEmision", nc.getFechaEmision());
+                    map.put("pdfUrl", nc.getPdfUrl());
+                    map.put("xmlUrl", nc.getXmlUrl());
+                    map.put("nubefactId", nc.getNubefactId());
+
+                    Venta v = nc.getVenta();
+                    if (v != null) {
+                        map.put("numeroVenta", v.getNumeroVenta());
+                        map.put("serieCorrelativoVenta", v.getSerieCorrelativo());
+                        map.put("totalVenta", v.getTotal());
+                        map.put("fechaVenta", v.getFechaVenta());
+                        map.put("tipoComprobante", v.getTipoComprobante());
+                        if (v.getCliente() != null) {
+                            map.put("nombreCliente", v.getCliente().getNombre());
+                            map.put("docCliente", v.getCliente().getNumeroDocumento());
+                        }
+                    }
+
+                    if (nc.getEmitidaPorUsuario() != null) {
+                        map.put("emitidoPor", nc.getEmitidaPorUsuario().getUsuario());
+                    }
+
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("success", true);
+                    response.put("data", map);
+                    return ResponseEntity.ok(response);
+                })
+                .orElseGet(() -> {
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("success", false);
+                    response.put("message", "Nota de crédito no encontrada");
+                    return ResponseEntity.badRequest().body(response);
+                });
     }
 
     @GetMapping("/{id}")

@@ -28,7 +28,14 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h2 class="card-title h5 fw-bold mb-0">Lista de Ventas</h2>
-                        <a th:href="@{/ventas/nueva}" class="btn btn-primary">Nueva Venta</a>
+                        <div class="d-flex gap-2">
+                            <a th:href="@{/ventas/nota-credito}" class="btn btn-outline-danger">
+                                <i class="bi bi-receipt-cutoff"></i> Notas de Crédito
+                            </a>
+                            <a th:href="@{/ventas/nueva}" class="btn btn-primary">
+                                <i class="bi bi-plus-lg"></i> Nueva Venta
+                            </a>
+                        </div>
                     </div>
 
                     <div class="row g-2 mb-3">
