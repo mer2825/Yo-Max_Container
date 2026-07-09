@@ -99,3 +99,30 @@ ALTER TABLE ventas
 ALTER TABLE empresa
   ADD COLUMN IF NOT EXISTS correlativo_nota_credito_boleta INTEGER DEFAULT 1,
   ADD COLUMN IF NOT EXISTS correlativo_nota_credito_factura INTEGER DEFAULT 1;
+
+-- Migración aditiva para Cambios de Producto (cruce con Nota de Crédito)
+CREATE TABLE IF NOT EXISTS cambios_producto (
+  id BIGSERIAL PRIMARY KEY,
+  venta_original_id BIGINT NOT NULL,
+  detalle_venta_original_id BIGINT NOT NULL,
+  producto_nuevo_id BIGINT NOT NULL,
+  cantidad_devuelta INTEGER NOT NULL,
+  cantidad_nuevo_producto INTEGER NOT NULL,
+  nota_credito_id BIGINT NOT NULL,
+  venta_excedente_id BIGINT,
+  monto_nota_credito DECIMAL(10,2) NOT NULL,
+  monto_producto_nuevo DECIMAL(10,2) NOT NULL,
+  monto_excedente DECIMAL(10,2) NOT NULL,
+  motivo VARCHAR(500),
+  estado VARCHAR(20) NOT NULL,
+  fecha_cambio TIMESTAMP NOT NULL,
+  usuario_id BIGINT,
+
+  CONSTRAINT fk_cambios_venta_original FOREIGN KEY (venta_original_id) REFERENCES ventas(id),
+  CONSTRAINT fk_cambios_detalle_venta_original FOREIGN KEY (detalle_venta_original_id) REFERENCES detalles_venta(id),
+  CONSTRAINT fk_cambios_producto_nuevo FOREIGN KEY (producto_nuevo_id) REFERENCES productos(id),
+  CONSTRAINT fk_cambios_nota_credito FOREIGN KEY (nota_credito_id) REFERENCES notas_credito(id),
+  CONSTRAINT fk_cambios_venta_excedente FOREIGN KEY (venta_excedente_id) REFERENCES ventas(id),
+  CONSTRAINT fk_cambios_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+);
+

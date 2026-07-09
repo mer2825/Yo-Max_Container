@@ -6,13 +6,18 @@ package com.example.acceso.controller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.TypeMismatchException;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
 
 // @ControllerAdvice: Convierte esta clase en un componente global que puede manejar
 // excepciones de todos los controladores de la aplicación.
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
 
     // Inicializa un logger para registrar información útil cuando ocurra una
     // excepción.
@@ -25,6 +30,7 @@ public class GlobalExceptionHandler {
     // lugar de /usuarios/api/123.
     @ExceptionHandler(TypeMismatchException.class)
     public String handleTypeMismatchException(TypeMismatchException ex) {
+
         // Registra una advertencia en la consola con detalles sobre el error.
         // Es una buena práctica para saber qué tipo de errores están ocurriendo.
         logger.warn("Se detectó un intento de acceder a una URL con un tipo de dato incorrecto. " +
@@ -35,4 +41,19 @@ public class GlobalExceptionHandler {
         // de inicio, lo cual es una experiencia de usuario más amigable.
         return "redirect:/";
     }
+
+    @ResponseBody
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+    @ExceptionHandler({
+            IllegalArgumentException.class,
+            IllegalStateException.class
+    })
+    public java.util.Map<String, Object> handleUnprocessableEntity(RuntimeException ex) {
+        logger.warn("422 - error de negocio: {}", ex.getMessage());
+        return java.util.Map.of(
+                "success", false,
+                "message", ex.getMessage()
+        );
+    }
 }
+

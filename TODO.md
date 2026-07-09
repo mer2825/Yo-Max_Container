@@ -1,5 +1,7 @@
-- [ ] Revisar y corregir flujo de “Emitir nota de crédito”
-- [ ] Implementar método en VentaService para aplicar NC sin recalcular/limpiar detalles de la venta original
-- [ ] Actualizar NotaCreditoController para usar el nuevo método en lugar de actualizarVenta(id, venta)
-- [ ] Ajustar devolución de stock por ítems (parcial) y/o total según tipoNota
-- [ ] Ejecutar pruebas/compilar con Maven y validar que la venta no queda en total 0 cuando la NC es parcial
+# TODO - CambioProducto (Entidad + Migración)
+
+- [ ] Paso 2.1: Crear entidad `CambioProducto` (NO modificar `ApisunatService.java`).
+- [ ] Paso 2.1.1: Crear `CambioProductoRepository`.
+- [ ] Paso 2.2: Agregar script de migración (se usará `src/main/resources/schema.sql` + `ddl-auto=update` ya configurado).
+- [ ] Paso 2.2.1: Verificar nombres de columnas/constraints consistentes con el estilo actual (snake_case) y con PostgreSQL.
+

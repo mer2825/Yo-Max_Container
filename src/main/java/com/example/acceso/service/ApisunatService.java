@@ -1027,6 +1027,14 @@ public class ApisunatService {
             descuentoPayload.put("monto", descuento.setScale(2, RoundingMode.HALF_UP));
             descuentoPayload.put("base", descuento.setScale(2, RoundingMode.HALF_UP));
             body.put("descuentos", List.of(descuentoPayload));
+        } else {
+            // Incluir objeto con valores en cero para evitar el error "Undefined property: stdClass::$descuentos" en note-a4.php
+            Map<String, Object> descuentoPayload = new LinkedHashMap<>();
+            descuentoPayload.put("motivoCodigo", "02");
+            descuentoPayload.put("factor", BigDecimal.ZERO);
+            descuentoPayload.put("monto", BigDecimal.ZERO);
+            descuentoPayload.put("base", BigDecimal.ZERO);
+            body.put("descuentos", List.of(descuentoPayload));
         }
 
         return body;
@@ -1075,6 +1083,12 @@ public class ApisunatService {
                 payloadItem.put("igv", igv);
                 payloadItem.put("codeAfect", "10");
                 payloadItem.put("igvPorcent", 18);
+                payloadItem.put("tipoPrecio", "01");
+                payloadItem.put("codeAfectAlt", "10");
+                payloadItem.put("igvOpi", BigDecimal.ZERO);
+                payloadItem.put("tipoAfect", "10");
+                payloadItem.put("nameAfect", "Gravado - Operación Onerosa");
+                payloadItem.put("icbper", BigDecimal.ZERO);
                 payloadItems.add(payloadItem);
             }
         }
@@ -1116,8 +1130,21 @@ public class ApisunatService {
         comprobante.put("total", totalGeneral.setScale(2, RoundingMode.HALF_UP));
         comprobante.put("mtoIGV", totalIgv.setScale(2, RoundingMode.HALF_UP));
         comprobante.put("mtoOperGravadas", totalOperGravadas.setScale(2, RoundingMode.HALF_UP));
+        comprobante.put("mtoOperExoneradas", BigDecimal.ZERO);
+        comprobante.put("mtoOperInafectas", BigDecimal.ZERO);
+        comprobante.put("mtoOperGratuitas", BigDecimal.ZERO);
+        comprobante.put("icbper", BigDecimal.ZERO);
         comprobante.put("totalTexto", convertirNumeroALetras(totalGeneral));
+        
         body.put("comprobante", comprobante);
+        
+        // Agregar descuentos en la raíz de body (al mismo nivel que comprobante, cliente, items)
+        Map<String, Object> descuentoPayload = new LinkedHashMap<>();
+        descuentoPayload.put("motivoCodigo", "02");
+        descuentoPayload.put("factor", BigDecimal.ZERO);
+        descuentoPayload.put("monto", BigDecimal.ZERO);
+        descuentoPayload.put("base", BigDecimal.ZERO);
+        body.put("descuentos", descuentoPayload);
 
         // Cliente
         Cliente cliente = ventaOriginal != null ? ventaOriginal.getCliente() : null;
@@ -1167,6 +1194,7 @@ public class ApisunatService {
         }
         
         Map<String, Object> clientePayload = new LinkedHashMap<>();
+        clientePayload.put("codigoPais", "PE");
         clientePayload.put("tipoDoc", tipoDocCliente);
         clientePayload.put("numDoc", numDocCliente);
         clientePayload.put("rznSocial", rznSocialCliente);

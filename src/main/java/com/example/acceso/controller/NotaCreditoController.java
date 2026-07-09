@@ -1,15 +1,20 @@
 package com.example.acceso.controller;
 
+import com.example.acceso.dto.CambioProductoRequestDTO;
+import com.example.acceso.dto.CambioProductoResponseDTO;
 import com.example.acceso.dto.NotaCreditoItemDTO;
 import com.example.acceso.model.DetalleVenta;
 import com.example.acceso.model.Empresa;
 import com.example.acceso.model.NotasCredito;
+import com.example.acceso.model.Producto;
 import com.example.acceso.model.Usuario;
 import com.example.acceso.model.Venta;
 import com.example.acceso.repository.DetalleVentaRepository;
 import com.example.acceso.repository.EmpresaRepository;
 import com.example.acceso.repository.NotasCreditoRepository;
+import com.example.acceso.repository.ProductoRepository;
 import com.example.acceso.service.ApisunatService;
+import com.example.acceso.service.CambioProductoService;
 import com.example.acceso.service.VentaService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -43,18 +48,22 @@ import java.util.stream.Collectors;
 @RequestMapping("/ventas/nota-credito")
 public class NotaCreditoController {
 
-    private static final Map<String, String> TIPOS_NC_DESCRIPCION = Map.of(
-        "01", "Anulación de la operación",
-        "02", "Anulación por error en el RUC",
-        "03", "Corrección por error en la descripción",
-        "04", "Sustitución de serie/num. comprobante",
-        "05", "Descuento global",
-        "06", "Devolución total",
-        "07", "Devolución parcial",
-        "08", "Sustitución de datos del cliente",
-        "09", "Disminución en el valor",
-        "10", "Otros"
-    );
+    private static final Map<String, String> TIPOS_NC_DESCRIPCION;
+    static {
+        Map<String, String> map = new HashMap<>();
+        map.put("01", "Anulación de la operación");
+        map.put("02", "Anulación por error en el RUC");
+        map.put("03", "Corrección por error en la descripción");
+        map.put("04", "Sustitución de serie/num. comprobante");
+        map.put("05", "Descuento global");
+        map.put("06", "Devolución total");
+        map.put("07", "Devolución parcial");
+        map.put("08", "Sustitución de datos del cliente");
+        map.put("09", "Disminución en el valor");
+        map.put("10", "Otros");
+        map.put("11", "Cambio de Producto");
+        TIPOS_NC_DESCRIPCION = Map.copyOf(map);
+    }
 
     private static final Logger logger = LoggerFactory.getLogger(NotaCreditoController.class);
     private final VentaService ventaService;
@@ -74,6 +83,63 @@ public class NotaCreditoController {
         this.notasCreditoRepository = notasCreditoRepository;
         this.empresaRepository = empresaRepository;
         this.detalleVentaRepository = detalleVentaRepository;
+    }
+
+    @GetMapping("/{id}/cambiar-producto")
+    @Transactional(readOnly = true)
+    public String mostrarFormularioCambioProducto(@PathVariable Long id, Model model, HttpServletRequest request) {
+        logger.info("Mostrando formulario de cambio de producto para venta ID: {}", id);
+        try {
+            return ventaService.obtenerVentaDetalladaPorId(id)
+                    .map(ventaMap -> {
+                        // Validaciones
+                        String tipoComprobante = (String) ventaMap.get("tipoComprobante");
+                        if (tipoComprobante != null && "nota_venta".equalsIgnoreCase(tipoComprobante)) {
+                            return "redirect:/ventas/listar?error=nc-no-aplica-nota-venta";
+                        }
+                        
+                        String estadoSunat = (String) ventaMap.get("estadoSunat");
+                        if ("rechazado".equalsIgnoreCase(estadoSunat)) {
+                            return "redirect:/ventas/listar?error=nc-no-aplica-rechazado";
+                        }
+                        
+                        String estadoNotaCredito = (String) ventaMap.get("estadoNotaCredito");
+                        if ("TOTAL".equalsIgnoreCase(estadoNotaCredito)) {
+                            return "redirect:/ventas/listar?error=nc-ya-emitida-total";
+                        }
+
+                        model.addAttribute("venta", ventaMap);
+                        model.addAttribute("detalles", ventaMap.get("detalles"));
+                        model.addAttribute("esPendiente", "pendiente".equalsIgnoreCase(estadoSunat));
+                        
+                        // Cargar lista de productos activos para el selector
+                        List<Producto> productosActivos = productoRepository.findByEstado(1);
+                        model.addAttribute("productosDisponibles", productosActivos);
+                        
+                        // Tipos de NC (solo mostrar Cambio de Producto)
+                        List<Map<String, String>> tiposNC = List.of(
+                            Map.of("codigo", "11", "descripcion", "Cambio de Producto")
+                        );
+                        model.addAttribute("tiposNC", tiposNC);
+                        model.addAttribute("tipoCambioProducto", "11");
+                        
+                        if (request.getAttribute("_csrf") != null) {
+                            model.addAttribute("_csrf", request.getAttribute("_csrf"));
+                        }
+                        
+                        return "cambio-producto";
+                    })
+                    .orElseGet(() -> {
+                        model.addAttribute("errorMessage", "Venta no encontrada con ID: " + id);
+                        model.addAttribute("errorDetalle", "La venta solicitada no existe en la base de datos.");
+                        return "error";
+                    });
+        } catch (Exception e) {
+            logger.error("Error al cargar formulario de cambio de producto para venta ID: " + id, e);
+            model.addAttribute("errorMessage", "Error al procesar: " + (e.getMessage() != null ? e.getMessage() : "Error desconocido"));
+            model.addAttribute("errorDetalle", "Tipo de error: " + e.getClass().getName());
+            return "error";
+        }
     }
 
     /**
@@ -271,6 +337,9 @@ public class NotaCreditoController {
                              @RequestParam String tipoNota,
                              @RequestParam String motivo,
                              @RequestParam(required = false) String itemsData,
+                             @RequestParam(required = false) Long productoNuevoId,
+                             @RequestParam(required = false) Integer cantidadNuevoProducto,
+                             @RequestParam(required = true) Long detalleVentaId,
                              HttpServletRequest request,
                              Model model,
                              RedirectAttributes redirectAttributes) {
@@ -360,6 +429,12 @@ public class NotaCreditoController {
             
             logger.info("Items seleccionados: {} items, total a acreditar: S/{}", 
                 itemsSeleccionados.size(), totalAcreditado);
+            
+            // Si es cambio de producto (tipo 11), delegar al servicio especializado
+            if ("11".equals(tipoNota)) {
+                return procesarCambioProducto(id, motivo, request, model, redirectAttributes, 
+                                             productoNuevoId, cantidadNuevoProducto, detalleVentaId);
+            }
             
             // Obtener usuario actual
             Usuario usuarioActual = obtenerUsuarioActual(request);
@@ -541,6 +616,88 @@ public class NotaCreditoController {
                     .body(Map.of("error", "Error al consultar APISUNAT: " + e.getMessage()));
         }
     }
+    
+    @Transactional
+    protected String procesarCambioProducto(Long ventaId, 
+                                            String motivo,
+                                            HttpServletRequest request,
+                                            Model model,
+                                            RedirectAttributes redirectAttributes,
+                                            Long productoNuevoId,
+                                            Integer cantidadNuevoProducto,
+                                            Long detalleVentaId) {
+        logger.info("=== PROCESANDO CAMBIO DE PRODUCTO ===");
+        logger.info("Venta ID: {}, Producto nuevo ID: {}, Cantidad: {}", ventaId, productoNuevoId, cantidadNuevoProducto);
+        
+        try {
+            Usuario usuarioActual = obtenerUsuarioActual(request);
+            if (usuarioActual == null) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Usuario no autenticado");
+                return "redirect:/login";
+            }
+            
+            // Validaciones básicas
+            if (productoNuevoId == null || cantidadNuevoProducto == null || cantidadNuevoProducto < 1) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Debe seleccionar un producto nuevo y cantidad válida");
+                return "redirect:/ventas/nota-credito/" + ventaId + "/cambiar-producto";
+            }
+            
+            // Obtener el detalle seleccionado o el primero por defecto
+            Venta venta = ventaService.obtenerEntidadVentaPorId(ventaId)
+                    .orElseThrow(() -> new RuntimeException("Venta no encontrada"));
+            
+            if (venta.getDetalles() == null || venta.getDetalles().isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "La venta no tiene productos para cambiar");
+                return "redirect:/ventas/listar";
+            }
+            
+            // Buscar el detalle seleccionado (obligatorio)
+            DetalleVenta detalleOriginal = detalleVentaRepository.findById(detalleVentaId)
+                    .orElseThrow(() -> new RuntimeException("Detalle de venta no encontrado: " + detalleVentaId));
+            
+            // Validar que el detalle pertenece a la venta
+            boolean perteneceAVenta = venta.getDetalles().stream()
+                    .anyMatch(d -> d.getId().equals(detalleVentaId));
+            if (!perteneceAVenta) {
+                redirectAttributes.addFlashAttribute("errorMessage", 
+                    "El producto seleccionado no pertenece a esta venta");
+                return "redirect:/ventas/nota-credito/" + ventaId + "/cambiar-producto";
+            }
+            
+            // Crear DTO de request
+            CambioProductoRequestDTO cambioRequest = new CambioProductoRequestDTO();
+            cambioRequest.setVentaOriginalId(ventaId);
+            cambioRequest.setDetalleVentaId(detalleOriginal.getId());
+            cambioRequest.setProductoNuevoId(productoNuevoId);
+            cambioRequest.setCantidadDevuelta(detalleOriginal.getCantidad());
+            cambioRequest.setCantidadNuevoProducto(cantidadNuevoProducto);
+            cambioRequest.setMotivo(motivo);
+            
+            // Procesar cambio usando el servicio existente
+            CambioProductoResponseDTO resultado = cambioProductoService.procesarCambio(cambioRequest, usuarioActual);
+            
+            logger.info("Cambio de producto completado. ID: {}", resultado.getCambioProductoId());
+            
+            // Redirigir a vista de éxito
+            model.addAttribute("venta", ventaService.obtenerVentaDetalladaPorId(ventaId).orElse(null));
+            model.addAttribute("resultado", resultado);
+            model.addAttribute("mensaje", "✅ Cambio de producto completado exitosamente");
+            
+            return "cambio-producto-exito";
+            
+        } catch (Exception e) {
+            logger.error("Error en cambio de producto para venta ID: " + ventaId, e);
+            String errorMsg = e.getMessage() != null ? e.getMessage() : "Error desconocido";
+            redirectAttributes.addFlashAttribute("errorMessage", "Error en cambio de producto: " + errorMsg);
+            return "redirect:/ventas/nota-credito/" + ventaId + "/cambiar-producto";
+        }
+    }
+    
+    @Autowired
+    private CambioProductoService cambioProductoService;
+    
+    @Autowired
+    private ProductoRepository productoRepository;
     
     private Usuario obtenerUsuarioActual(HttpServletRequest request) {
         HttpSession session = request.getSession(false);

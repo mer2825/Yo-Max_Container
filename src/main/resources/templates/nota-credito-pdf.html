@@ -188,12 +188,12 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="detalle, iter : ${venta['detalles']}">
+                        <tr th:each="detalle, iter : ${itemsSeleccionados}">
                             <td th:text="${iter.count}">1</td>
-                            <td th:text="${detalle['producto'] != null ? detalle['producto']['nombre'] : 'Producto'}">Producto</td>
-                            <td th:text="${detalle['cantidad']}">0</td>
-                            <td th:text="${'S/ ' + detalle['precioUnitario']}">S/ 0.00</td>
-                            <td th:text="${'S/ ' + detalle['subtotal']}">S/ 0.00</td>
+                            <td th:text="${detalle.descripcion}">Producto</td>
+                            <td th:text="${detalle.cantidad}">0</td>
+                            <td th:text="${'S/ ' + detalle.precioUnitario}">S/ 0.00</td>
+                            <td th:text="${'S/ ' + (detalle.precioUnitario != null && detalle.cantidad != null ? (detalle.precioUnitario * detalle.cantidad) : 0)}">S/ 0.00</td>
                         </tr>
                     </tbody>
                 </table>

@@ -174,11 +174,12 @@ $(document).ready(function() {
                             `;
                         }
 
-                        // Para Boletas/Facturas sin NC y no rechazadas: botón de emitir NC
+                        // Para Boletas/Facturas sin NC y no rechazadas: botón de emitir NC y cambiar producto
                         if (!isRechazado) {
                             return `
                                 <span style="background:#e0e0e0;color:#999;border-radius:4px;padding:4px 7px;font-size:9px;cursor:not-allowed" title="No editable — comprobante emitido a SUNAT">✏</span>
                                 <a href="/ventas/nota-credito/${row.id}" class="btn btn-sm" style="background:#d63384;color:#fff;border-radius:4px;padding:4px 7px;font-size:9px;text-decoration:none;margin-left:3px" title="Emitir Nota de Crédito">📋 Emitir NC</a>
+                                <a href="/ventas/nota-credito/${row.id}/cambiar-producto" class="btn btn-sm" style="background:#ffc107;color:#000;border-radius:4px;padding:4px 7px;font-size:9px;text-decoration:none;margin-left:3px" title="Cambiar Producto">🔄 Cambiar</a>
                                 <a href="/ventas/imprimir/${row.id}" target="_blank" class="btn btn-sm btn-primary" title="Imprimir" style="margin-left:3px"><i class="bi bi-printer-fill"></i></a>
                             `;
                         }

@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cambio de Producto</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        :root {
+            --ym-pink: #ff2aa6;
+            --ym-pink-dark: #cc007f;
+            --ym-yellow: #ffd400;
+            --ym-dark: #2b0030;
+            --ym-bg: #fff4fb;
+            --ym-bg-soft: #fff0f7;
+        }
+
+        .cp-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .cp-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(43, 0, 48, 0.08);
+            border: 1px solid rgba(255, 42, 166, 0.08);
+            overflow: hidden;
+        }
+
+        .cp-header {
+            background: linear-gradient(135deg, var(--ym-pink) 0%, var(--ym-pink-dark) 100%);
+            color: white;
+            padding: 2rem 2.5rem;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(255, 42, 166, 0.3);
+        }
+
+        .cp-header h2 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .cp-header .header-icon {
+            font-size: 2.25rem;
+            margin-right: 0.875rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .cp-body {
+            padding: 2rem;
+        }
+
+        .cp-section {
+            margin-bottom: 2.5rem;
+        }
+
+        .cp-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .cp-section-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--ym-dark);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.875rem;
+            border-bottom: 3px solid rgba(255, 42, 166, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            position: relative;
+        }
+
+        .cp-section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: var(--ym-pink);
+            border-radius: 2px;
+        }
+
+        .cp-section-title i {
+            color: var(--ym-pink);
+            font-size: 1.25rem;
+        }
+
+        .cp-info-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: white;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(255, 42, 166, 0.08);
+        }
+
+        .cp-info-table thead {
+            background: linear-gradient(135deg, var(--ym-bg-soft) 0%, var(--ym-bg) 100%);
+        }
+
+        .cp-info-table thead th {
+            padding: 1rem 1.5rem;
+            font-weight: 700;
+            color: var(--ym-dark);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            border-bottom: 2px solid rgba(255, 42, 166, 0.15);
+        }
+
+        .cp-info-table tbody td {
+            padding: 1.125rem 1.5rem;
+            border-bottom: 1px solid #f5f5f5;
+            color: #495057;
+            font-size: 0.95rem;
+        }
+
+        .cp-info-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .cp-info-table tbody td:first-child {
+            font-weight: 700;
+            color: var(--ym-dark);
+            width: 220px;
+            background: linear-gradient(to right, #fafafa, #f8f9fa);
+            border-right: 2px solid rgba(255, 42, 166, 0.08);
+        }
+
+        .cp-alert {
+            background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+            border: 1px solid #ffc107;
+            border-left: 4px solid #ffc107;
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            box-shadow: 0 2px 8px rgba(255, 193, 7, 0.15);
+        }
+
+        .cp-alert-icon {
+            font-size: 1.5rem;
+            color: #ff9800;
+            flex-shrink: 0;
+        }
+
+        .cp-form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .cp-form-label {
+            display: block;
+            font-weight: 600;
+            color: var(--ym-dark);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .cp-form-control,
+        .cp-form-select {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .cp-form-control:focus,
+        .cp-form-select:focus {
+            border-color: var(--ym-pink);
+            box-shadow: 0 0 0 3px rgba(255, 42, 166, 0.1);
+            outline: none;
+        }
+
+        .cp-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .cp-product-card {
+            background: white;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+            border: 2px solid rgba(255, 42, 166, 0.08);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .cp-product-card h5 {
+            color: var(--ym-dark);
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .cp-product-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        .cp-product-info:last-child {
+            border-bottom: none;
+        }
+
+        .cp-product-label {
+            font-weight: 600;
+            color: #6c757d;
+        }
+
+        .cp-product-value {
+            font-weight: 700;
+            color: var(--ym-dark);
+        }
+
+        .cp-price-tag {
+            background: linear-gradient(135deg, var(--ym-bg-soft) 0%, var(--ym-bg) 100%);
+            border: 2px solid rgba(255, 42, 166, 0.15);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .cp-price-tag .label {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 0.5rem;
+        }
+
+        .cp-price-tag .value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--ym-pink);
+        }
+
+        .cp-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .cp-btn {
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.625rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .cp-btn-primary {
+            background: linear-gradient(135deg, var(--ym-pink) 0%, var(--ym-pink-dark) 100%);
+            color: white;
+            box-shadow: 0 6px 20px rgba(255, 42, 166, 0.35);
+        }
+
+        .cp-btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(255, 42, 166, 0.45);
+        }
+
+        .cp-btn-secondary {
+            background: white;
+            color: #6c757d;
+            border: 2px solid #dee2e6;
+        }
+
+        .cp-btn-secondary:hover {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-color: #adb5bd;
+            transform: translateY(-2px);
+        }
+
+        .cp-summary-box {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border: 1px solid #90caf9;
+            border-left: 4px solid #2196f3;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-top: 1.5rem;
+        }
+
+        .cp-summary-box h5 {
+            color: #0d47a1;
+            margin-bottom: 1rem;
+        }
+
+        .cp-summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+        }
+
+        .cp-summary-row.total {
+            border-top: 2px solid #2196f3;
+            margin-top: 0.5rem;
+            padding-top: 0.75rem;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 768px) {
+            .cp-header {
+                padding: 1.25rem 1.5rem;
+            }
+
+            .cp-header h2 {
+                font-size: 1.5rem;
+            }
+
+            .cp-body {
+                padding: 1.5rem;
+            }
+
+            .cp-actions {
+                flex-direction: column;
+            }
+
+            .cp-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="cp-container">
+        <div th:if="${venta != null}">
+            <div class="cp-card">
+                <div class="cp-header">
+                    <h2><span class="header-icon">🔄</span>Cambio de Producto</h2>
+                </div>
+                <div class="cp-body">
+                    <!-- Datos del Comprobante Original -->
+                    <div class="cp-section">
+                        <h3 class="cp-section-title">
+                            <i class="bi bi-receipt"></i>
+                            Comprobante Original
+                        </h3>
+                        <table class="cp-info-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 25%;">Campo</th>
+                                    <th>Información</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>N° Venta</td>
+                                    <td th:text="${venta['numeroVenta']}">-</td>
+                                </tr>
+                                <tr>
+                                    <td>Cliente</td>
+                                    <td th:text="${venta['cliente'] != null ? venta['cliente']['nombre'] : 'N/A'}">-</td>
+                                </tr>
+                                <tr>
+                                    <td>Total Original</td>
+                                    <td th:text="${'S/ ' + venta['total']}">-</td>
+                                </tr>
+                                <tr>
+                                    <td>Tipo</td>
+                                    <td th:text="${venta['tipoComprobante']}">-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <th:block th:if="${esPendiente}">
+                            <div class="cp-alert">
+                                <span class="cp-alert-icon">⚠️</span>
+                                <div>
+                                    <strong>Comprobante pendiente</strong><br>
+                                    El comprobante original está pendiente de confirmación por SUNAT.
+                                </div>
+                            </div>
+                        </th:block>
+                    </div>
+
+                    <!-- Producto a Devolver -->
+                    <div class="cp-section">
+                        <h3 class="cp-section-title">
+                            <i class="bi bi-box-arrow-in-left"></i>
+                            Producto a Devolver
+                        </h3>
+                        
+                        <div class="cp-form-group">
+                            <label for="detalleVentaId" class="cp-form-label">Seleccionar Producto a Devolver</label>
+                            <select class="cp-form-select" id="detalleVentaId" name="detalleVentaId" required>
+                                <option value="">Seleccione un producto...</option>
+                                <option th:each="detalle : ${detalles}" 
+                                        th:value="${detalle.id}" 
+                                        th:data-cantidad="${detalle.cantidad}"
+                                        th:data-precio="${detalle.precioUnitario}"
+                                        th:data-producto="${detalle.producto.nombre}"
+                                        th:text="${detalle.producto.nombre + ' (Cant: ' + detalle.cantidad + ', S/ ' + detalle.precioUnitario + ')'}">
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="cp-product-card" id="productoSeleccionadoCard" style="display: none;">
+                            <h5 id="productoSeleccionadoNombre">Producto</h5>
+                            <div class="cp-product-info">
+                                <span class="cp-product-label">Cantidad a devolver:</span>
+                                <span class="cp-product-value" id="productoCantidad">1</span>
+                            </div>
+                            <div class="cp-product-info">
+                                <span class="cp-product-label">Precio Unitario:</span>
+                                <span class="cp-product-value" id="productoPrecio">S/ 0.00</span>
+                            </div>
+                            <div class="cp-product-info">
+                                <span class="cp-product-label">Monto a devolver (NC):</span>
+                                <span class="cp-product-value" id="productoSubtotal">S/ 0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulario de Cambio -->
+                    <form th:action="@{/ventas/nota-credito/{id}(id=${venta['id']})}" method="post" id="formCambioProducto">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}" />
+                        <input type="hidden" name="tipoNota" value="11" />
+                        <input type="hidden" name="itemsData" id="itemsData" value="" />
+                        <input type="hidden" name="detalleVentaId" id="detalleVentaIdHidden" value="" />
+
+                        <div class="cp-section">
+                            <h3 class="cp-section-title">
+                                <i class="bi bi-box-arrow-in-right"></i>
+                                Producto Nuevo
+                            </h3>
+
+                            <div class="cp-form-group">
+                                <label for="productoNuevoId" class="cp-form-label">Seleccionar Producto Nuevo</label>
+                                <select class="cp-form-select" id="productoNuevoId" name="productoNuevoId" required>
+                                    <option value="">Seleccione un producto...</option>
+                                    <option th:each="producto : ${productosDisponibles}" 
+                                            th:value="${producto.id}" 
+                                            th:data-precio="${producto.precio}"
+                                            th:text="${producto.nombre + ' - S/ ' + producto.precio}">
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div class="cp-form-group">
+                                <label for="cantidadNuevoProducto" class="cp-form-label">Cantidad</label>
+                                <input type="number" class="cp-form-control" id="cantidadNuevoProducto" 
+                                       name="cantidadNuevoProducto" min="1" value="1" required 
+                                       style="width: 150px;">
+                            </div>
+
+                            <div class="cp-form-group">
+                                <label for="motivo" class="cp-form-label">Motivo del Cambio</label>
+                                <textarea class="cp-form-control cp-textarea" id="motivo" name="motivo" 
+                                          rows="3" required placeholder="Ingrese el motivo del cambio de producto..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Resumen -->
+                        <div class="cp-summary-box" id="resumenCambio" style="display: none;">
+                            <h5>📊 Resumen del Cambio</h5>
+                            <div class="cp-summary-row">
+                                <span>Monto a devolver (NC):</span>
+                                <span id="montoDevolver">S/ 0.00</span>
+                            </div>
+                            <div class="cp-summary-row">
+                                <span>Monto producto nuevo:</span>
+                                <span id="montoNuevo">S/ 0.00</span>
+                            </div>
+                            <div class="cp-summary-row total">
+                                <span>Excedente a pagar:</span>
+                                <span id="montoExcedente">S/ 0.00</span>
+                            </div>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="cp-actions">
+                            <button type="submit" class="cp-btn cp-btn-primary" id="btnConfirmar">
+                                <i class="bi bi-check-circle"></i>
+                                Confirmar Cambio
+                            </button>
+                            <a th:href="@{/ventas/listar}" class="cp-btn cp-btn-secondary">
+                                <i class="bi bi-x-circle"></i>
+                                Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${venta == null}">
+            <div class="cp-card">
+                <div class="cp-header" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
+                    <h2><i class="bi bi-exclamation-triangle-fill"></i> Error</h2>
+                </div>
+                <div class="cp-body">
+                    <p th:text="${errorMessage}" class="mb-4">Venta no encontrada</p>
+                    <a th:href="@{/ventas/listar}" class="cp-btn cp-btn-primary">
+                        <i class="bi bi-arrow-left"></i>
+                        Volver al listado
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación Personalizado -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+                <div class="modal-header" style="background: linear-gradient(135deg, var(--ym-pink) 0%, var(--ym-pink-dark) 100%); color: white; border-radius: 16px 16px 0 0; padding: 1.5rem;">
+                    <h5 class="modal-title" style="font-weight: 700; font-size: 1.25rem;">
+                        <i class="bi bi-question-circle-fill me-2"></i>
+                        Confirmar Cambio
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" style="padding: 2rem; background: white;">
+                    <div style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-left: 4px solid #2196f3; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem;">
+                        <p style="margin: 0; color: #0d47a1; font-weight: 600; font-size: 1rem;">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            Se generará una Nota de Crédito por el producto devuelto.
+                        </p>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%); border: 1px solid #ffc107; border-left: 4px solid #ffc107; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: #856404; font-weight: 600;">Excedente a pagar:</span>
+                            <span id="modalExcedente" style="color: #ff9800; font-weight: 700; font-size: 1.25rem;">S/ 0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning" style="border-radius: 10px; border-left: 4px solid #ffc107; background: #fff8e1; color: #856404; margin-bottom: 0;">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Importante:</strong> Esta acción no se puede deshacer.
+                    </div>
+                </div>
+                <div class="modal-footer" style="padding: 1rem 2rem 1.5rem; background: #f8f9fa; border-radius: 0 0 16px 16px; gap: 0.75rem;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="flex: 1; padding: 0.75rem; border-radius: 10px; font-weight: 600; border: 2px solid #dee2e6;">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnConfirmarModal" style="flex: 1; padding: 0.75rem; border-radius: 10px; font-weight: 600; background: linear-gradient(135deg, var(--ym-pink) 0%, var(--ym-pink-dark) 100%); border: none; box-shadow: 0 4px 12px rgba(255, 42, 166, 0.3);">
+                        <i class="bi bi-check-circle me-2"></i>Aceptar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:inline="javascript">
+        // Datos de la venta (inyectados desde Thymeleaf)
+        const ventaTotal = /*[[${venta.total}]]*/ 0;
+        
+        // Precios de productos (capturados desde los atributos data-precio)
+        const productosPrecios = {};
+        (function() {
+            const selectProductoNuevo = document.getElementById('productoNuevoId');
+            if (selectProductoNuevo) {
+                Array.from(selectProductoNuevo.options).forEach(option => {
+                    if (option.value) {
+                        const precio = option.getAttribute('data-precio');
+                        if (precio) {
+                            productosPrecios[option.value] = parseFloat(precio);
+                        }
+                    }
+                });
+            }
+        })();
+
+        // Actualizar información del producto seleccionado a devolver
+        function actualizarProductoDevolver() {
+            const select = document.getElementById('detalleVentaId');
+            const card = document.getElementById('productoSeleccionadoCard');
+            
+            if (!select || !card) return;
+            
+            const selectedOption = select.options[select.selectedIndex];
+            
+            if (select.value) {
+                const cantidad = selectedOption.getAttribute('data-cantidad');
+                const precio = selectedOption.getAttribute('data-precio');
+                const nombre = selectedOption.getAttribute('data-producto');
+                const subtotal = parseFloat(precio) * parseInt(cantidad);
+                
+                document.getElementById('productoSeleccionadoNombre').textContent = nombre;
+                document.getElementById('productoCantidad').textContent = cantidad;
+                document.getElementById('productoPrecio').textContent = 'S/ ' + parseFloat(precio).toFixed(2);
+                document.getElementById('productoSubtotal').textContent = 'S/ ' + subtotal.toFixed(2);
+                
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        }
+
+        // Calcular resumen
+        function actualizarResumen() {
+            const productoId = document.getElementById('productoNuevoId').value;
+            const cantidad = parseInt(document.getElementById('cantidadNuevoProducto').value) || 0;
+            const detalleVentaId = document.getElementById('detalleVentaId').value;
+            
+            if (!productoId || !detalleVentaId || cantidad <= 0) {
+                document.getElementById('resumenCambio').style.display = 'none';
+                return;
+            }
+
+            // Calcular montos
+            const precioProductoNuevo = productosPrecios[productoId] || 0;
+            const montoNuevo = precioProductoNuevo * cantidad;
+            
+            // Obtener el monto a devolver del producto seleccionado
+            const selectedOption = document.getElementById('detalleVentaId').options[document.getElementById('detalleVentaId').selectedIndex];
+            const precioUnitario = parseFloat(selectedOption.getAttribute('data-precio')) || 0;
+            const cantidadDevolver = parseInt(selectedOption.getAttribute('data-cantidad')) || 0;
+            const montoDevolver = precioUnitario * cantidadDevolver;
+            
+            const excedente = Math.max(0, montoNuevo - montoDevolver);
+
+            // Actualizar UI
+            document.getElementById('montoDevolver').textContent = 'S/ ' + montoDevolver.toFixed(2);
+            document.getElementById('montoNuevo').textContent = 'S/ ' + montoNuevo.toFixed(2);
+            document.getElementById('montoExcedente').textContent = 'S/ ' + excedente.toFixed(2);
+            document.getElementById('resumenCambio').style.display = 'block';
+        }
+
+        // Event listeners
+        document.getElementById('detalleVentaId').addEventListener('change', function() {
+            actualizarProductoDevolver();
+            actualizarResumen();
+            // Actualizar el campo hidden del formulario
+            document.getElementById('detalleVentaIdHidden').value = this.value;
+        });
+        document.getElementById('productoNuevoId').addEventListener('change', actualizarResumen);
+        document.getElementById('cantidadNuevoProducto').addEventListener('input', actualizarResumen);
+
+        // Función para mostrar el modal de confirmación
+        function mostrarModalConfirmacion() {
+            const excedente = document.getElementById('montoExcedente').textContent;
+            document.getElementById('modalExcedente').textContent = excedente;
+            const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+            modal.show();
+        }
+
+        // Validación del formulario
+        document.getElementById('formCambioProducto').addEventListener('submit', function(e) {
+            var detalleVentaId = document.getElementById('detalleVentaId').value;
+            var productoId = document.getElementById('productoNuevoId').value;
+            var cantidad = parseInt(document.getElementById('cantidadNuevoProducto').value);
+            var motivo = document.getElementById('motivo').value.trim();
+
+            if (!detalleVentaId) {
+                e.preventDefault();
+                alert('Debe seleccionar un producto a devolver');
+                return;
+            }
+
+            if (!productoId) {
+                e.preventDefault();
+                alert('Debe seleccionar un producto nuevo');
+                return;
+            }
+
+            if (!cantidad || cantidad < 1) {
+                e.preventDefault();
+                alert('Debe ingresar una cantidad válida');
+                return;
+            }
+
+            if (!motivo) {
+                e.preventDefault();
+                alert('Debe ingresar el motivo del cambio');
+                return;
+            }
+
+            // Mostrar modal personalizado en lugar de confirm nativo
+            e.preventDefault();
+            mostrarModalConfirmacion();
+        });
+
+        // Botón del modal para confirmar
+        document.getElementById('btnConfirmarModal').addEventListener('click', function() {
+            // Cerrar el modal
+            var modal = bootstrap.Modal.getInstance(document.getElementById('confirmModal'));
+            modal.hide();
+            // Enviar el formulario
+            document.getElementById('formCambioProducto').submit();
+        });
+    </script>
+</body>
+</html>
