@@ -176,11 +176,11 @@ public class PdfServiceImpl implements PdfService {
             document.add(new Paragraph("Fecha Cierre: " + (sesion.getFechaCierre() != null ? sesion.getFechaCierre().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "Sesión activa"), normalFont));
             document.add(new Paragraph("Cajero Apertura: " + (sesion.getUsuarioApertura() != null ? sesion.getUsuarioApertura().getNombre() : "N/A"), normalFont));
             document.add(new Paragraph("Cajero Cierre: " + (sesion.getUsuarioCierre() != null ? sesion.getUsuarioCierre().getNombre() : "-"), normalFont));
-            document.add(new Paragraph("Fondo Inicial: S/ " + String.format("%.2f", sesion.getMontoInicial()), normalFont));
-            document.add(new Paragraph("Total Ventas: S/ " + String.format("%.2f", sesion.getMontoCierreEsperado() != null ? sesion.getMontoCierreEsperado() : 0), normalFont));
-            document.add(new Paragraph("Efectivo Esperado: S/ " + String.format("%.2f", sesion.getMontoCierreEsperado() != null ? sesion.getMontoCierreEsperado() : 0), normalFont));
-            document.add(new Paragraph("Efectivo Declarado: S/ " + String.format("%.2f", sesion.getMontoCierreDeclarado() != null ? sesion.getMontoCierreDeclarado() : 0), normalFont));
-            document.add(new Paragraph("Diferencia: S/ " + String.format("%.2f", sesion.getDiferencia() != null ? sesion.getDiferencia() : 0), normalFont));
+            document.add(new Paragraph("Fondo Inicial: S/ " + String.format("%.2f", sesion.getMontoInicial() != null ? sesion.getMontoInicial().doubleValue() : 0.0), normalFont));
+            document.add(new Paragraph("Total Ventas: S/ " + String.format("%.2f", sesion.getMontoCierreEsperado() != null ? sesion.getMontoCierreEsperado().doubleValue() : 0.0), normalFont));
+            document.add(new Paragraph("Efectivo Esperado: S/ " + String.format("%.2f", sesion.getMontoCierreEsperado() != null ? sesion.getMontoCierreEsperado().doubleValue() : 0.0), normalFont));
+            document.add(new Paragraph("Efectivo Declarado: S/ " + String.format("%.2f", sesion.getMontoCierreDeclarado() != null ? sesion.getMontoCierreDeclarado().doubleValue() : 0.0), normalFont));
+            document.add(new Paragraph("Diferencia: S/ " + String.format("%.2f", sesion.getDiferencia() != null ? sesion.getDiferencia().doubleValue() : 0.0), normalFont));
             document.add(new Paragraph(" "));
 
             // Resumen por método de pago
@@ -267,7 +267,7 @@ public class PdfServiceImpl implements PdfService {
                     logTable.addCell(new Phrase(evento.getUsuario() != null ? evento.getUsuario() : "N/A", smallFont));
                     
                     if (evento.getMonto() != null) {
-                        logTable.addCell(new Phrase("S/ " + String.format("%.2f", evento.getMonto()), smallFont));
+                        logTable.addCell(new Phrase("S/ " + String.format("%.2f", evento.getMonto().doubleValue()), smallFont));
                     } else {
                         logTable.addCell(new Phrase("-", smallFont));
                     }
