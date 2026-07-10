@@ -96,6 +96,16 @@ public class VentaController {
                     "mensaje", "No hay caja abierta. Abre la caja antes de registrar ventas."));
         }
 
+        // Validación: No permitir nota de venta si el total >= 700
+        if (venta.getTotal() != null && venta.getTotal().compareTo(new BigDecimal("700")) >= 0) {
+            String tipoComprobante = venta.getTipoComprobante();
+            if (tipoComprobante != null && tipoComprobante.toLowerCase().contains("nota_venta")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("success", false,
+                        "message", "No se puede emitir una Nota de Venta por un monto igual o mayor a S/ 700. Solo se permiten Boletas o Facturas."));
+            }
+        }
+
         Venta ventaCreada = null;
         try {
             ventaCreada = ventaService.crearVenta(venta);

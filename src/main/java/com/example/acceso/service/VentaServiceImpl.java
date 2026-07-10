@@ -511,7 +511,7 @@ public class VentaServiceImpl implements VentaService {
     @Override
     @Transactional(readOnly = true)
     public Optional<Map<String, Object>> obtenerVentaDetalladaPorId(Long id) {
-        return ventaRepository.findById(id).map(this::convertVentaToDetalleMap);
+        return ventaRepository.findByIdWithDetallesAndProductos(id).map(this::convertVentaToDetalleMap);
     }
 
     private Map<String, Object> convertVentaToMap(Venta venta) {

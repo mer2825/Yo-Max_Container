@@ -239,6 +239,40 @@
         }
     }
 
+    function limpiarFormularioCompleto() {
+        // Limpiar carrito
+        carrito = [];
+        
+        // Limpiar campos de cliente
+        $('#numeroDocumento').val('');
+        $('#clienteId').val('');
+        $('#clienteNombreInput').val('');
+        $('#clienteDireccionInput').val('');
+        
+        // Limpiar tipo de comprobante
+        $('#tipoComprobanteVenta').val('nota_venta');
+        $('#tipoComprobanteSecundario').val('nota_venta');
+        
+        // Limpiar descuento
+        $('#descuentoVenta').val(0);
+        $('#tipoDescuento').val('monto');
+        
+        // Limpiar nota de venta
+        $('#notaVenta').val('');
+        
+        // Limpiar método de pago
+        $('#metodoPago').val('Efectivo');
+        
+        // Actualizar toda la UI
+        updateClienteDisplay({ nombre: 'Consumidor Final', direccion: '' }, 'dni');
+        updateFormularioUI();
+        renderizarCarrito();
+        updateProgressSteps();
+        
+        // Mostrar mensaje de confirmación
+        showNotification('Listo para nueva venta.', 'success');
+    }
+
     function updateClienteDisplay(cliente, tipoDocumento) {
         const nombre = cliente.nombre || 'Consumidor Final';
         $('#nombreCliente').text(nombre);
@@ -323,6 +357,14 @@
     }
 
     function seleccionarTipoComprobante(tipo) {
+        const totalVenta = parseFloat($('#venta-total').text().replace('S/ ', '')) || 0;
+        
+        // Validación: Si el total >= 700, bloquear selección de nota de venta
+        if (totalVenta >= 700 && tipo === 'nota_venta') {
+            showNotification('No se puede emitir una Nota de Venta por un monto igual o mayor a S/ 700. Solo se permiten Boletas o Facturas.', 'error');
+            return;
+        }
+        
         $('#tipoComprobanteVenta').val(tipo);
         $('#tipoComprobanteSecundario').val('');
         updateFormularioUI();
@@ -637,6 +679,11 @@
         const numeroDocumento = $('#numeroDocumento').val();
         const totalVenta = parseFloat($('#venta-total').text().replace('S/ ', '')) || 0;
 
+        // Validación: No permitir nota de venta si el total >= 700
+        if (totalVenta >= 700 && tipoComprobanteVenta === 'nota_venta') {
+            return showNotification('No se puede emitir una Nota de Venta por un monto igual o mayor a S/ 700. Solo se permiten Boletas o Facturas.', 'error');
+        }
+
         if (tipoComprobanteVenta === 'factura') {
             if (!numeroDocumento) {
                 return showNotification('Para una Factura, debe ingresar un RUC.', 'error');
@@ -770,7 +817,7 @@
                         confirmButtonText: 'Entendido',
                         width: '500px'
                     }).then(() => {
-                        window.location.href = '/ventas/nueva';
+                        limpiarFormularioCompleto();
                     });
                 }
             } else {
@@ -806,12 +853,8 @@
             if (swalResult.isConfirmed) {
                 window.open(result.pdfUrl, '_blank');
             }
-            if (swalResult.isDenied) {
-                window.location.href = '/ventas/nueva';
-            }
-            if (!swalResult.isConfirmed && !swalResult.isDenied) {
-                // Mantener en la misma vista para crear otra venta manualmente
-            }
+            // Limpiar formulario en todos los casos (Cerrar, Descargar PDF o Nueva Venta)
+            limpiarFormularioCompleto();
         });
     }
 

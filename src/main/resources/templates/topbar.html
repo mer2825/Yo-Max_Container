@@ -69,12 +69,18 @@
                             <li th:if="${session.usuarioLogueado.perfil.opciones.?[ruta == '/categorias/listar'].size() > 0}">
                                 <a class="dropdown-item" th:href="@{/categorias/listar}"><i class="bi bi-tags me-2"></i>Categorías</a>
                             </li>
-                        </ul>
-                    </li>
+                    </ul>
+                </li>
 
+                <!-- Inventario -->
+                <li class="nav-item" th:if="${session.usuarioLogueado.perfil.opciones.?[ruta == '/inventario/listar'].size() > 0}">
+                    <a class="nav-link px-3" th:classappend="${activeUri.contains('/inventario') ? 'active' : ''}" th:href="@{/inventario/listar}">
+                        <i class="bi bi-box-seam me-1"></i> <span class="d-none d-sm-inline">Inventario</span>
+                    </a>
+                </li>
 
-                    <!-- Monitor de Caja -->
-                    <li class="nav-item">
+                <!-- Monitor de Caja -->
+                <li class="nav-item">
                         <a class="nav-link px-3" th:classappend="${activeUri.contains('/caja') ? 'active' : ''}" th:href="@{/caja}">
                             <i class="bi-cash-stack"></i> <span class="d-none d-sm-inline">Monitor de Caja</span>
                             <span th:if="${sesionCajaAbierta}" class="badge bg-success ms-1">Abierta</span>

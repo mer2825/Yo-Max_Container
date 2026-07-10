@@ -147,8 +147,8 @@
         <p>Método de Pago: <span th:text="${venta['metodoPago']}"></span></p>
     </div>
 
-    <div th:if="${venta.nota != null and !venta.nota.isEmpty()}" class="nota">
-        <p>Nota: <span th:text="${venta.nota}"></span></p>
+    <div th:if="${venta['nota'] != null and !venta['nota'].isEmpty()}" class="nota">
+        <p>Nota: <span th:text="${venta['nota']}"></span></p>
     </div>
 
     <div class="footer">
