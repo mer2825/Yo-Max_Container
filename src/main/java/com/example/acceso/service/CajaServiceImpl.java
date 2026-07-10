@@ -6,6 +6,7 @@ import com.example.acceso.dto.MovimientoLogDTO;
 import com.example.acceso.dto.ReportePeriodoDTO;
 import com.example.acceso.dto.ResumenDiaDTO;
 import com.example.acceso.dto.ResumenSesionActivaDTO;
+import com.example.acceso.model.Empresa;
 import com.example.acceso.model.MovimientoCaja;
 import com.example.acceso.model.NotasCredito;
 import com.example.acceso.model.SesionCaja;
@@ -19,6 +20,7 @@ import com.example.acceso.repository.VentaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -32,22 +34,33 @@ import java.util.Optional;
 @Service
 public class CajaServiceImpl implements CajaService {
 
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CajaServiceImpl.class);
+
     private final SesionCajaRepository sesionCajaRepository;
     private final VentaRepository ventaRepository;
     private final MovimientoCajaRepository movimientoCajaRepository;
     private final UsuarioRepository usuarioRepository;
     private final NotasCreditoRepository notasCreditoRepository;
+    private final EmailService emailService;
+    private final PdfService pdfService;
+    private final EmpresaService empresaService;
 
     public CajaServiceImpl(SesionCajaRepository sesionCajaRepository,
                            VentaRepository ventaRepository,
                            MovimientoCajaRepository movimientoCajaRepository,
                            UsuarioRepository usuarioRepository,
-                           NotasCreditoRepository notasCreditoRepository) {
+                           NotasCreditoRepository notasCreditoRepository,
+                           EmailService emailService,
+                           PdfService pdfService,
+                           EmpresaService empresaService) {
         this.sesionCajaRepository = sesionCajaRepository;
         this.ventaRepository = ventaRepository;
         this.movimientoCajaRepository = movimientoCajaRepository;
         this.usuarioRepository = usuarioRepository;
         this.notasCreditoRepository = notasCreditoRepository;
+        this.emailService = emailService;
+        this.pdfService = pdfService;
+        this.empresaService = empresaService;
     }
 
     @Override
@@ -134,6 +147,34 @@ public class CajaServiceImpl implements CajaService {
         BigDecimal saldoTraspasado = calcularMontoEsperado(sesion.getId());
         sesionCerrada.setSaldoTraspasado(saldoTraspasado);
         sesionCajaRepository.save(sesionCerrada);
+
+        // ================================================================
+        // ENVÍO AUTOMÁTICO DEL REPORTE DE CIERRE POR EMAIL
+        // ================================================================
+        try {
+            // Obtener el email de la empresa (destinatario)
+            Empresa empresa = empresaService.getEmpresaInfo();
+            String emailEmpresa = empresa != null ? empresa.getEmail() : null;
+
+            if (emailEmpresa != null && !emailEmpresa.isBlank()) {
+                // Obtener detalle y log de auditoría para el PDF
+                Map<String, Object> detalleSesion = obtenerDetalleSesion(sesionCerrada.getId());
+                List<EventoAuditoriaDTO> logAuditoria = obtenerLogAuditoriaSesion(sesionCerrada.getId());
+
+                // Generar el PDF del reporte de cierre
+                ByteArrayInputStream pdfBytes = pdfService.generarReporteSesionCaja(
+                        sesionCerrada, detalleSesion, logAuditoria);
+
+                // Enviar el email con el PDF adjunto
+                emailService.enviarReporteCierreConAdjunto(
+                        emailEmpresa, sesionCerrada, detalleSesion, logAuditoria, pdfBytes);
+            } else {
+                logger.warn("No se pudo enviar el reporte de cierre #{}: la empresa no tiene email configurado.",
+                        sesionCerrada.getId());
+            }
+        } catch (Exception e) {
+            logger.error("Error al enviar reporte de cierre #{} por email: {}", sesionCerrada.getId(), e.getMessage());
+        }
 
         return sesionCerrada;
     }

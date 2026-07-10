@@ -1,5 +1,6 @@
 package com.example.acceso.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -87,6 +88,7 @@ public class PedidoWeb extends Auditable {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "venta_id")
+    @JsonIgnore
     private Venta venta;
 
     @Column(length = 20)

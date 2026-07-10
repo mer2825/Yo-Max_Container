@@ -1,5 +1,12 @@
 package com.example.acceso.service;
 
+import com.example.acceso.dto.EventoAuditoriaDTO;
+import com.example.acceso.model.SesionCaja;
+
+import java.io.ByteArrayInputStream;
+import java.util.List;
+import java.util.Map;
+
 public interface EmailService {
     
     /**
@@ -16,4 +23,18 @@ public interface EmailService {
      * @param motivo Motivo del rechazo
      */
     void enviarEmailRechazo(String emailDestino, String numeroPedido, String motivo);
+
+    /**
+     * Envía por correo el reporte PDF de cierre de caja al email de la empresa
+     * @param destinatario Email de la empresa (destinatario)
+     * @param sesion La sesión de caja cerrada
+     * @param detalle Mapa con el detalle de la sesión
+     * @param logAuditoria Lista de eventos de auditoría
+     * @param pdfBytes PDF generado del reporte de cierre
+     */
+    void enviarReporteCierreConAdjunto(String destinatario,
+                                        SesionCaja sesion,
+                                        Map<String, Object> detalle,
+                                        List<EventoAuditoriaDTO> logAuditoria,
+                                        ByteArrayInputStream pdfBytes);
 }
