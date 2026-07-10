@@ -129,13 +129,14 @@ document.addEventListener('DOMContentLoaded', function() {
             cartItem.innerHTML = `
                 <div style="flex: 1;">
                     <strong>${nombre}</strong>
-                    <div class="d-flex align-items-center gap-2 mt-1">
-                        <button type="button" class="btn btn-sm btn-outline-secondary btn-decrease-cart" data-index="${index}" ${cantidad <= 1 ? 'disabled' : ''}>−</button>
-                        <input type="number" class="form-control form-control-sm text-center cart-qty-input" value="${cantidad}" min="1" max="${stock}" data-index="${index}" data-stock="${stock}" style="width: 60px;">
-                        <button type="button" class="btn btn-sm btn-outline-secondary btn-increase-cart" data-index="${index}" ${cantidad >= stock ? 'disabled' : ''}>+</button>
-                        <small class="text-muted ms-2">Disponible: ${stock}</small>
+                    <div class="mt-1">
+                        <span class="badge bg-secondary">
+                            Cantidad: ${cantidad}
+                        </span>
                     </div>
-                    <small class="text-muted d-block">S/ ${precio.toFixed(2)} c/u</small>
+                    <small class="text-muted">
+                        Cantidad: ${cantidad}
+                    </small>
                 </div>
                 <div class="text-end">
                     <span class="fw-bold">S/ ${itemTotal.toFixed(2)}</span>
@@ -283,38 +284,6 @@ document.addEventListener('DOMContentLoaded', function() {
     continueToPaymentBtn.addEventListener('click', () => { if (validateStep1()) goToStep(2); });
     backToStep1Btn.addEventListener('click', () => goToStep(1));
 
-    // Event listeners para controles de cantidad en el carrito
-    cartItems.addEventListener('click', function(e) {
-        if (e.target.classList.contains('btn-increase-cart')) {
-            const index = parseInt(e.target.dataset.index);
-            changeCartQuantity(index, 1);
-        } else if (e.target.classList.contains('btn-decrease-cart')) {
-            const index = parseInt(e.target.dataset.index);
-            changeCartQuantity(index, -1);
-        }
-    });
-
-    cartItems.addEventListener('input', function(e) {
-        if (e.target.classList.contains('cart-qty-input')) {
-            const index = parseInt(e.target.dataset.index);
-            const stock = parseInt(e.target.dataset.stock);
-            const item = cartData[index];
-            const itemName = item.nombre || item.name;
-            let value = parseInt(e.target.value);
-
-            if (isNaN(value) || value < 1) {
-                value = 1;
-            } else if (value > stock) {
-                value = stock;
-                showCheckoutStockAlert(itemName, stock);
-            }
-
-            e.target.value = value;
-            cartData[index].cantidad = value;
-            localStorage.setItem('cart', JSON.stringify(cartData));
-            renderCart();
-        }
-    });
 
     function changeCartQuantity(index, delta) {
         const item = cartData[index];
