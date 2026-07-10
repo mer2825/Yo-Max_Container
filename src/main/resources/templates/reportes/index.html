@@ -75,7 +75,7 @@
             <a class="nav-link" th:classappend="${tipoActivo == 'ingresos' ? 'active' : ''}" th:href="@{/reportes/ingresos(desde=${desde}, hasta=${hasta})}"><i class="bi bi-cash-coin me-1"></i> Ingresos</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" th:classappend="${tipoActivo == 'egresos' ? 'active' : ''}" th:href="@{/reportes/egresos(desde=${desde}, hasta=${hasta})}"><i class="bi bi-cash-out me-1"></i> Egresos</a>
+            <a class="nav-link" th:classappend="${tipoActivo == 'egresos' ? 'active' : ''}" th:href="@{/reportes/egresos(desde=${desde}, hasta=${hasta})}"><i class="bi-graph-down-arrow"></i> Egresos</a>
         </li>
         <li class="nav-item">
             <a class="nav-link" th:classappend="${tipoActivo == 'ventas' ? 'active' : ''}" th:href="@{/reportes/ventas(desde=${desde}, hasta=${hasta})}"><i class="bi bi-cart-check me-1"></i> Ventas</a>
@@ -87,7 +87,7 @@
             <a class="nav-link" th:classappend="${tipoActivo == 'comprobantes' ? 'active' : ''}" th:href="@{/reportes/comprobantes(desde=${desde}, hasta=${hasta})}"><i class="bi bi-receipt me-1"></i> Comprobantes SUNAT</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" th:classappend="${tipoActivo == 'caja' ? 'active' : ''}" th:href="@{/reportes/caja(desde=${desde}, hasta=${hasta})}"><i class="bi bi-cash-register me-1"></i> Caja</a>
+            <a class="nav-link" th:classappend="${tipoActivo == 'caja' ? 'active' : ''}" th:href="@{/reportes/caja(desde=${desde}, hasta=${hasta})}"><i class="bi-wallet2"></i> Caja</a>
         </li>
     </ul>
 

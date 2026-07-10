@@ -76,7 +76,7 @@
                     <!-- Monitor de Caja -->
                     <li class="nav-item">
                         <a class="nav-link px-3" th:classappend="${activeUri.contains('/caja') ? 'active' : ''}" th:href="@{/caja}">
-                            <i class="bi bi-cash-register me-1"></i> <span class="d-none d-sm-inline">Monitor de Caja</span>
+                            <i class="bi-cash-stack"></i> <span class="d-none d-sm-inline">Monitor de Caja</span>
                             <span th:if="${sesionCajaAbierta}" class="badge bg-success ms-1">Abierta</span>
                         </a>
                     </li>
