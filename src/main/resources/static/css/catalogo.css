@@ -197,26 +197,73 @@ header .navbar .nav-link:hover {
 
 /* --- NUEVOS ESTILOS PARA HEADER --- */
 header .navbar {
-  min-height: 80px; /* Altura mínima para el header */
-  padding-top: 0.5rem; /* Padding reducido */
-  padding-bottom: 0.5rem;
-  position: relative;
-  z-index: 100;
+    background-color: var(--ym-bg-soft);
+    min-height: 80px;
+    padding: .5rem 1rem;
+    position: relative;
+    z-index: 100;
 }
 
-.navbar-brand {
-  padding-left: 130px; /* Espacio a la izquierda para el logo */
+header .navbar .navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-left: 0;
+    margin: 0;
 }
 
 header .navbar .logo {
-  position: absolute;
-  top: 20px; /* Distancia desde arriba para que 'cuelgue' */
-  left: 20px;
-  width: 100px;
-  height: 100px;
-  border: 4px solid white;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.25);
-  z-index: 101; /* Por encima del header */
+    width: 55px;
+    height: 55px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid var(--ym-pink-dark);
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    position: static;
+    margin-right: 0;
+    flex-shrink: 0;
+}
+
+header .navbar .navbar-title {
+    font-weight: 700;
+    color: var(--ym-dark);
+    line-height: 1.2;
+    margin: 0;
+}
+
+header .navbar .nav-link {
+    margin: 0 .4rem;
+    background: transparent;
+    color: var(--ym-dark) !important;
+    padding: 8px 12px;
+    border-radius: 14px;
+    font-weight: 600;
+    transition: background-color .25s ease, color .25s ease;
+}
+
+header .navbar .nav-link:hover {
+    background-color: rgba(255,151,190,.18);
+    color: var(--ym-pink-dark) !important;
+}
+
+@media (max-width: 991px) {
+
+    header .navbar {
+        min-height: auto;
+    }
+
+    header .navbar .navbar-brand {
+        padding-left: 0;
+    }
+
+    header .navbar .logo {
+        width: 45px;
+        height: 45px;
+    }
+
+    header .navbar .navbar-title {
+        font-size: 1rem;
+    }
 }
 
 /* --- Estilos para los nuevos botones de categoría --- */
@@ -962,4 +1009,38 @@ header .navbar .logo {
     background-color: #fff;
     transform: rotateY(180deg);
     font-size: 2.5rem; /* Tamaño del ícono de postre */
+}
+
+@media (max-width: 991.98px) {
+
+    .navbar-collapse {
+        padding-top: 1rem;
+    }
+
+    .navbar-nav {
+        gap: .5rem;
+    }
+
+    .navbar-nav .nav-item {
+        margin-bottom: .35rem;
+    }
+
+    .navbar-nav .nav-link {
+        display: block;
+        padding: .85rem 1rem !important;
+        border-radius: 12px;
+    }
+
+    .navbar-collapse .d-flex {
+        margin-top: 1rem !important;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(0,0,0,.08);
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: .75rem !important;
+    }
+
+    .navbar-collapse .d-flex .btn {
+        width: 100%;
+    }
 }
