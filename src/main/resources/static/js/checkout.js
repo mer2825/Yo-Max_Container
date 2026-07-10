@@ -134,9 +134,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             Cantidad: ${cantidad}
                         </span>
                     </div>
-                    <small class="text-muted">
-                        Cantidad: ${cantidad}
-                    </small>
                 </div>
                 <div class="text-end">
                     <span class="fw-bold">S/ ${itemTotal.toFixed(2)}</span>
