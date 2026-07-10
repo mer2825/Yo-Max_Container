@@ -307,6 +307,31 @@ function confirmarRechazo() {
     });
 }
 
+function verificarSesionCajaYaprobar() {
+    // Verificar si hay una sesión de caja activa
+    $.ajax({
+        url: '/caja/api/resumen',
+        method: 'GET',
+        xhrFields: { withCredentials: true },
+        success: function(response) {
+            if (response && response.sesionAbierta) {
+                // Hay sesión activa, proceder con la aprobación
+                aprobarPedido();
+            } else {
+                // No hay sesión activa, mostrar modal informativo
+                bootstrap.Modal.getInstance(document.getElementById('detallePedidoModal')).hide();
+                const modal = new bootstrap.Modal(document.getElementById('cajaCerradaModal'));
+                modal.show();
+            }
+        },
+        error: function() {
+            // Si el endpoint no existe o hay error, intentar aprobar igual
+            // (el backend ya validará si hay o no sesión)
+            aprobarPedido();
+        }
+    });
+}
+
 function aprobarPedido() {
     if (!confirm('¿Estás seguro de aprobar este pedido y crear la venta? Esto descontará el stock de los productos.')) {
         return;
@@ -335,7 +360,14 @@ function aprobarPedido() {
                     }
                 },
                 error: function(error) {
-                    mostrarNotificacion('Error al aprobar el pedido', 'danger');
+                    const msg = error.responseJSON && error.responseJSON.message ? error.responseJSON.message : 'Error al aprobar el pedido';
+                    if (msg.includes('caja')) {
+                        bootstrap.Modal.getInstance(document.getElementById('detallePedidoModal')).hide();
+                        const modal = new bootstrap.Modal(document.getElementById('cajaCerradaModal'));
+                        modal.show();
+                    } else {
+                        mostrarNotificacion(msg, 'danger');
+                    }
                 }
             });
         },
@@ -356,7 +388,14 @@ function aprobarPedido() {
                     }
                 },
                 error: function(error) {
-                    mostrarNotificacion('Error al aprobar el pedido', 'danger');
+                    const msg = error.responseJSON && error.responseJSON.message ? error.responseJSON.message : 'Error al aprobar el pedido';
+                    if (msg.includes('caja')) {
+                        bootstrap.Modal.getInstance(document.getElementById('detallePedidoModal')).hide();
+                        const modal = new bootstrap.Modal(document.getElementById('cajaCerradaModal'));
+                        modal.show();
+                    } else {
+                        mostrarNotificacion(msg, 'danger');
+                    }
                 }
             });
         }

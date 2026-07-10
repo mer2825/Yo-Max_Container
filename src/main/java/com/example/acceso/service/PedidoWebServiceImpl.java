@@ -225,12 +225,13 @@ public class PedidoWebServiceImpl implements PedidoWebService {
 
         Venta venta = crearVentaDesdePedido(pedido);
 
-        // Vincular la venta a la sesión de caja activa si existe
+        // Vincular la venta a la sesión de caja activa (OBLIGATORIO para llevar registro)
         Optional<SesionCaja> sesionActiva = cajaService.obtenerSesionActiva();
-        if (sesionActiva.isPresent()) {
-            venta.setSesionCaja(sesionActiva.get());
-            venta = ventaRepository.save(venta);
+        if (sesionActiva.isEmpty()) {
+            throw new RuntimeException("No hay una sesión de caja abierta. Debe abrir caja antes de aprobar pedidos web.");
         }
+        venta.setSesionCaja(sesionActiva.get());
+        venta = ventaRepository.save(venta);
 
         Venta ventaProcesada;
         try {

@@ -122,7 +122,7 @@
                 </div>
                 <div class="row mt-4" id="modalAcciones">
                     <div class="col-md-12 text-center">
-                        <button type="button" class="btn btn-success btn-lg me-2" id="btnAprobarPedido" onclick="aprobarPedido()"><i class="bi bi-check-circle"></i> Aprobar y Procesar Venta</button>
+                        <button type="button" class="btn btn-success btn-lg me-2" id="btnAprobarPedido" onclick="verificarSesionCajaYaprobar()"><i class="bi bi-check-circle"></i> Aprobar y Procesar Venta</button>
                         <button type="button" class="btn btn-outline-danger btn-lg" id="btnRechazarPedido" onclick="mostrarFormularioRechazo()"><i class="bi bi-x-circle"></i> Rechazar Pedido</button>
                     </div>
                 </div>
@@ -149,6 +149,38 @@
         <div class="modal-content bg-transparent border-0">
             <div class="modal-body p-0 text-center">
                 <img id="imagenFullscreen" src="" alt="Voucher" style="max-width: 100%; max-height: 90vh;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para cuando no hay caja abierta -->
+<div class="modal fade" id="cajaCerradaModal" tabindex="-1" aria-labelledby="cajaCerradaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title" id="cajaCerradaModalLabel">
+                    <i class="bi bi-exclamation-triangle"></i> Caja Cerrada
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <i class="bi bi-cash-stack" style="font-size: 4rem; color: #ffc107;"></i>
+                <h4 class="mt-3">No hay una sesión de caja abierta</h4>
+                <p class="text-muted">
+                    Para aprobar un pedido web y registrar la venta, es necesario tener una sesión de caja activa.
+                    Esto asegura que todas las ventas queden registradas y se lleve una continuidad en el control de caja.
+                </p>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    Dirígete al módulo de <strong>Caja</strong> para abrir una sesión antes de continuar.
+                </div>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <a href="/caja" class="btn btn-warning btn-lg">
+                    <i class="bi bi-cash"></i> Ir a Abrir Caja
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
