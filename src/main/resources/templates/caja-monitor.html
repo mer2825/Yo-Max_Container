@@ -504,7 +504,7 @@ let filtroActual = 'TODOS';
             fechaDesdeFiltro = fechaDesde;
             fechaHastaFiltro = fechaHasta;
             
-            cargarLogAuditoria();
+            cargarHistorial();
         });
     }
 
@@ -516,7 +516,7 @@ let filtroActual = 'TODOS';
             fechaHastaFiltro = null;
             document.getElementById('fechaDesde').value = '';
             document.getElementById('fechaHasta').value = '';
-            cargarLogAuditoria();
+            cargarHistorial();
         });
     }
 });

@@ -818,23 +818,26 @@ public class CajaServiceImpl implements CajaService {
         log.add(new MovimientoLogDTO("APERTURA", "Fondo inicial registrado", sesion.getMontoInicial(),
                 "+", true, null, null, usuarioApertura, sesion.getFechaApertura()));
         
-        // Obtener ventas de la sesión
-        List<Venta> ventas = ventaRepository.findBySesionCajaId(sesion.getId());
+        // Obtener ventas de la sesión usando consulta optimizada (solo campos necesarios)
+        List<Object[]> ventasLigeras = ventaRepository.findVentasLigerasBySesionId(sesion.getId());
         
-        for (Venta venta : ventas) {
-            String metodoPago = venta.getMetodoPago();
-            String usuario = "Cliente";
-            if (venta.getCliente() != null && venta.getCliente().getNombre() != null) {
-                usuario = venta.getCliente().getNombre();
-            }
-            String comprobante = venta.getSerieCorrelativo() != null ? venta.getSerieCorrelativo() : "N° " + venta.getId();
+        for (Object[] row : ventasLigeras) {
+            Long id = (Long) row[0];
+            String serieCorrelativo = (String) row[1];
+            BigDecimal total = (BigDecimal) row[2];
+            String metodoPago = (String) row[3];
+            LocalDateTime fechaVenta = (LocalDateTime) row[4];
+            String clienteNombre = (String) row[5];
+            
+            String comprobante = serieCorrelativo != null ? serieCorrelativo : "N° " + id;
+            String usuario = clienteNombre != null ? clienteNombre : "Cliente";
             
             if ("EFECTIVO".equalsIgnoreCase(metodoPago)) {
                 log.add(new MovimientoLogDTO("VENTA_EFECTIVO", "Comprobante: " + comprobante,
-                        venta.getTotal(), "+", true, metodoPago, null, usuario, venta.getFechaVenta()));
+                        total, "+", true, metodoPago, null, usuario, fechaVenta));
             } else {
                 log.add(new MovimientoLogDTO("VENTA_OTRO", "Comprobante: " + comprobante + " (" + metodoPago + ")",
-                        venta.getTotal(), "+", false, metodoPago, null, usuario, venta.getFechaVenta()));
+                        total, "+", false, metodoPago, null, usuario, fechaVenta));
             }
         }
         
@@ -886,12 +889,35 @@ public class CajaServiceImpl implements CajaService {
     public java.util.List<MovimientoLogDTO> construirLogPorPeriodo(LocalDateTime desde, LocalDateTime hasta) {
         java.util.List<MovimientoLogDTO> log = new java.util.ArrayList<>();
         
-        // Obtener todas las sesiones cerradas en el período
+        // Obtener todas las sesiones en el período (cerradas y abiertas)
         List<SesionCaja> sesiones = sesionCajaRepository.findSesionesCerradasPorPeriodo(desde, hasta);
-        
-        // También buscar sesiones abiertas que hayan iniciado en el período
         Optional<SesionCaja> sesionAbierta = sesionCajaRepository.findByEstado("ABIERTA");
         
+        // Coleccionar IDs de sesiones para consultar movimientos y notas de crédito
+        java.util.Set<Long> sesionIds = new java.util.HashSet<>();
+        for (SesionCaja sesion : sesiones) {
+            sesionIds.add(sesion.getId());
+        }
+        if (sesionAbierta.isPresent()) {
+            sesionIds.add(sesionAbierta.get().getId());
+        }
+        
+        // Obtener TODOS los movimientos de las sesiones del período de UNA sola vez
+        List<MovimientoCaja> todosMovimientos = new java.util.ArrayList<>();
+        for (Long sesionId : sesionIds) {
+            todosMovimientos.addAll(movimientoCajaRepository.findBySesionIdOrderByFechaDesc(sesionId));
+        }
+        
+        // Obtener TODAS las notas de crédito de las sesiones del período de UNA sola vez
+        List<NotasCredito> todasNotasCredito = new java.util.ArrayList<>();
+        for (Long sesionId : sesionIds) {
+            todasNotasCredito.addAll(notasCreditoRepository.findByVenta_SesionCaja_Id(sesionId));
+        }
+        
+        // Usar consulta optimizada para obtener ventas del período
+        List<Object[]> ventasLigeras = ventaRepository.findVentasLigerasByPeriodo(desde, hasta);
+        
+        // Procesar cada sesión
         for (SesionCaja sesion : sesiones) {
             // Evento de apertura (solo si está dentro del rango)
             if (sesion.getFechaApertura() != null && 
@@ -902,33 +928,10 @@ public class CajaServiceImpl implements CajaService {
                         "+", true, null, null, usuarioApertura, sesion.getFechaApertura()));
             }
             
-            // Obtener ventas de la sesión filtradas por fecha
-            List<Venta> ventas = ventaRepository.findBySesionCajaId(sesion.getId());
-            for (Venta venta : ventas) {
-                if (venta.getFechaVenta() != null && 
-                    !venta.getFechaVenta().isBefore(desde) && 
-                    !venta.getFechaVenta().isAfter(hasta)) {
-                    String metodoPago = venta.getMetodoPago();
-                    String usuario = "Cliente";
-                    if (venta.getCliente() != null && venta.getCliente().getNombre() != null) {
-                        usuario = venta.getCliente().getNombre();
-                    }
-                    String comprobante = venta.getSerieCorrelativo() != null ? venta.getSerieCorrelativo() : "N° " + venta.getId();
-                    
-                    if ("EFECTIVO".equalsIgnoreCase(metodoPago)) {
-                        log.add(new MovimientoLogDTO("VENTA_EFECTIVO", "Comprobante: " + comprobante,
-                                venta.getTotal(), "+", true, metodoPago, null, usuario, venta.getFechaVenta()));
-                    } else {
-                        log.add(new MovimientoLogDTO("VENTA_OTRO", "Comprobante: " + comprobante + " (" + metodoPago + ")",
-                                venta.getTotal(), "+", false, metodoPago, null, usuario, venta.getFechaVenta()));
-                    }
-                }
-            }
-            
-            // Obtener movimientos manuales filtrados por fecha
-            List<MovimientoCaja> movimientos = movimientoCajaRepository.findBySesionIdOrderByFechaDesc(sesion.getId());
-            for (MovimientoCaja movimiento : movimientos) {
-                if (movimiento.getFecha() != null && 
+            // Filtrar movimientos de esta sesión por fecha
+            for (MovimientoCaja movimiento : todosMovimientos) {
+                if (movimiento.getSesion().getId().equals(sesion.getId()) &&
+                    movimiento.getFecha() != null && 
                     !movimiento.getFecha().isBefore(desde) && 
                     !movimiento.getFecha().isAfter(hasta)) {
                     String usuario = movimiento.getUsuario() != null ? movimiento.getUsuario().getNombre() : "Sistema";
@@ -944,10 +947,11 @@ public class CajaServiceImpl implements CajaService {
                 }
             }
             
-            // Obtener notas de crédito de la sesión filtradas por fecha
-            List<NotasCredito> notasCredito = notasCreditoRepository.findByVenta_SesionCaja_Id(sesion.getId());
-            for (NotasCredito nc : notasCredito) {
-                if (nc.getFechaEmision() != null && 
+            // Filtrar notas de crédito de esta sesión por fecha
+            for (NotasCredito nc : todasNotasCredito) {
+                if (nc.getVenta() != null && nc.getVenta().getSesionCaja() != null &&
+                    nc.getVenta().getSesionCaja().getId().equals(sesion.getId()) &&
+                    nc.getFechaEmision() != null && 
                     !nc.getFechaEmision().isBefore(desde) && 
                     !nc.getFechaEmision().isAfter(hasta)) {
                     String usuario = nc.getEmitidaPorUsuario() != null ? nc.getEmitidaPorUsuario().getNombre() : "Sistema";
@@ -984,33 +988,10 @@ public class CajaServiceImpl implements CajaService {
                         "+", true, null, null, usuarioApertura, sesion.getFechaApertura()));
             }
             
-            // Obtener ventas de la sesión filtradas por fecha
-            List<Venta> ventas = ventaRepository.findBySesionCajaId(sesion.getId());
-            for (Venta venta : ventas) {
-                if (venta.getFechaVenta() != null && 
-                    !venta.getFechaVenta().isBefore(desde) && 
-                    !venta.getFechaVenta().isAfter(hasta)) {
-                    String metodoPago = venta.getMetodoPago();
-                    String usuario = "Cliente";
-                    if (venta.getCliente() != null && venta.getCliente().getNombre() != null) {
-                        usuario = venta.getCliente().getNombre();
-                    }
-                    String comprobante = venta.getSerieCorrelativo() != null ? venta.getSerieCorrelativo() : "N° " + venta.getId();
-                    
-                    if ("EFECTIVO".equalsIgnoreCase(metodoPago)) {
-                        log.add(new MovimientoLogDTO("VENTA_EFECTIVO", "Comprobante: " + comprobante,
-                                venta.getTotal(), "+", true, metodoPago, null, usuario, venta.getFechaVenta()));
-                    } else {
-                        log.add(new MovimientoLogDTO("VENTA_OTRO", "Comprobante: " + comprobante + " (" + metodoPago + ")",
-                                venta.getTotal(), "+", false, metodoPago, null, usuario, venta.getFechaVenta()));
-                    }
-                }
-            }
-            
-            // Obtener movimientos manuales filtrados por fecha
-            List<MovimientoCaja> movimientos = movimientoCajaRepository.findBySesionIdOrderByFechaDesc(sesion.getId());
-            for (MovimientoCaja movimiento : movimientos) {
-                if (movimiento.getFecha() != null && 
+            // Filtrar movimientos de esta sesión por fecha
+            for (MovimientoCaja movimiento : todosMovimientos) {
+                if (movimiento.getSesion().getId().equals(sesion.getId()) &&
+                    movimiento.getFecha() != null && 
                     !movimiento.getFecha().isBefore(desde) && 
                     !movimiento.getFecha().isAfter(hasta)) {
                     String usuario = movimiento.getUsuario() != null ? movimiento.getUsuario().getNombre() : "Sistema";
@@ -1026,10 +1007,11 @@ public class CajaServiceImpl implements CajaService {
                 }
             }
             
-            // Obtener notas de crédito de la sesión filtradas por fecha
-            List<NotasCredito> notasCredito = notasCreditoRepository.findByVenta_SesionCaja_Id(sesion.getId());
-            for (NotasCredito nc : notasCredito) {
-                if (nc.getFechaEmision() != null && 
+            // Filtrar notas de crédito de esta sesión por fecha
+            for (NotasCredito nc : todasNotasCredito) {
+                if (nc.getVenta() != null && nc.getVenta().getSesionCaja() != null &&
+                    nc.getVenta().getSesionCaja().getId().equals(sesion.getId()) &&
+                    nc.getFechaEmision() != null && 
                     !nc.getFechaEmision().isBefore(desde) && 
                     !nc.getFechaEmision().isAfter(hasta)) {
                     String usuario = nc.getEmitidaPorUsuario() != null ? nc.getEmitidaPorUsuario().getNombre() : "Sistema";

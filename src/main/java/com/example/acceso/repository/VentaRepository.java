@@ -93,4 +93,18 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
 
     @Query("SELECT v FROM Venta v JOIN FETCH v.cliente JOIN FETCH v.detalles d JOIN FETCH d.producto WHERE v.id = :id")
     Optional<Venta> findByIdWithDetallesAndProductos(@Param("id") Long id);
+
+    // Consulta optimizada para obtener ventas de una sesión con datos mínimos necesarios
+    @Query("SELECT v.id, v.serieCorrelativo, v.total, v.metodoPago, v.fechaVenta, v.cliente.nombre " +
+           "FROM Venta v " +
+           "WHERE v.sesionCaja.id = :sesionId " +
+           "ORDER BY v.fechaVenta DESC")
+    List<Object[]> findVentasLigerasBySesionId(@Param("sesionId") Long sesionId);
+
+    // Consulta optimizada para obtener ventas por período con datos mínimos
+    @Query("SELECT v.id, v.serieCorrelativo, v.total, v.metodoPago, v.fechaVenta, v.cliente.nombre, v.sesionCaja.id " +
+           "FROM Venta v " +
+           "WHERE v.fechaVenta >= :inicio AND v.fechaVenta <= :fin " +
+           "ORDER BY v.fechaVenta DESC")
+    List<Object[]> findVentasLigerasByPeriodo(@Param("inicio") LocalDateTime inicio, @Param("fin") LocalDateTime fin);
 }

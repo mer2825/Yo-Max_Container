@@ -127,3 +127,20 @@ CREATE TABLE IF NOT EXISTS cambios_producto (
 -- Agregar columna email_cliente a pedidos_web para recibir el correo del cliente en checkout
 ALTER TABLE pedidos_web
   ADD COLUMN IF NOT EXISTS email_cliente VARCHAR(255);
+
+-- Índices para optimizar consultas del Monitor de Caja
+CREATE INDEX IF NOT EXISTS idx_ventas_sesion_caja_id ON ventas(sesion_caja_id);
+CREATE INDEX IF NOT EXISTS idx_ventas_fecha_venta ON ventas(fecha_venta);
+CREATE INDEX IF NOT EXISTS idx_ventas_metodo_pago ON ventas(metodo_pago);
+CREATE INDEX IF NOT EXISTS idx_ventas_estado ON ventas(estado);
+
+CREATE INDEX IF NOT EXISTS idx_movimientos_sesion_id ON movimientos_caja(sesion_id);
+CREATE INDEX IF NOT EXISTS idx_movimientos_fecha ON movimientos_caja(fecha);
+CREATE INDEX IF NOT EXISTS idx_movimientos_tipo ON movimientos_caja(tipo);
+
+CREATE INDEX IF NOT EXISTS idx_sesiones_estado ON sesiones_caja(estado);
+CREATE INDEX IF NOT EXISTS idx_sesiones_fecha_apertura ON sesiones_caja(fecha_apertura);
+CREATE INDEX IF NOT EXISTS idx_sesiones_fecha_cierre ON sesiones_caja(fecha_cierre);
+
+CREATE INDEX IF NOT EXISTS idx_notas_credito_venta_id ON notas_credito(venta_id);
+CREATE INDEX IF NOT EXISTS idx_notas_credito_fecha_emision ON notas_credito(fecha_emision);
