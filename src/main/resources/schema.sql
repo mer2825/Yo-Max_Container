@@ -86,8 +86,6 @@ CREATE TABLE IF NOT EXISTS notas_credito (
 );
 
 -- Columna sesion_caja_id en tabla ventas
--- Nota: La restricción de clave foránea se debe crear manualmente después de que la tabla ventas tenga datos
--- o ejecutar: ALTER TABLE ventas ADD CONSTRAINT fk_venta_sesion_caja FOREIGN KEY (sesion_caja_id) REFERENCES sesiones_caja(id);
 ALTER TABLE ventas
   ADD COLUMN IF NOT EXISTS sesion_caja_id BIGINT;
 
@@ -126,3 +124,6 @@ CREATE TABLE IF NOT EXISTS cambios_producto (
   CONSTRAINT fk_cambios_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 );
 
+-- Agregar columna email_cliente a pedidos_web para recibir el correo del cliente en checkout
+ALTER TABLE pedidos_web
+  ADD COLUMN IF NOT EXISTS email_cliente VARCHAR(255);

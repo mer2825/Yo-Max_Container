@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (isNaN(quantity) || quantity < 1) {
                 removeFromCart(productId);
             } else if (quantity > item.stock) {
-                alert(`Lo sentimos, el stock máximo disponible para "${item.name}" es de ${item.stock} unidades.`);
+                showStockAlert(item.name, item.stock);
                 item.quantity = item.stock; // Forzamos la cantidad al límite máximo real
                 updateCartUI();
             } else {
@@ -275,14 +275,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (existingItem.quantity < stock) {
                 existingItem.quantity++;
             } else {
-                alert(`Lo sentimos, no quedan más unidades disponibles de "${name}" (Stock máximo: ${stock}).`);
+                showStockLimitAlert(name, stock);
                 return; // Detiene la ejecución para no recalcular ni abrir el carrito innecesariamente
             }
         } else {
             if (stock > 0) {
                 cart.push({ id: productId, name, price, quantity: 1, stock: stock });
             } else {
-                alert(`El producto "${name}" se encuentra agotado.`);
+                showOutOfStockAlert(name);
                 return;
             }
         }
@@ -399,6 +399,142 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     updateCartUI();
+
+    // --- FUNCIONES DE ALERTAS PROFESIONALES ---
+    const showStockAlert = (productName, maxStock) => {
+        const modalHTML = `
+            <div class="modal fade" id="stockAlertModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg">
+                        <div class="modal-header border-bottom-0 bg-warning text-dark">
+                            <h5 class="modal-title">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>Límite de Stock Alcanzado
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body text-center py-4">
+                            <div class="mb-3">
+                                <i class="bi bi-box-seam" style="font-size: 4rem; color: #ffc107;"></i>
+                            </div>
+                            <h4 class="mb-3">Stock máximo disponible</h4>
+                            <p class="text-muted mb-2">Lo sentimos, el stock máximo disponible para</p>
+                            <h5 class="text-primary fw-bold mb-3">"${productName}"</h5>
+                            <p class="text-muted">es de <span class="fw-bold text-warning">${maxStock} unidades</span>.</p>
+                            <p class="text-muted small">Hemos ajustado la cantidad al límite permitido.</p>
+                        </div>
+                        <div class="modal-footer border-top-0">
+                            <button type="button" class="btn btn-warning w-100" data-bs-dismiss="modal">
+                                <i class="bi bi-check-circle me-2"></i>Entendido
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const existingModal = document.getElementById('stockAlertModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        const modal = new bootstrap.Modal(document.getElementById('stockAlertModal'));
+        modal.show();
+
+        // Limpiar el modal después de que se cierre
+        document.getElementById('stockAlertModal').addEventListener('hidden.bs.modal', function () {
+            this.remove();
+        });
+    };
+
+    const showStockLimitAlert = (productName, maxStock) => {
+        const modalHTML = `
+            <div class="modal fade" id="stockLimitModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg">
+                        <div class="modal-header border-bottom-0 bg-warning text-dark">
+                            <h5 class="modal-title">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>Stock Agotado
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body text-center py-4">
+                            <div class="mb-3">
+                                <i class="bi bi-cart-x" style="font-size: 4rem; color: #ffc107;"></i>
+                            </div>
+                            <h4 class="mb-3">No quedan más unidades disponibles</h4>
+                            <p class="text-muted mb-2">Lo sentimos, no podemos agregar más unidades de</p>
+                            <h5 class="text-primary fw-bold mb-3">"${productName}"</h5>
+                            <p class="text-muted">Stock máximo: <span class="fw-bold text-warning">${maxStock} unidades</span>.</p>
+                        </div>
+                        <div class="modal-footer border-top-0">
+                            <button type="button" class="btn btn-warning w-100" data-bs-dismiss="modal">
+                                <i class="bi bi-check-circle me-2"></i>Entendido
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const existingModal = document.getElementById('stockLimitModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        const modal = new bootstrap.Modal(document.getElementById('stockLimitModal'));
+        modal.show();
+
+        document.getElementById('stockLimitModal').addEventListener('hidden.bs.modal', function () {
+            this.remove();
+        });
+    };
+
+    const showOutOfStockAlert = (productName) => {
+        const modalHTML = `
+            <div class="modal fade" id="outOfStockModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg">
+                        <div class="modal-header border-bottom-0 bg-danger text-white">
+                            <h5 class="modal-title">
+                                <i class="bi bi-x-circle-fill me-2"></i>Producto Agotado
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body text-center py-4">
+                            <div class="mb-3">
+                                <i class="bi bi-box-seam" style="font-size: 4rem; color: #dc3545;"></i>
+                            </div>
+                            <h4 class="mb-3">Producto no disponible</h4>
+                            <p class="text-muted mb-2">El producto</p>
+                            <h5 class="text-primary fw-bold mb-3">"${productName}"</h5>
+                            <p class="text-muted">se encuentra agotado en este momento.</p>
+                            <p class="text-muted small">Por favor, intenta con otro producto.</p>
+                        </div>
+                        <div class="modal-footer border-top-0">
+                            <button type="button" class="btn btn-danger w-100" data-bs-dismiss="modal">
+                                <i class="bi bi-check-circle me-2"></i>Entendido
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const existingModal = document.getElementById('outOfStockModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        const modal = new bootstrap.Modal(document.getElementById('outOfStockModal'));
+        modal.show();
+
+        document.getElementById('outOfStockModal').addEventListener('hidden.bs.modal', function () {
+            this.remove();
+        });
+    };
 
     // --- LÓGICA DEL MODAL DE DETALLES DEL PRODUCTO ---
     const productDetailModal = document.getElementById('productDetailModal');

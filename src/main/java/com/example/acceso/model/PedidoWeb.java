@@ -40,6 +40,11 @@ public class PedidoWeb extends Auditable {
     @Column(nullable = false, length = 20)
     private String telefonoCliente;
 
+    @Email(message = "El correo del cliente debe tener un formato válido")
+    @Size(max = 255, message = "El correo no puede exceder 255 caracteres")
+    @Column(length = 255)
+    private String emailCliente;
+
     @OneToMany(mappedBy = "pedidoWeb", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JsonManagedReference
     private List<DetallePedidoWeb> items;
@@ -142,6 +147,14 @@ public class PedidoWeb extends Auditable {
 
     public void setTelefonoCliente(String telefonoCliente) {
         this.telefonoCliente = telefonoCliente;
+    }
+
+    public String getEmailCliente() {
+        return emailCliente;
+    }
+
+    public void setEmailCliente(String emailCliente) {
+        this.emailCliente = emailCliente;
     }
 
     public List<DetallePedidoWeb> getItems() {

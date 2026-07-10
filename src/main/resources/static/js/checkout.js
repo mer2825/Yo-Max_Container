@@ -25,10 +25,34 @@ document.addEventListener('DOMContentLoaded', function() {
     const nombreClienteInput = document.getElementById('nombreCliente');
     const dniError = document.getElementById('dni-error');
     const dniSpinner = document.getElementById('dniSpinner');
+    const emailClienteInput = document.getElementById('emailCliente');
+    const emailError = document.getElementById('emailError');
 
     let uploadedFile = null;
     let cartData = [];
     let currentStep = 1;
+
+    // --- VALIDACIÓN DE EMAIL EN TIEMPO REAL ---
+    emailClienteInput.addEventListener('input', function() {
+        const email = this.value.trim();
+        const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+        if (email.length > 0 && !emailRegex.test(email)) {
+            emailError.style.display = 'block';
+            emailError.textContent = 'Ingresa un correo electrónico válido.';
+        } else {
+            emailError.style.display = 'none';
+        }
+    });
+
+    emailClienteInput.addEventListener('blur', function() {
+        const email = this.value.trim();
+        const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+        if (email.length > 0 && !emailRegex.test(email)) {
+            emailError.style.display = 'block';
+        } else {
+            emailError.style.display = 'none';
+        }
+    });
 
     // --- LÓGICA DE CONSULTA DE DNI ---
     dniClienteInput.addEventListener('blur', async function() {
@@ -177,7 +201,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const nombreCliente = document.getElementById('nombreCliente').value.trim();
         const dniCliente = document.getElementById('dniCliente').value.trim();
         const telefonoCliente = document.getElementById('telefonoCliente').value.trim();
+        const emailCliente = document.getElementById('emailCliente').value.trim();
         const telefonoError = document.getElementById('telefonoError');
+        const emailError = document.getElementById('emailError');
         
         if (!nombreCliente) {
             alert('Por favor, ingresa un DNI válido para autocompletar el nombre.');
@@ -189,6 +215,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (!telefonoCliente || !/^9[0-9]{8}$/.test(telefonoCliente)) {
             telefonoError.style.display = 'block';
+            return false;
+        }
+        if (!emailCliente || !/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(emailCliente)) {
+            emailError.style.display = 'block';
             return false;
         }
         return true;
@@ -268,13 +298,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.target.classList.contains('cart-qty-input')) {
             const index = parseInt(e.target.dataset.index);
             const stock = parseInt(e.target.dataset.stock);
+            const item = cartData[index];
+            const itemName = item.nombre || item.name;
             let value = parseInt(e.target.value);
 
             if (isNaN(value) || value < 1) {
                 value = 1;
             } else if (value > stock) {
                 value = stock;
-                alert(`Cantidad máxima: ${stock} unidades disponibles.`);
+                showCheckoutStockAlert(itemName, stock);
             }
 
             e.target.value = value;
@@ -287,13 +319,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function changeCartQuantity(index, delta) {
         const item = cartData[index];
         const stock = item.stock || 999;
+        const itemName = item.nombre || item.name;
         const nuevaCantidad = item.cantidad + delta;
 
         if (nuevaCantidad <= 0) {
             // Eliminar item del carrito
             cartData.splice(index, 1);
         } else if (nuevaCantidad > stock) {
-            alert(`Cantidad excede el stock disponible (${stock}).`);
+            showCheckoutStockAlert(itemName, stock);
             return;
         } else {
             item.cantidad = nuevaCantidad;
@@ -329,13 +362,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const nombreCliente = document.getElementById('nombreCliente').value.trim();
             const dniCliente = document.getElementById('dniCliente').value.trim();
             const telefonoCliente = document.getElementById('telefonoCliente').value.trim();
-            const notaCliente = document.getElementById('notaCliente').value.trim();
+            const emailCliente = document.getElementById('emailCliente').value.trim();
 
             const pedidoData = {
                 cliente: clienteId ? { id: parseInt(clienteId) } : null,
                 nombreCliente: nombreCliente,
                 dniCliente: dniCliente,
                 telefonoCliente: telefonoCliente,
+                emailCliente: emailCliente,
                 metodoPago: 'Yape',
                 voucherImagen: voucherPath,
                 items: cartData.map(item => ({
@@ -451,3 +485,50 @@ document.addEventListener('DOMContentLoaded', function() {
     updateProgressBar(2);
     checkYapeConfig();
 });
+
+// --- FUNCIONES DE ALERTAS PROFESIONALES PARA CHECKOUT ---
+const showCheckoutStockAlert = (productName, maxStock) => {
+    const modalHTML = `
+        <div class="modal fade" id="checkoutStockAlertModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header border-bottom-0 bg-warning text-dark">
+                        <h5 class="modal-title">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>Límite de Stock Alcanzado
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body text-center py-4">
+                        <div class="mb-3">
+                            <i class="bi bi-box-seam" style="font-size: 4rem; color: #ffc107;"></i>
+                        </div>
+                        <h4 class="mb-3">Stock máximo disponible</h4>
+                        <p class="text-muted mb-2">Lo sentimos, el stock máximo disponible para</p>
+                        <h5 class="text-primary fw-bold mb-3">"${productName}"</h5>
+                        <p class="text-muted">es de <span class="fw-bold text-warning">${maxStock} unidades</span>.</p>
+                        <p class="text-muted small">Hemos ajustado la cantidad al límite permitido.</p>
+                    </div>
+                    <div class="modal-footer border-top-0">
+                        <button type="button" class="btn btn-warning w-100" data-bs-dismiss="modal">
+                            <i class="bi bi-check-circle me-2"></i>Entendido
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const existingModal = document.getElementById('checkoutStockAlertModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    const modal = new bootstrap.Modal(document.getElementById('checkoutStockAlertModal'));
+    modal.show();
+
+    // Limpiar el modal después de que se cierre
+    document.getElementById('checkoutStockAlertModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+    });
+};

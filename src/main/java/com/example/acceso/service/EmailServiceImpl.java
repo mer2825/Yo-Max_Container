@@ -76,6 +76,64 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    public void enviarEmailConfirmacionConPdf(String emailDestino, String numeroPedido, String nombreCliente, ByteArrayInputStream pdfBytes) {
+        try {
+            MimeMessage message = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            Empresa empresa = empresaService.getEmpresaInfo();
+            String nombreEmpresa = (empresa != null && empresa.getNombre() != null) ? empresa.getNombre() : "Empresa";
+
+            helper.setTo(emailDestino);
+            helper.setFrom(fromEmail);
+            helper.setSubject("✅ ¡Tu pedido #" + numeroPedido + " ha sido aprobado - " + nombreEmpresa);
+
+            String cuerpoHtml = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"
+                + "body { font-family: Arial, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; }"
+                + ".container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }"
+                + ".header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; text-align: center; }"
+                + ".header h1 { margin: 0; font-size: 24px; }"
+                + ".content { padding: 30px; }"
+                + ".content p { color: #495057; line-height: 1.6; }"
+                + ".pedido-number { font-size: 1.5rem; font-weight: bold; color: #28a745; text-align: center; margin: 20px 0; }"
+                + ".footer { text-align: center; padding: 20px; color: #6c757d; font-size: 12px; border-top: 1px solid #eee; }"
+                + "</style></head><body>"
+                + "<div class='container'>"
+                + "<div class='header'><h1>✅ ¡Pedido Aprobado!</h1></div>"
+                + "<div class='content'>"
+                + "<p>Hola <strong>" + nombreCliente + "</strong>,</p>"
+                + "<p>¡Tu pedido ha sido aprobado exitosamente!</p>"
+                + "<div class='pedido-number'>Pedido #" + numeroPedido + "</div>"
+                + "<p>Adjuntamos la especificación de compra con los detalles de tu pedido.</p>"
+                + "<p>Si tienes alguna pregunta, no dudes en contactarnos.</p>"
+                + "<p>¡Gracias por tu compra!</p>"
+                + "</div>"
+                + "<div class='footer'>"
+                + "<p>© " + java.time.LocalDate.now().getYear() + " " + nombreEmpresa + "</p>"
+                + "</div></div></body></html>";
+
+            helper.setText(cuerpoHtml, true);
+
+            // Adjuntar el PDF de especificación
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = pdfBytes.read(buffer)) != -1) {
+                baos.write(buffer, 0, bytesRead);
+            }
+            byte[] pdfData = baos.toByteArray();
+
+            helper.addAttachment("especificacion-compra-" + numeroPedido + ".pdf",
+                    new org.springframework.core.io.ByteArrayResource(pdfData));
+
+            javaMailSender.send(message);
+            logger.info("Email de confirmación con PDF enviado a {} para pedido {}", emailDestino, numeroPedido);
+        } catch (Exception e) {
+            logger.error("Error al enviar email de confirmación a {}: {}", emailDestino, e.getMessage());
+        }
+    }
+
+    @Override
     public void enviarReporteCierreConAdjunto(String destinatario,
                                                SesionCaja sesion,
                                                Map<String, Object> detalle,

@@ -32,6 +32,8 @@ public class PedidoWebServiceImpl implements PedidoWebService {
     private final VentaService ventaService;
     private final CloudinaryService cloudinaryService;
     private final CajaService cajaService;
+    private final EmailService emailService;
+    private final PdfService pdfService;
 
     public PedidoWebServiceImpl(PedidoWebRepository pedidoWebRepository,
                                 UsuarioRepository usuarioRepository,
@@ -40,7 +42,9 @@ public class PedidoWebServiceImpl implements PedidoWebService {
                                 com.example.acceso.repository.VentaRepository ventaRepository,
                                 VentaService ventaService,
                                 CloudinaryService cloudinaryService,
-                                CajaService cajaService) {
+                                CajaService cajaService,
+                                EmailService emailService,
+                                PdfService pdfService) {
         this.pedidoWebRepository = pedidoWebRepository;
         this.usuarioRepository = usuarioRepository;
         this.productoRepository = productoRepository;
@@ -49,6 +53,8 @@ public class PedidoWebServiceImpl implements PedidoWebService {
         this.ventaService = ventaService;
         this.cloudinaryService = cloudinaryService;
         this.cajaService = cajaService;
+        this.emailService = emailService;
+        this.pdfService = pdfService;
     }
 
     private String generarPdfKey() {
@@ -245,7 +251,25 @@ public class PedidoWebServiceImpl implements PedidoWebService {
         pedido.setVenta(ventaProcesada);
         pedido.setEstado(EstadoPedidoWeb.PROCESADO);
 
-        return pedidoWebRepository.save(pedido);
+        PedidoWeb pedidoFinal = pedidoWebRepository.save(pedido);
+
+        // Enviar email de confirmación al cliente con el PDF adjunto
+        if (pedidoFinal.getEmailCliente() != null && !pedidoFinal.getEmailCliente().isBlank()) {
+            try {
+                byte[] pdfBytes = pdfService.generarEspecificacionCompra(pedidoFinal).readAllBytes();
+                java.io.ByteArrayInputStream pdfStream = new java.io.ByteArrayInputStream(pdfBytes);
+                emailService.enviarEmailConfirmacionConPdf(
+                    pedidoFinal.getEmailCliente(),
+                    pedidoFinal.getNumeroPedido(),
+                    pedidoFinal.getNombreCliente(),
+                    pdfStream
+                );
+            } catch (Exception e) {
+                System.err.println("Error al enviar email de confirmación a " + pedidoFinal.getEmailCliente() + ": " + e.getMessage());
+            }
+        }
+
+        return pedidoFinal;
     }
 
     private Venta crearVentaDesdePedido(PedidoWeb pedido) {
@@ -350,10 +374,14 @@ public class PedidoWebServiceImpl implements PedidoWebService {
         pedido.setVerificadoPor(verificador);
         pedido.setMotivoRechazo(motivoRechazo);
         
-        // Enviar email de notificación al cliente (COMENTADO - Requiere configuración de email)
-        // if (pedido.getCliente() != null && pedido.getCliente().getCorreo() != null) {
-        //     emailService.enviarEmailRechazo(pedido.getCliente().getCorreo(), pedido.getNumeroPedido(), motivoRechazo);
-        // }
+        // Enviar email de notificación de rechazo al cliente
+        if (pedido.getEmailCliente() != null && !pedido.getEmailCliente().isBlank()) {
+            try {
+                emailService.enviarEmailRechazo(pedido.getEmailCliente(), pedido.getNumeroPedido(), motivoRechazo != null ? motivoRechazo : "No se especificó motivo");
+            } catch (Exception e) {
+                System.err.println("Error al enviar email de rechazo a " + pedido.getEmailCliente() + ": " + e.getMessage());
+            }
+        }
         
         return pedidoWebRepository.save(pedido);
     }

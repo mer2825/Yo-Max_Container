@@ -464,9 +464,15 @@
                 </div>
 
                 <div class="mb-3">
-                    <label for="notaCliente" class="form-label">Nota o Dirección de Entrega (opcional)</label>
-                    <textarea class="form-control" id="notaCliente" rows="3"
-                              placeholder="Indica cualquier nota adicional o dirección de entrega"></textarea>
+                    <label for="emailCliente" class="form-label">Correo Electrónico <span class="text-danger">*</span></label>
+                    <input type="email" class="form-control" id="emailCliente" required
+                           placeholder="tu@correo.com - Para enviarte el comprobante de pago"
+                           pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"
+                           title="Ingresa un correo electrónico válido">
+                    <div id="emailError" class="text-danger mt-1" style="display: none; font-size: 0.875em;">
+                        Ingresa un correo electrónico válido.
+                    </div>
+                    <small class="text-muted">Te enviaremos el comprobante de la venta a este correo.</small>
                 </div>
 
                 <button type="button" class="btn btn-confirm" id="continueToPaymentBtn">

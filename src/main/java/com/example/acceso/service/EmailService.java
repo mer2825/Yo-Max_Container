@@ -37,4 +37,13 @@ public interface EmailService {
                                         Map<String, Object> detalle,
                                         List<EventoAuditoriaDTO> logAuditoria,
                                         ByteArrayInputStream pdfBytes);
+
+    /**
+     * Envía un email de confirmación de venta al cliente con el PDF de la especificación adjunto
+     * @param emailDestino Email del cliente
+     * @param numeroPedido Número del pedido aprobado
+     * @param nombreCliente Nombre del cliente
+     * @param pdfBytes PDF de la especificación de compra
+     */
+    void enviarEmailConfirmacionConPdf(String emailDestino, String numeroPedido, String nombreCliente, ByteArrayInputStream pdfBytes);
 }

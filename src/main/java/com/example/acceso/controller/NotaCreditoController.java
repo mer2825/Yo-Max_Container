@@ -352,11 +352,24 @@ public class NotaCreditoController {
                     .orElseThrow(() -> new RuntimeException("Venta no encontrada"));
             
             // Revalidar elegibilidad
-            if ("nota_venta".equalsIgnoreCase(venta.getTipoComprobante())
-                || "rechazado".equalsIgnoreCase(venta.getEstadoSunat())
-                || "TOTAL".equalsIgnoreCase(venta.getEstadoNotaCredito())) {
-                logger.warn("Intento de NC no permitida para venta ID: {}", id);
-                return "redirect:/ventas/listar?error=nc-no-permitida";
+            String estadoSunat = venta.getEstadoSunat();
+            if ("nota_venta".equalsIgnoreCase(venta.getTipoComprobante())) {
+                logger.warn("Intento de NC sobre nota de venta ID: {}", id);
+                return "redirect:/ventas/listar?error=nc-no-aplica-nota-venta";
+            }
+            if ("rechazado".equalsIgnoreCase(estadoSunat)) {
+                logger.warn("Intento de NC sobre comprobante rechazado ID: {}", id);
+                return "redirect:/ventas/listar?error=nc-no-aplica-rechazado";
+            }
+            if ("TOTAL".equalsIgnoreCase(venta.getEstadoNotaCredito())) {
+                logger.warn("Intento de NC total sobre venta que ya tiene NC ID: {}", id);
+                return "redirect:/ventas/listar?error=nc-ya-emitida-total";
+            }
+            // ⚠️ BLOQUEAR NC si el comprobante original está pendiente - SUNAT no permite
+            // emitir notas de crédito referenciando un documento que aún no ha sido ACEPTADO
+            if ("pendiente".equalsIgnoreCase(estadoSunat)) {
+                logger.warn("Intento de NC sobre comprobante PENDIENTE ID: {}. El comprobante debe estar ACEPTADO por SUNAT primero.", id);
+                return "redirect:/ventas/listar?error=nc-pendiente-sunat";
             }
             
             // Obtener empresa

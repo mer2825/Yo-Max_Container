@@ -691,8 +691,8 @@ public class ApisunatService {
 
     public Integer getLastDocument(String tipoDocumento, String serie) {
         if (useMiApiProvider()) {
-            logger.info("MIAPI getLastDocument -> se omite la consulta remota porque el correlativo se maneja localmente.");
-            return null;
+            logger.info("MIAPI getLastDocument -> consultando último documento a MiAPI");
+            return getLastDocumentMiApi(tipoDocumento, serie);
         }
 
         if (apisunatPersonaId == null || apisunatPersonaId.isBlank() || apisunatPersonaToken == null || apisunatPersonaToken.isBlank()) {
@@ -736,6 +736,60 @@ public class ApisunatService {
             return null;
         } catch (Exception ex) {
             logger.error("APISUNAT getLastDocument exception", ex);
+            return null;
+        }
+    }
+
+    private Integer getLastDocumentMiApi(String tipoDocumento, String serie) {
+        if (miapiToken == null || miapiToken.isBlank()) {
+            logger.warn("MIAPI getLastDocument -> token no configurado, se usará correlativo local");
+            return null;
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(miapiToken);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+
+        Map<String, Object> requestBody = new LinkedHashMap<>();
+        requestBody.put("claveSecreta", miapiSecretKey != null ? miapiSecretKey : "");
+        requestBody.put("tipoDocumento", tipoDocumento);
+        requestBody.put("serie", serie);
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+        try {
+            String url = buildMiApiUrl("/apifact/lastDocument");
+            logger.info("MIAPI getLastDocument -> URL={} tipoDocumento={} serie={}", url, tipoDocumento, serie);
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            Map<?, ?> body = response.getBody();
+
+            if (body != null && response.getStatusCode().is2xxSuccessful()) {
+                Map<?, ?> respuesta = body instanceof Map ? (Map<?, ?>) body.get("respuesta") : null;
+                
+                if (respuesta != null && Boolean.TRUE.equals(respuesta.get("success"))) {
+                    String lastNumber = extractMiApiString(respuesta, "ultimoCorrelativo", "lastNumber", "correlativo", "suggestedNumber");
+                    
+                    if (lastNumber != null && !lastNumber.isBlank()) {
+                        try {
+                            int lastNum = Integer.parseInt(lastNumber);
+                            logger.info("MIAPI getLastDocument -> lastNumber={} serie={}", lastNumber, serie);
+                            return lastNum;
+                        } catch (NumberFormatException e) {
+                            logger.warn("MIAPI getLastDocument -> no se pudo parsear lastNumber={}", lastNumber);
+                        }
+                    }
+                }
+            }
+            
+            logger.warn("MIAPI getLastDocument -> no se pudo obtener el último documento de MiAPI, se usará correlativo local");
+            return null;
+        } catch (HttpClientErrorException | HttpServerErrorException ex) {
+            logger.error("MIAPI getLastDocument failed status={} body={}", ex.getStatusCode(), ex.getResponseBodyAsString());
+            return null;
+        } catch (Exception ex) {
+            logger.error("MIAPI getLastDocument exception", ex);
             return null;
         }
     }
@@ -1114,9 +1168,22 @@ public class ApisunatService {
             }
         }
         
+        // Determinar datos del comprobante original para campos adicionales
+        String fechaCompModificado = "";
+        BigDecimal montoModificado = BigDecimal.ZERO;
+        if (ventaOriginal != null) {
+            fechaCompModificado = ventaOriginal.getFechaVenta() != null 
+                ? ventaOriginal.getFechaVenta().toLocalDate().toString() 
+                : "";
+            montoModificado = ventaOriginal.getTotal() != null 
+                ? ventaOriginal.getTotal() 
+                : BigDecimal.ZERO;
+        }
+
         // Construir comprobante según documentación MiAPI
         Map<String, Object> comprobante = new LinkedHashMap<>();
         comprobante.put("tipoDoc", "07");
+        comprobante.put("tipoComprobante", "NC");
         comprobante.put("serie", serie);
         comprobante.put("correlativo", String.valueOf(correlativo));
         comprobante.put("codmotivo", tipoNota);
@@ -1124,10 +1191,16 @@ public class ApisunatService {
         comprobante.put("serieRef", serieRef);
         comprobante.put("correlativoRef", correlativoRef);
         comprobante.put("tipoCompRef", tipoCompOriginal);
+        comprobante.put("numeroComprobanteModificado", ventaOriginal != null && ventaOriginal.getSerieCorrelativo() != null 
+            ? ventaOriginal.getSerieCorrelativo() : "");
+        comprobante.put("fechaComprobanteModificado", fechaCompModificado);
+        comprobante.put("montoModificado", montoModificado.setScale(2, RoundingMode.HALF_UP));
         comprobante.put("fechaEmision", LocalDate.now().toString());
+        comprobante.put("fechaVencimiento", LocalDate.now().plusDays(7).toString());
         comprobante.put("horaEmision", java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
         comprobante.put("tipoMoneda", "PEN");
         comprobante.put("total", totalGeneral.setScale(2, RoundingMode.HALF_UP));
+        comprobante.put("subTotal", totalOperGravadas.setScale(2, RoundingMode.HALF_UP));
         comprobante.put("mtoIGV", totalIgv.setScale(2, RoundingMode.HALF_UP));
         comprobante.put("mtoOperGravadas", totalOperGravadas.setScale(2, RoundingMode.HALF_UP));
         comprobante.put("mtoOperExoneradas", BigDecimal.ZERO);
