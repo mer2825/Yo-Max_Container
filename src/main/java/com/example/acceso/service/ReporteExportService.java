@@ -2,7 +2,9 @@ package com.example.acceso.service;
 
 import com.example.acceso.dto.ReporteCajaDTO;
 import com.example.acceso.dto.ReporteComprobantesDTO;
+import com.example.acceso.dto.ReporteEgresosDTO;
 import com.example.acceso.dto.ReporteInventarioDTO;
+import com.example.acceso.dto.ReporteIngresosDTO;
 import com.example.acceso.dto.ReporteVentasDTO;
 import com.example.acceso.model.Empresa;
 import com.example.acceso.model.Producto;
@@ -259,6 +261,124 @@ public class ReporteExportService {
             return new ByteArrayInputStream(out.toByteArray());
         } catch (Exception e) {
             throw new RuntimeException("Error al generar Excel de caja", e);
+        }
+    }
+
+    public ByteArrayInputStream exportarIngresosPdf(LocalDate desde, LocalDate hasta) {
+        ReporteIngresosDTO r = reporteService.generarReporteIngresos(desde, hasta);
+        return generarPdf("Reporte de Ingresos", desde, hasta, document -> {
+            addKpiRowPdf(document, new String[][]{
+                {"Total de Registros", String.valueOf(r.getTotalRegistros())},
+                {"Total Recaudado", "S/ " + format(r.getTotalRecaudado())},
+                {"Total Comisiones Online", "S/ " + format(r.getTotalComisionesOnline())}
+            });
+            if (r.getIngresos() != null && !r.getIngresos().isEmpty()) {
+                addTablePdf(document, new String[]{"Cliente", "Comprobante", "Fecha", "Concepto", "Método", "Total", "Cajero"},
+                    r.getIngresos().stream()
+                        .map(i -> new String[]{
+                            (String) i.getOrDefault("cliente", "-"),
+                            (String) i.getOrDefault("numeroComprobante", "-"),
+                            i.get("fecha") != null ? ((LocalDateTime) i.get("fecha")).format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "-",
+                            (String) i.getOrDefault("concepto", "-"),
+                            (String) i.getOrDefault("metodoPago", "-"),
+                            "S/ " + format((BigDecimal) i.get("total")),
+                            (String) i.getOrDefault("cajero", "-")
+                        }).toList());
+            }
+        });
+    }
+
+    public ByteArrayInputStream exportarIngresosExcel(LocalDate desde, LocalDate hasta) {
+        ReporteIngresosDTO r = reporteService.generarReporteIngresos(desde, hasta);
+        try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet kpiSheet = wb.createSheet("KPIs");
+            fillKpiSheet(wb, kpiSheet, new String[][]{
+                {"Total de Registros", String.valueOf(r.getTotalRegistros())},
+                {"Total Recaudado", "S/ " + format(r.getTotalRecaudado())},
+                {"Total Comisiones Online", "S/ " + format(r.getTotalComisionesOnline())}
+            });
+            if (r.getIngresos() != null && !r.getIngresos().isEmpty()) {
+                Sheet ingresosSheet = wb.createSheet("Detalle de Ingresos");
+                fillDataSheet(wb, ingresosSheet, new String[]{"Cliente", "Comprobante", "Fecha", "Período", "Concepto", "Método Pago", "Subtotal", "Total", "Cajero"},
+                    r.getIngresos().stream()
+                        .map(i -> new Object[]{
+                            i.getOrDefault("cliente", "-"),
+                            i.getOrDefault("numeroComprobante", "-"),
+                            i.get("fecha") != null ? ((LocalDateTime) i.get("fecha")).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "-",
+                            i.getOrDefault("periodo", "-"),
+                            i.getOrDefault("concepto", "-"),
+                            i.getOrDefault("metodoPago", "-"),
+                            i.get("subtotal"),
+                            i.get("total"),
+                            i.getOrDefault("cajero", "-")
+                        }).toList());
+            }
+            wb.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (Exception e) {
+            throw new RuntimeException("Error al generar Excel de ingresos", e);
+        }
+    }
+
+    public ByteArrayInputStream exportarEgresosPdf(LocalDate desde, LocalDate hasta, String tipoEgreso) {
+        ReporteEgresosDTO r = reporteService.generarReporteEgresos(desde, hasta, tipoEgreso);
+        return generarPdf("Reporte de Egresos", desde, hasta, document -> {
+            addKpiRowPdf(document, new String[][]{
+                {"Total de Registros", String.valueOf(r.getTotalRegistros())},
+                {"Monto Total Egresado", "S/ " + format(r.getMontoTotalEgresado())},
+                {"Cantidad de Tipos", String.valueOf(r.getCantidadTiposEgreso())}
+            });
+            if (r.getEgresosPorTipo() != null && !r.getEgresosPorTipo().isEmpty()) {
+                addTablePdf(document, new String[]{"Tipo de Egreso", "Monto Total"},
+                    r.getEgresosPorTipo().entrySet().stream()
+                        .map(e -> new String[]{e.getKey(), "S/ " + format(e.getValue())}).toList());
+            }
+            if (r.getEgresos() != null && !r.getEgresos().isEmpty()) {
+                addTablePdf(document, new String[]{"Fecha", "Tipo", "Comentario", "Registrado Por", "Monto"},
+                    r.getEgresos().stream()
+                        .map(e -> new String[]{
+                            e.get("fecha") != null ? ((LocalDateTime) e.get("fecha")).format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "-",
+                            (String) e.getOrDefault("tipoEgreso", "-"),
+                            (String) e.getOrDefault("comentario", "-"),
+                            (String) e.getOrDefault("registradoPor", "-"),
+                            "S/ " + format((BigDecimal) e.get("monto"))
+                        }).toList());
+            }
+        });
+    }
+
+    public ByteArrayInputStream exportarEgresosExcel(LocalDate desde, LocalDate hasta, String tipoEgreso) {
+        ReporteEgresosDTO r = reporteService.generarReporteEgresos(desde, hasta, tipoEgreso);
+        try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet kpiSheet = wb.createSheet("KPIs");
+            fillKpiSheet(wb, kpiSheet, new String[][]{
+                {"Total de Registros", String.valueOf(r.getTotalRegistros())},
+                {"Monto Total Egresado", "S/ " + format(r.getMontoTotalEgresado())},
+                {"Cantidad de Tipos", String.valueOf(r.getCantidadTiposEgreso())}
+            });
+            if (r.getEgresosPorTipo() != null && !r.getEgresosPorTipo().isEmpty()) {
+                Sheet tiposSheet = wb.createSheet("Por Tipo");
+                fillDataSheet(wb, tiposSheet, new String[]{"Tipo de Egreso", "Monto Total"},
+                    r.getEgresosPorTipo().entrySet().stream()
+                        .map(e -> new Object[]{e.getKey(), e.getValue()}).toList());
+            }
+            if (r.getEgresos() != null && !r.getEgresos().isEmpty()) {
+                Sheet egresosSheet = wb.createSheet("Detalle");
+                fillDataSheet(wb, egresosSheet, new String[]{"Fecha", "Tipo", "Comentario", "Registrado Por", "N° Operación", "Monto"},
+                    r.getEgresos().stream()
+                        .map(e -> new Object[]{
+                            e.get("fecha") != null ? ((LocalDateTime) e.get("fecha")).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "-",
+                            e.getOrDefault("tipoEgreso", "-"),
+                            e.getOrDefault("comentario", "-"),
+                            e.getOrDefault("registradoPor", "-"),
+                            e.getOrDefault("numeroOperacion", "-"),
+                            e.get("monto")
+                        }).toList());
+            }
+            wb.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (Exception e) {
+            throw new RuntimeException("Error al generar Excel de egresos", e);
         }
     }
 

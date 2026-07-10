@@ -30,13 +30,48 @@ public class ReporteController {
 
     @GetMapping
     public String index(Model model) {
-        model.addAttribute("tipoActivo", "ventas");
+        model.addAttribute("tipoActivo", "ingresos");
         LocalDate hoy = LocalDate.now();
+        LocalDate primerDia = hoy.withDayOfMonth(1);
         model.addAttribute("reporte",
-            reporteService.generarReporteVentas(
-                hoy.withDayOfMonth(1), hoy));
-        model.addAttribute("desde", hoy.withDayOfMonth(1));
+            reporteService.generarReporteIngresos(primerDia, hoy));
+        model.addAttribute("desde", primerDia);
         model.addAttribute("hasta", hoy);
+        return "reportes/index";
+    }
+
+    @GetMapping("/ingresos")
+    public String reporteIngresos(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            Model model) {
+        if (desde == null) desde = LocalDate.now().withDayOfMonth(1);
+        if (hasta == null) hasta = LocalDate.now();
+        model.addAttribute("reporte",
+            reporteService.generarReporteIngresos(desde, hasta));
+        model.addAttribute("desde", desde);
+        model.addAttribute("hasta", hasta);
+        model.addAttribute("tipoActivo", "ingresos");
+        return "reportes/index";
+    }
+
+    @GetMapping("/egresos")
+    public String reporteEgresos(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) String tipoEgreso,
+            Model model) {
+        if (desde == null) desde = LocalDate.now().withDayOfMonth(1);
+        if (hasta == null) hasta = LocalDate.now();
+        model.addAttribute("reporte",
+            reporteService.generarReporteEgresos(desde, hasta, tipoEgreso));
+        model.addAttribute("desde", desde);
+        model.addAttribute("hasta", hasta);
+        model.addAttribute("tipoActivo", "egresos");
         return "reportes/index";
     }
 
@@ -101,6 +136,31 @@ public class ReporteController {
 
     // ── PDF ──────────────────────────────────────────────────────
 
+    @GetMapping("/ingresos/pdf")
+    public ResponseEntity<InputStreamResource> exportarIngresosPdf(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        if (desde == null) desde = LocalDate.now().withDayOfMonth(1);
+        if (hasta == null) hasta = LocalDate.now();
+        return pdfResponse(reporteExportService.exportarIngresosPdf(desde, hasta),
+            "reporte-ingresos.pdf");
+    }
+
+    @GetMapping("/egresos/pdf")
+    public ResponseEntity<InputStreamResource> exportarEgresosPdf(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) String tipoEgreso) {
+        if (desde == null) desde = LocalDate.now().withDayOfMonth(1);
+        if (hasta == null) hasta = LocalDate.now();
+        return pdfResponse(reporteExportService.exportarEgresosPdf(desde, hasta, tipoEgreso),
+            "reporte-egresos.pdf");
+    }
+
     @GetMapping("/ventas/pdf")
     public ResponseEntity<InputStreamResource> exportarVentasPdf(
             @RequestParam(required = false)
@@ -144,6 +204,31 @@ public class ReporteController {
     }
 
     // ── EXCEL ────────────────────────────────────────────────────
+
+    @GetMapping("/ingresos/excel")
+    public ResponseEntity<InputStreamResource> exportarIngresosExcel(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        if (desde == null) desde = LocalDate.now().withDayOfMonth(1);
+        if (hasta == null) hasta = LocalDate.now();
+        return excelResponse(reporteExportService.exportarIngresosExcel(desde, hasta),
+            "reporte-ingresos.xlsx");
+    }
+
+    @GetMapping("/egresos/excel")
+    public ResponseEntity<InputStreamResource> exportarEgresosExcel(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) String tipoEgreso) {
+        if (desde == null) desde = LocalDate.now().withDayOfMonth(1);
+        if (hasta == null) hasta = LocalDate.now();
+        return excelResponse(reporteExportService.exportarEgresosExcel(desde, hasta, tipoEgreso),
+            "reporte-egresos.xlsx");
+    }
 
     @GetMapping("/ventas/excel")
     public ResponseEntity<InputStreamResource> exportarVentasExcel(

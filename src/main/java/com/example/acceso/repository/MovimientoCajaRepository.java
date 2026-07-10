@@ -23,4 +23,18 @@ public interface MovimientoCajaRepository extends JpaRepository<MovimientoCaja, 
 
     @Query("SELECT mc FROM MovimientoCaja mc WHERE mc.sesion.id = :sesionId AND mc.fecha >= :inicio AND mc.fecha <= :fin ORDER BY mc.fecha DESC")
     List<MovimientoCaja> findBySesionIdAndFechaBetween(@Param("sesionId") Long sesionId, @Param("inicio") LocalDateTime inicio, @Param("fin") LocalDateTime fin);
+
+    @Query("SELECT mc FROM MovimientoCaja mc WHERE mc.tipo = 'RETIRO' AND mc.fecha >= :inicio AND mc.fecha <= :fin ORDER BY mc.fecha DESC")
+    List<MovimientoCaja> findRetirosByFechaBetween(@Param("inicio") LocalDateTime inicio, @Param("fin") LocalDateTime fin);
+
+    @Query("SELECT DISTINCT mc.categoria FROM MovimientoCaja mc WHERE mc.tipo = 'RETIRO' ORDER BY mc.categoria")
+    List<String> findDistinctCategoriasByTipoRetiro();
+
+    @Query("SELECT SUM(mc.monto) FROM MovimientoCaja mc WHERE mc.tipo = 'RETIRO' AND mc.fecha >= :inicio AND mc.fecha <= :fin")
+    BigDecimal sumRetirosByFechaBetween(@Param("inicio") LocalDateTime inicio, @Param("fin") LocalDateTime fin);
+
+    @Query("SELECT mc.categoria, SUM(mc.monto) FROM MovimientoCaja mc WHERE mc.tipo = 'RETIRO' AND mc.fecha >= :inicio AND mc.fecha <= :fin GROUP BY mc.categoria ORDER BY SUM(mc.monto) DESC")
+    List<Object[]> sumRetirosByCategoriaAndFechaBetween(@Param("inicio") LocalDateTime inicio, @Param("fin") LocalDateTime fin);
 }
+
+

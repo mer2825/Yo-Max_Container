@@ -72,12 +72,6 @@
                         </ul>
                     </li>
 
-                    <!-- Inventario -->
-                    <li class="nav-item" th:if="${session.usuarioLogueado.perfil.opciones.?[ruta == '/inventario/listar'].size() > 0}">
-                        <a class="nav-link px-3" th:classappend="${activeUri.contains('/inventario') ? 'active' : ''}" th:href="@{/inventario/listar}">
-                            <i class="bi bi-box2 me-1"></i> <span class="d-none d-sm-inline">Inventario</span>
-                        </a>
-                    </li>
 
                     <!-- Monitor de Caja -->
                     <li class="nav-item">

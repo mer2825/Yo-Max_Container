@@ -2,13 +2,17 @@ package com.example.acceso.service;
 
 import com.example.acceso.dto.ReporteCajaDTO;
 import com.example.acceso.dto.ReporteComprobantesDTO;
+import com.example.acceso.dto.ReporteEgresosDTO;
 import com.example.acceso.dto.ReporteInventarioDTO;
+import com.example.acceso.dto.ReporteIngresosDTO;
 import com.example.acceso.dto.ReporteVentasDTO;
 import com.example.acceso.model.DetalleVenta;
+import com.example.acceso.model.MovimientoCaja;
 import com.example.acceso.model.NotasCredito;
 import com.example.acceso.model.Producto;
 import com.example.acceso.model.SesionCaja;
 import com.example.acceso.model.Venta;
+import com.example.acceso.repository.MovimientoCajaRepository;
 import com.example.acceso.repository.NotasCreditoRepository;
 import com.example.acceso.repository.ProductoRepository;
 import com.example.acceso.repository.SesionCajaRepository;
@@ -32,18 +36,69 @@ public class ReporteService {
     private final NotasCreditoRepository notaCreditoRepository;
     private final ProductoRepository productoRepository;
     private final SesionCajaRepository sesionCajaRepository;
+    private final MovimientoCajaRepository movimientoCajaRepository;
 
     public ReporteService(VentaRepository ventaRepository,
                           NotasCreditoRepository notaCreditoRepository,
                           ProductoRepository productoRepository,
-                          SesionCajaRepository sesionCajaRepository) {
+                          SesionCajaRepository sesionCajaRepository,
+                          MovimientoCajaRepository movimientoCajaRepository) {
         this.ventaRepository = ventaRepository;
         this.notaCreditoRepository = notaCreditoRepository;
         this.productoRepository = productoRepository;
         this.sesionCajaRepository = sesionCajaRepository;
+        this.movimientoCajaRepository = movimientoCajaRepository;
     }
 
     // ── REPORTE DE VENTAS ──────────────────────────────────────
+
+    public ReporteIngresosDTO generarReporteIngresos(
+            LocalDate desde, LocalDate hasta) {
+
+        LocalDateTime inicio = desde.atStartOfDay();
+        LocalDateTime fin    = hasta.atTime(23, 59, 59);
+
+        List<Venta> ventas = ventaRepository
+            .findByFechaVentaBetween(inicio, fin);
+        
+        // Filtrar solo ventas activas
+        ventas = ventas.stream()
+            .filter(v -> v.getEstado() != 2)
+            .collect(Collectors.toList());
+
+        // KPIs
+        int totalRegistros = ventas.size();
+        
+        BigDecimal totalRecaudado = ventas.stream()
+            .map(Venta::getTotal)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalComisionesOnline = ventas.stream()
+            .filter(v -> "web".equalsIgnoreCase(v.getOrigen()))
+            .map(Venta::getTotal)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Mapear ingresos
+        List<Map<String, Object>> ingresos = ventas.stream()
+            .map(v -> {
+                Map<String, Object> ingreso = new java.util.HashMap<>();
+                ingreso.put("cliente", v.getCliente() != null ? v.getCliente().getNombre() : "Sin cliente");
+                ingreso.put("numeroComprobante", v.getNumeroVenta());
+                ingreso.put("fecha", v.getFechaVenta());
+                ingreso.put("periodo", v.getNumeroVenta());
+                ingreso.put("concepto", "pos".equalsIgnoreCase(v.getOrigen()) ? "Venta en Local" : "Venta Web");
+                ingreso.put("metodoPago", v.getMetodoPago());
+                ingreso.put("subtotal", v.getSubtotal());
+                ingreso.put("total", v.getTotal());
+                ingreso.put("cajero", v.getSesionCaja() != null && v.getSesionCaja().getUsuarioApertura() != null ? 
+                                     v.getSesionCaja().getUsuarioApertura().getNombre() : "Sin cajero");
+                return ingreso;
+            })
+            .collect(Collectors.toList());
+
+        return new ReporteIngresosDTO(totalRegistros, totalRecaudado, 
+                                     totalComisionesOnline, ingresos);
+    }
 
     public ReporteVentasDTO generarReporteVentas(
             LocalDate desde, LocalDate hasta) {
@@ -233,5 +288,61 @@ public class ReporteService {
         return new ReporteCajaDTO(
             sesiones.size(), sesionesCerradas,
             sesionesConDiferencia, totalDiferencias, sesiones);
+    }
+
+    // ── REPORTE DE EGRESOS ─────────────────────────────────────
+
+    public ReporteEgresosDTO generarReporteEgresos(
+            LocalDate desde, LocalDate hasta, String categoriaFiltro) {
+
+        LocalDateTime inicio = desde.atStartOfDay();
+        LocalDateTime fin    = hasta.atTime(23, 59, 59);
+
+        // Obtener todos los retiros (egresos) de movimientos_caja
+        List<MovimientoCaja> retiros = movimientoCajaRepository.findRetirosByFechaBetween(inicio, fin);
+
+        // Aplicar filtro de categoría si se especifica
+        if (categoriaFiltro != null && !categoriaFiltro.isEmpty() && !"".equals(categoriaFiltro)) {
+            String finalFiltro = categoriaFiltro;
+            retiros = retiros.stream()
+                .filter(r -> finalFiltro.equalsIgnoreCase(r.getCategoria()))
+                .collect(Collectors.toList());
+        }
+
+        // KPIs
+        int totalRegistros = retiros.size();
+        
+        BigDecimal montoTotalEgresado = retiros.stream()
+            .map(MovimientoCaja::getMonto)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Cantidad de categorías únicas
+        int cantidadTiposEgreso = (int) retiros.stream()
+            .map(MovimientoCaja::getCategoria)
+            .distinct()
+            .count();
+
+        // Egresos por categoría
+        Map<String, BigDecimal> egresosPorTipo = retiros.stream()
+            .collect(Collectors.groupingBy(
+                MovimientoCaja::getCategoria,
+                Collectors.reducing(BigDecimal.ZERO,
+                    MovimientoCaja::getMonto, BigDecimal::add)));
+
+        // Mapear egresos
+        List<Map<String, Object>> egresosListado = retiros.stream()
+            .map(r -> {
+                Map<String, Object> egreso = new java.util.HashMap<>();
+                egreso.put("fecha", r.getFecha());
+                egreso.put("tipoEgreso", r.getCategoria());
+                egreso.put("comentario", r.getMotivo());
+                egreso.put("registradoPor", r.getUsuario() != null ? r.getUsuario().getNombre() : "Sin usuario");
+                egreso.put("monto", r.getMonto());
+                return egreso;
+            })
+            .collect(Collectors.toList());
+
+        return new ReporteEgresosDTO(totalRegistros, montoTotalEgresado, 
+                                    cantidadTiposEgreso, egresosListado, egresosPorTipo);
     }
 }
