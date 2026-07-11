@@ -57,7 +57,8 @@ public class SessionInterceptor implements HandlerInterceptor {
     // Rutas adicionales permitidas para usuarios autenticados
     private static final Set<String> RUTAS_ADICIONALES_PERMITIDAS = Set.of(
             "/ventas/nota-credito",
-            "/reportes"
+            "/reportes",
+            "/compacto"
     );
 
     public SessionInterceptor(EmpresaService empresaService) {

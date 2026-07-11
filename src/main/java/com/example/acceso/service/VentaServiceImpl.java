@@ -227,6 +227,13 @@ public class VentaServiceImpl implements VentaService {
             return venta;
         }
 
+        // Generar serie-correlativo en formato SUNAT: B0001-00000001
+        String prefijo = "Boleta".equalsIgnoreCase(tipoComprobante) ? "B" : "F";
+        String serieFormateada = String.format("%s%04d", prefijo, 
+            serie != null && serie.length() > 1 ? Integer.parseInt(serie.substring(1)) : 1);
+        String correlativoFormateado = String.format("%08d", correlativo);
+        String serieCorrelativoSUNAT = serieFormateada + "-" + correlativoFormateado;
+
         // Sólo asignar serie/correlativo y URIs si el servicio devolvió información
         String status = resultado.getStatus();
         if (status == null) {
@@ -234,14 +241,14 @@ public class VentaServiceImpl implements VentaService {
         }
 
         if ("ACEPTADO".equalsIgnoreCase(status) || "PENDIENTE".equalsIgnoreCase(status)) {
-            venta.setSerieCorrelativo(serie + "-" + correlativo);
+            venta.setSerieCorrelativo(serieCorrelativoSUNAT);
             venta.setPdfUrl(resultado.getPdfUrl());
             venta.setXmlUrl(resultado.getXmlUrl());
             venta.setHashCdr(resultado.getHashCdr());
             venta.setCdrSunat(resultado.getRawResponse());
             venta.setNubefactId(resultado.getDocumentId());
         } else if ("RECHAZADO".equalsIgnoreCase(status)) {
-            venta.setSerieCorrelativo(serie + "-" + correlativo);
+            venta.setSerieCorrelativo(serieCorrelativoSUNAT);
             venta.setCdrSunat(resultado.getRawResponse());
             venta.setNubefactId(resultado.getDocumentId());
         } else {

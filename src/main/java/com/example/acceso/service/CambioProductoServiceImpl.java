@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +75,18 @@ public class CambioProductoServiceImpl implements CambioProductoService {
         String tipoComprobante = ventaOriginal.getTipoComprobante();
         if (tipoComprobante != null && "nota_venta".equalsIgnoreCase(tipoComprobante)) {
             throw new RuntimeException("No se puede emitir cambios sobre una nota de venta");
+        }
+
+        // ⚠️ VALIDACIÓN: Solo se puede emitir nota de crédito si no han pasado más de 7 días desde la emisión
+        if (ventaOriginal.getFechaVenta() != null) {
+            long diasDesdeEmision = ChronoUnit.DAYS.between(ventaOriginal.getFechaVenta(), LocalDateTime.now());
+            if (diasDesdeEmision > 7) {
+                throw new RuntimeException(
+                    "No se puede realizar el cambio de producto porque han pasado " + diasDesdeEmision +
+                    " días desde la emisión del comprobante. Solo se permite emitir notas de crédito " +
+                    "dentro de los 7 días posteriores a la fecha de emisión."
+                );
+            }
         }
 
         // Validar detalle devuelto
@@ -326,4 +339,3 @@ public class CambioProductoServiceImpl implements CambioProductoService {
         return resp;
     }
 }
-

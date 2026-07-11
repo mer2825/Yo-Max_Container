@@ -10,6 +10,7 @@ import com.example.acceso.model.Empresa;
 import com.example.acceso.model.Producto;
 import com.example.acceso.model.SesionCaja;
 import com.example.acceso.model.Venta;
+import com.lowagie.text.Chunk;
 import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
 import com.lowagie.text.Element;
@@ -48,6 +49,7 @@ public class ReporteExportService {
 
     private final EmpresaService empresaService;
     private final ReporteService reporteService;
+    private final ReporteCompactoService reporteCompactoService;
 
     private static final Font TITLE_FONT = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16);
     private static final Font SUBTITLE_FONT = FontFactory.getFont(FontFactory.HELVETICA, 10);
@@ -56,9 +58,11 @@ public class ReporteExportService {
     private static final Font KPI_FONT = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13);
     private static final Font KPI_LABEL_FONT = FontFactory.getFont(FontFactory.HELVETICA, 9);
 
-    public ReporteExportService(EmpresaService empresaService, ReporteService reporteService) {
+    public ReporteExportService(EmpresaService empresaService, ReporteService reporteService,
+                               ReporteCompactoService reporteCompactoService) {
         this.empresaService = empresaService;
         this.reporteService = reporteService;
+        this.reporteCompactoService = reporteCompactoService;
     }
 
     // ── PDF ──────────────────────────────────────────────────────
@@ -379,6 +383,172 @@ public class ReporteExportService {
             return new ByteArrayInputStream(out.toByteArray());
         } catch (Exception e) {
             throw new RuntimeException("Error al generar Excel de egresos", e);
+        }
+    }
+
+    // ── REPORTE COMPACTO ─────────────────────────────────────────
+
+    public ByteArrayInputStream exportarCompactoPdf(LocalDate desde, LocalDate hasta) {
+        com.example.acceso.dto.ReporteCompactoDTO r = reporteCompactoService.generarReporteCompacto(desde, hasta);
+        
+        return generarPdf("Reporte Compacto - Terminalización de Caja", desde, hasta, document -> {
+            // SECCIÓN 1: Resumen General
+            Paragraph seccion1 = new Paragraph("RESUMEN GENERAL", HEADER_FONT);
+            seccion1.setAlignment(Element.ALIGN_LEFT);
+            seccion1.setSpacingBefore(10);
+            seccion1.setSpacingAfter(10);
+            document.add(seccion1);
+            
+            // KPIs principales
+            addKpiRowPdf(document, new String[][]{
+                {"Total General", "S/ " + format(r.getTotalGeneral())},
+                {"Total Efectivo", "S/ " + format(r.getTotalEfectivo())},
+                {"Total Yape", "S/ " + format(r.getTotalYape())},
+                {"Total Otros", "S/ " + format(r.getTotalOtros())}
+            });
+            
+            // Tabla de detalle por día
+            if (r.getDetallePorDia() != null && !r.getDetallePorDia().isEmpty()) {
+                addTablePdf(document, 
+                    new String[]{"Fecha", "Efectivo", "Yape", "Otros", "Total", "Ventas"},
+                    r.getDetallePorDia().stream()
+                        .map(d -> new String[]{
+                            d.get("fecha") != null ? ((LocalDate) d.get("fecha")).format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "-",
+                            "S/ " + format((BigDecimal) d.getOrDefault("efectivo", BigDecimal.ZERO)),
+                            "S/ " + format((BigDecimal) d.getOrDefault("yape", BigDecimal.ZERO)),
+                            "S/ " + format((BigDecimal) d.getOrDefault("otros", BigDecimal.ZERO)),
+                            "S/ " + format((BigDecimal) d.getOrDefault("total", BigDecimal.ZERO)),
+                            String.valueOf(d.getOrDefault("cantidadVentas", 0))
+                        }).toList()
+                );
+            }
+            
+            // SECCIÓN 2: Detalle Efectivo
+            if (r.getVentasEfectivo() != null && !r.getVentasEfectivo().isEmpty()) {
+                document.add(Chunk.NEWLINE);
+                Paragraph seccion2 = new Paragraph("DETALLE DE VENTAS EN EFECTIVO", HEADER_FONT);
+                seccion2.setAlignment(Element.ALIGN_LEFT);
+                seccion2.setSpacingBefore(10);
+                seccion2.setSpacingAfter(10);
+                document.add(seccion2);
+                
+                addTablePdf(document,
+                    new String[]{"Fecha", "N° Venta", "Cliente", "Comprobante", "Subtotal", "Descuento", "Total", "Cajero"},
+                    r.getVentasEfectivo().stream()
+                        .map(v -> new String[]{
+                            v.get("fecha") != null ? ((LocalDateTime) v.get("fecha")).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "-",
+                            (String) v.getOrDefault("numeroVenta", "-"),
+                            (String) v.getOrDefault("cliente", "-"),
+                            (String) v.getOrDefault("comprobante", "-"),
+                            "S/ " + format((BigDecimal) v.getOrDefault("subtotal", BigDecimal.ZERO)),
+                            "S/ " + format((BigDecimal) v.getOrDefault("descuento", BigDecimal.ZERO)),
+                            "S/ " + format((BigDecimal) v.getOrDefault("total", BigDecimal.ZERO)),
+                            (String) v.getOrDefault("cajero", "-")
+                        }).toList()
+                );
+            }
+            
+            // SECCIÓN 3: Detalle Yape
+            if (r.getVentasYape() != null && !r.getVentasYape().isEmpty()) {
+                document.add(Chunk.NEWLINE);
+                Paragraph seccion3 = new Paragraph("DETALLE DE VENTAS EN YAPE", HEADER_FONT);
+                seccion3.setAlignment(Element.ALIGN_LEFT);
+                seccion3.setSpacingBefore(10);
+                seccion3.setSpacingAfter(10);
+                document.add(seccion3);
+                
+                addTablePdf(document,
+                    new String[]{"Fecha", "N° Venta", "Cliente", "Comprobante", "Subtotal", "Descuento", "Total", "Cajero"},
+                    r.getVentasYape().stream()
+                        .map(v -> new String[]{
+                            v.get("fecha") != null ? ((LocalDateTime) v.get("fecha")).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "-",
+                            (String) v.getOrDefault("numeroVenta", "-"),
+                            (String) v.getOrDefault("cliente", "-"),
+                            (String) v.getOrDefault("comprobante", "-"),
+                            "S/ " + format((BigDecimal) v.getOrDefault("subtotal", BigDecimal.ZERO)),
+                            "S/ " + format((BigDecimal) v.getOrDefault("descuento", BigDecimal.ZERO)),
+                            "S/ " + format((BigDecimal) v.getOrDefault("total", BigDecimal.ZERO)),
+                            (String) v.getOrDefault("cajero", "-")
+                        }).toList()
+                );
+            }
+        });
+    }
+
+    public ByteArrayInputStream exportarCompactoExcel(LocalDate desde, LocalDate hasta) {
+        com.example.acceso.dto.ReporteCompactoDTO r = reporteCompactoService.generarReporteCompacto(desde, hasta);
+        
+        try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            // Hoja 1: Resumen
+            Sheet kpiSheet = wb.createSheet("Resumen");
+            fillKpiSheet(wb, kpiSheet, new String[][]{
+                {"Total General", "S/ " + format(r.getTotalGeneral())},
+                {"Total Efectivo", "S/ " + format(r.getTotalEfectivo())},
+                {"Total Yape", "S/ " + format(r.getTotalYape())},
+                {"Total Otros", "S/ " + format(r.getTotalOtros())},
+                {"Total Días", String.valueOf(r.getTotalDias())},
+                {"Total Ventas", String.valueOf(r.getTotalVentas())}
+            });
+            
+            // Hoja 2: Detalle por día
+            if (r.getDetallePorDia() != null && !r.getDetallePorDia().isEmpty()) {
+                Sheet detalleSheet = wb.createSheet("Flujo por Día");
+                fillDataSheet(wb, detalleSheet, 
+                    new String[]{"Fecha", "Efectivo", "Yape", "Otros", "Total", "Cantidad Ventas"},
+                    r.getDetallePorDia().stream()
+                        .map(d -> new Object[]{
+                            d.get("fecha"),
+                            d.getOrDefault("efectivo", BigDecimal.ZERO),
+                            d.getOrDefault("yape", BigDecimal.ZERO),
+                            d.getOrDefault("otros", BigDecimal.ZERO),
+                            d.getOrDefault("total", BigDecimal.ZERO),
+                            d.getOrDefault("cantidadVentas", 0)
+                        }).toList()
+                );
+            }
+            
+            // Hoja 3: Detalle Efectivo
+            if (r.getVentasEfectivo() != null && !r.getVentasEfectivo().isEmpty()) {
+                Sheet efectivoSheet = wb.createSheet("Efectivo");
+                fillDataSheet(wb, efectivoSheet,
+                    new String[]{"Fecha", "N° Venta", "Cliente", "Comprobante", "Subtotal", "Descuento", "Total", "Cajero"},
+                    r.getVentasEfectivo().stream()
+                        .map(v -> new Object[]{
+                            v.get("fecha"),
+                            v.get("numeroVenta"),
+                            v.get("cliente"),
+                            v.get("comprobante"),
+                            v.get("subtotal"),
+                            v.get("descuento"),
+                            v.get("total"),
+                            v.get("cajero")
+                        }).toList()
+                );
+            }
+            
+            // Hoja 4: Detalle Yape
+            if (r.getVentasYape() != null && !r.getVentasYape().isEmpty()) {
+                Sheet yapeSheet = wb.createSheet("Yape");
+                fillDataSheet(wb, yapeSheet,
+                    new String[]{"Fecha", "N° Venta", "Cliente", "Comprobante", "Subtotal", "Descuento", "Total", "Cajero"},
+                    r.getVentasYape().stream()
+                        .map(v -> new Object[]{
+                            v.get("fecha"),
+                            v.get("numeroVenta"),
+                            v.get("cliente"),
+                            v.get("comprobante"),
+                            v.get("subtotal"),
+                            v.get("descuento"),
+                            v.get("total"),
+                            v.get("cajero")
+                        }).toList()
+                );
+            }
+            
+            wb.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (Exception e) {
+            throw new RuntimeException("Error al generar Excel de reporte compacto", e);
         }
     }
 

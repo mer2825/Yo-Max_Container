@@ -108,9 +108,39 @@ public class NotaCreditoController {
                             return "redirect:/ventas/listar?error=nc-ya-emitida-total";
                         }
 
+                        // ⚠️ VALIDACIÓN: Solo se puede emitir nota de crédito si no han pasado más de 7 días desde la emisión
+                        Object fechaVentaObj = ventaMap.get("fechaVenta");
+                        if (fechaVentaObj != null) {
+                            LocalDateTime fechaVenta;
+                            if (fechaVentaObj instanceof java.time.LocalDateTime) {
+                                fechaVenta = (java.time.LocalDateTime) fechaVentaObj;
+                            } else {
+                                // Si viene como otro tipo, intentamos convertir
+                                fechaVenta = java.time.LocalDateTime.parse(fechaVentaObj.toString());
+                            }
+                            long diasDesdeEmision = java.time.temporal.ChronoUnit.DAYS.between(fechaVenta, LocalDateTime.now());
+                            if (diasDesdeEmision > 7) {
+                                logger.warn("Intento de cambio de producto para venta ID: {} con {} días desde emisión (máx. 7)", id, diasDesdeEmision);
+                                return "redirect:/ventas/listar?error=nc-fuera-plazo-7-dias";
+                            }
+                        }
+
                         model.addAttribute("venta", ventaMap);
                         model.addAttribute("detalles", ventaMap.get("detalles"));
                         model.addAttribute("esPendiente", "pendiente".equalsIgnoreCase(estadoSunat));
+                        
+                        // Calcular días restantes para el plazo de 7 días
+                        if (fechaVentaObj != null) {
+                            LocalDateTime fechaVenta;
+                            if (fechaVentaObj instanceof java.time.LocalDateTime) {
+                                fechaVenta = (java.time.LocalDateTime) fechaVentaObj;
+                            } else {
+                                fechaVenta = java.time.LocalDateTime.parse(fechaVentaObj.toString());
+                            }
+                            long diasTranscurridos = java.time.temporal.ChronoUnit.DAYS.between(fechaVenta, LocalDateTime.now());
+                            long diasRestantes = Math.max(0, 7 - diasTranscurridos);
+                            model.addAttribute("diasRestantes", diasRestantes);
+                        }
                         
                         // Cargar lista de productos activos para el selector
                         List<Producto> productosActivos = productoRepository.findByEstado(1);
@@ -475,7 +505,14 @@ public class NotaCreditoController {
                 correlativo = 1;
             }
             
-            logger.info("NC serie: {}, correlativo: {}", serie, correlativo);
+            // Generar serie-correlativo en formato SUNAT para Nota de Crédito
+            String prefijoNC = esFacturaOriginal ? "F" : "B";
+            String serieNCFormateada = String.format("%s%04d", prefijoNC, 
+                serie != null && serie.length() > 1 ? Integer.parseInt(serie.substring(1)) : 1);
+            String correlativoNCFormateado = String.format("%08d", correlativo);
+            String serieCorrelativoNCSUNAT = serieNCFormateada + "-" + correlativoNCFormateado;
+            
+            logger.info("NC serie: {}, correlativo: {}, formato SUNAT: {}", serie, correlativo, serieCorrelativoNCSUNAT);
             
             // Determinar si es anulación total o parcial
             boolean esAnulacionTotal = "01".equals(tipoNota) || "06".equals(tipoNota);
@@ -487,7 +524,7 @@ public class NotaCreditoController {
             notaCredito.setMotivo(motivo);
             notaCredito.setSerie(serie);
             notaCredito.setCorrelativo(correlativo);
-            notaCredito.setSerieCorrelativo(serie + "-" + String.format("%08d", correlativo));
+            notaCredito.setSerieCorrelativo(serieCorrelativoNCSUNAT);
             notaCredito.setTotalAcreditado(totalAcreditado.setScale(2, RoundingMode.HALF_UP));
             notaCredito.setEstadoSunat("pendiente");
             notaCredito.setEmitidaPorUsuario(usuarioActual);

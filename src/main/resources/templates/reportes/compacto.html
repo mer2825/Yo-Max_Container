@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte Compacto - Acceso</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/yomax-theme.css}">
+    <style>
+        .reporte-card { border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: box-shadow 0.2s; }
+        .reporte-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .kpi-icon { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 1.4rem; }
+        .table-detalle { font-size: 0.9rem; }
+        .table-detalle th { font-weight: 600; color: #6c757d; border-top: none; }
+        .btn-export { border-radius: 20px; padding: 0.35rem 1rem; font-size: 0.85rem; font-weight: 500; }
+        .btn-reportes { background: linear-gradient(135deg, #e91e63 0%, #c2185b 100%); color: white; border: none; box-shadow: 0 2px 6px rgba(233, 30, 99, 0.3); }
+        .btn-reportes:hover { background: linear-gradient(135deg, #c2185b 0%, #ad1457 100%); color: white; box-shadow: 0 4px 10px rgba(233, 30, 99, 0.4); transform: translateY(-1px); }
+        .btn-reportes-outline { border: 2px solid #e91e63; color: #e91e63; background: white; font-weight: 600; }
+        .btn-reportes-outline:hover { background: #e91e63; color: white; }
+        .efectivo-color { color: #28a745; font-weight: 600; }
+        .yape-color { color: #0d6efd; font-weight: 600; }
+        .otros-color { color: #ffc107; font-weight: 600; }
+        .nav-tabs { border-bottom: 2px solid #e9ecef; gap: 8px; }
+        .nav-tabs .nav-link { 
+            color: #495057; 
+            border: 2px solid #dee2e6; 
+            border-bottom: 2px solid #dee2e6; 
+            border-radius: 8px 8px 0 0; 
+            padding: 0.5rem 1.25rem; 
+            font-weight: 500;
+            background: #f8f9fa;
+            transition: all 0.2s ease;
+            margin-bottom: -2px;
+        }
+        .nav-tabs .nav-link:hover { 
+            background: #e9ecef; 
+            border-color: #adb5bd;
+            transform: translateY(-2px);
+        }
+        .nav-tabs .nav-link.active { 
+            color: #fff; 
+            background: linear-gradient(135deg, #e91e63 0%, #c2185b 100%);
+            border-color: #e91e63;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(233, 30, 99, 0.3);
+        }
+        .nav-tabs .nav-link.active:hover { 
+            background: linear-gradient(135deg, #c2185b 0%, #ad1457 100%);
+            border-color: #c2185b;
+        }
+        .section-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #e9ecef; }
+    </style>
+</head>
+<body>
+
+<div th:replace="~{topbar :: topbar(activeUri='/reportes')}"></div>
+
+<main class="container-fluid px-4 py-4">
+    <!-- Encabezado -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="fw-bold mb-1"><i class="bi bi-wallet2 me-2"></i>Reporte Compacto - Terminalización de Caja</h4>
+            <p class="text-muted mb-0">Flujo de dinero por día (Efectivo, Yape y Otros)</p>
+        </div>
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            <a th:href="@{/compacto/pdf(desde=${desde}, hasta=${hasta})}" class="btn btn-reportes-outline btn-export" target="_blank"><i class="bi bi-file-pdf me-1"></i> PDF</a>
+            <a th:href="@{/compacto/excel(desde=${desde}, hasta=${hasta})}" class="btn btn-reportes-outline btn-export"><i class="bi bi-file-excel me-1"></i> Excel</a>
+        </div>
+    </div>
+
+    <!-- Selector de período -->
+    <div class="card reporte-card mb-4">
+        <div class="card-body d-flex flex-wrap align-items-center gap-2 py-3">
+            <span class="fw-semibold text-nowrap small me-1"><i class="bi bi-calendar-range me-1"></i>Período:</span>
+            <a th:href="@{/compacto/reporte(desde=${desde}, hasta=${hasta})}" class="btn btn-reportes-outline btn-sm">Ver mes actual</a>
+            <form method="get" th:action="@{/compacto/reporte}" class="d-flex align-items-center gap-2 ms-2 border-start ps-3">
+                <input type="date" name="desde" th:value="${desde != null ? #temporals.format(desde, 'yyyy-MM-dd') : ''}" class="form-control form-control-sm" style="width: 140px;">
+                <span class="text-muted small">a</span>
+                <input type="date" name="hasta" th:value="${hasta != null ? #temporals.format(hasta, 'yyyy-MM-dd') : ''}" class="form-control form-control-sm" style="width: 140px;">
+                <button type="submit" class="btn btn-reportes btn-sm"><i class="bi bi-search me-1"></i>Filtrar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+            <div class="card reporte-card h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-currency-dollar"></i></div>
+                    <div><p class="text-muted small mb-0">Total General</p><h5 class="fw-bold mb-0"><span th:text="|S/ ${#numbers.formatDecimal(reporte.totalGeneral, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</span></h5></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card reporte-card h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-success bg-opacity-10 text-success"><i class="bi bi-cash"></i></div>
+                    <div><p class="text-muted small mb-0">Total Efectivo</p><h5 class="fw-bold mb-0 efectivo-color"><span th:text="|S/ ${#numbers.formatDecimal(reporte.totalEfectivo, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</span></h5></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card reporte-card h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-info bg-opacity-10 text-info"><i class="bi bi-phone"></i></div>
+                    <div><p class="text-muted small mb-0">Total Yape</p><h5 class="fw-bold mb-0 yape-color"><span th:text="|S/ ${#numbers.formatDecimal(reporte.totalYape, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</span></h5></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card reporte-card h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-credit-card"></i></div>
+                    <div><p class="text-muted small mb-0">Total Otros</p><h5 class="fw-bold mb-0 otros-color"><span th:text="|S/ ${#numbers.formatDecimal(reporte.totalOtros, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</span></h5></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs de detalle -->
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card reporte-card">
+                <div class="card-body">
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs mb-4" id="detalleTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="resumen-tab" data-bs-toggle="tab" data-bs-target="#resumen" type="button" role="tab">
+                                <i class="bi bi-calendar3 me-2"></i>Resumen por Día
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="efectivo-tab" data-bs-toggle="tab" data-bs-target="#efectivo" type="button" role="tab">
+                                <i class="bi bi-cash me-2"></i>Detalle Efectivo
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="yape-tab" data-bs-toggle="tab" data-bs-target="#yape" type="button" role="tab">
+                                <i class="bi bi-phone me-2"></i>Detalle Yape
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="detalleTabContent">
+                        <!-- Tab Resumen -->
+                        <div class="tab-pane fade show active" id="resumen" role="tabpanel">
+                            <h6 class="section-title"><i class="bi bi-calendar3 me-2"></i>Flujo de Dinero por Día</h6>
+                            <div th:if="${#lists.isEmpty(reporte.detallePorDia)}" class="p-4 text-center text-muted">Sin ventas en el período</div>
+                            <div th:unless="${#lists.isEmpty(reporte.detallePorDia)}" class="table-responsive">
+                                <table class="table table-detalle table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th class="text-end">Efectivo</th>
+                                            <th class="text-end">Yape</th>
+                                            <th class="text-end">Otros</th>
+                                            <th class="text-end">Total</th>
+                                            <th class="text-center">Ventas</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="dia : ${reporte.detallePorDia}">
+                                            <td th:text="${dia.fecha != null ? #temporals.format(dia.fecha, 'dd/MM/yyyy') : '-'}">01/01/2024</td>
+                                            <td class="text-end fw-semibold efectivo-color" th:text="|S/ ${#numbers.formatDecimal(dia.efectivo, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</td>
+                                            <td class="text-end fw-semibold yape-color" th:text="|S/ ${#numbers.formatDecimal(dia.yape, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</td>
+                                            <td class="text-end fw-semibold otros-color" th:text="|S/ ${#numbers.formatDecimal(dia.otros, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</td>
+                                            <td class="text-end fw-bold" th:text="|S/ ${#numbers.formatDecimal(dia.total, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</td>
+                                            <td class="text-center" th:text="${dia.cantidadVentas}">0</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Tab Efectivo -->
+                        <div class="tab-pane fade" id="efectivo" role="tabpanel">
+                            <h6 class="section-title text-success"><i class="bi bi-cash me-2"></i>Ventas en Efectivo</h6>
+                            <div th:if="${#lists.isEmpty(reporte.ventasEfectivo)}" class="p-4 text-center text-muted">Sin ventas en efectivo en el período</div>
+                            <div th:unless="${#lists.isEmpty(reporte.ventasEfectivo)}" class="table-responsive">
+                                <table class="table table-detalle table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>N° Venta</th>
+                                            <th>Cliente</th>
+                                            <th>Comprobante</th>
+                                            <th class="text-end">Subtotal</th>
+                                            <th class="text-end">Descuento</th>
+                                            <th class="text-end">Total</th>
+                                            <th>Cajero</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="venta : ${reporte.ventasEfectivo}">
+                                            <td th:text="${venta.fecha != null ? #temporals.format(venta.fecha, 'dd/MM/yyyy HH:mm') : '-'}">01/01/2024</td>
+                                            <td th:text="${venta.numeroVenta}">001</td>
+                                            <td th:text="${venta.cliente}">Cliente</td>
+                                            <td th:text="${venta.comprobante}">Boleta</td>
+                                            <td class="text-end" th:text="|S/ ${#numbers.formatDecimal(venta.subtotal, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</td>
+                                            <td class="text-end" th:text="|S/ ${#numbers.formatDecimal(venta.descuento, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</td>
+                                            <td class="text-end fw-bold efectivo-color" th:text="|S/ ${#numbers.formatDecimal(venta.total, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</td>
+                                            <td th:text="${venta.cajero}">Cajero</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Tab Yape -->
+                        <div class="tab-pane fade" id="yape" role="tabpanel">
+                            <h6 class="section-title text-info"><i class="bi bi-phone me-2"></i>Ventas en Yape</h6>
+                            <div th:if="${#lists.isEmpty(reporte.ventasYape)}" class="p-4 text-center text-muted">Sin ventas en Yape en el período</div>
+                            <div th:unless="${#lists.isEmpty(reporte.ventasYape)}" class="table-responsive">
+                                <table class="table table-detalle table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>N° Venta</th>
+                                            <th>Cliente</th>
+                                            <th>Comprobante</th>
+                                            <th class="text-end">Subtotal</th>
+                                            <th class="text-end">Descuento</th>
+                                            <th class="text-end">Total</th>
+                                            <th>Cajero</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="venta : ${reporte.ventasYape}">
+                                            <td th:text="${venta.fecha != null ? #temporals.format(venta.fecha, 'dd/MM/yyyy HH:mm') : '-'}">01/01/2024</td>
+                                            <td th:text="${venta.numeroVenta}">001</td>
+                                            <td th:text="${venta.cliente}">Cliente</td>
+                                            <td th:text="${venta.comprobante}">Boleta</td>
+                                            <td class="text-end" th:text="|S/ ${#numbers.formatDecimal(venta.subtotal, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</td>
+                                            <td class="text-end" th:text="|S/ ${#numbers.formatDecimal(venta.descuento, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</td>
+                                            <td class="text-end fw-bold yape-color" th:text="|S/ ${#numbers.formatDecimal(venta.total, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</td>
+                                            <td th:text="${venta.cajero}">Cajero</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<div th:replace="~{fragments/scripts :: common-scripts}"></div>
+</body>
+</html>

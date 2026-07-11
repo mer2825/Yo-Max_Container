@@ -115,6 +115,17 @@
     </div>
 </div>
 
+<!-- Mensajes de error por URL params -->
+<div th:if="${param.error != null}">
+    <div th:switch="${param.error[0]}" class="alert alert-danger alert-dismissible fade show mx-4" role="alert" style="border-left: 4px solid #dc3545;">
+        <div th:case="'nc-fuera-plazo-7-dias'">
+            <strong><i class="bi bi-exclamation-triangle-fill"></i> Plazo excedido:</strong> No se puede realizar el cambio de producto porque han pasado más de 7 días desde la emisión del comprobante. Solo se permite emitir notas de crédito dentro de los 7 días posteriores a la fecha de emisión.
+        </div>
+        <div th:case="*" th:text="${param.error[0]}"></div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+</div>
+
 <div th:replace="~{fragments/notificaciones :: notification-container}"></div>
 
 <!-- Fragmento de scripts comunes -->

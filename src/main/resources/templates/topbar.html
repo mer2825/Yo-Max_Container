@@ -88,10 +88,18 @@
                     </li>
 
                     <!-- Reportes Gerenciales (solo administradores) -->
-                    <li class="nav-item" th:if="${session.isAdmin == true}">
-                        <a class="nav-link px-3" th:classappend="${activeUri.contains('/reportes') ? 'active' : ''}" th:href="@{/reportes}">
+                    <li class="nav-item dropdown" th:if="${session.isAdmin == true}">
+                        <a class="nav-link dropdown-toggle px-3" th:classappend="${activeUri.contains('/reportes') or activeUri.contains('/compacto') ? 'active' : ''}" href="#" id="reportesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-bar-chart-line me-1"></i> <span class="d-none d-sm-inline">Reportes</span>
                         </a>
+                        <ul class="dropdown-menu" aria-labelledby="reportesDropdown">
+                            <li th:classappend="${activeUri == '/reportes' or activeUri.contains('/reportes/') ? 'active' : ''}">
+                                <a class="dropdown-item" th:href="@{/reportes}"><i class="bi bi-bar-chart-line me-2"></i>Reportes Gerenciales</a>
+                            </li>
+                            <li th:classappend="${activeUri.contains('/compacto') ? 'active' : ''}">
+                                <a class="dropdown-item" th:href="@{/compacto}"><i class="bi bi-wallet2 me-2"></i>Compacto (Terminalización)</a>
+                            </li>
+                        </ul>
                     </li>
 
                     <!-- Clientes -->
