@@ -10,5 +10,7 @@ public interface CambioProductoRepository extends JpaRepository<CambioProducto, 
     List<CambioProducto> findByVentaOriginalId(Long ventaId);
 
     boolean existsByDetalleVentaOriginalIdAndEstado(Long detalleVentaId, String estado);
+
+    java.util.Optional<CambioProducto> findByNotaCreditoId(Long notaCreditoId);
 }
 

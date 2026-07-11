@@ -179,8 +179,8 @@ public class CambioProductoServiceImpl implements CambioProductoService {
             correlativo = 1;
         }
 
-        String tipoNota = "07"; // devolución parcial
-        String motivo = request.getMotivo() != null ? request.getMotivo() : "Devolución parcial por cambio de producto";
+        String tipoNota = "11"; // cambio de producto
+        String motivo = request.getMotivo() != null ? request.getMotivo() : "Cambio de producto";
 
         // persistimos NotasCredito como hace el NotaCreditoController
         NotasCredito notaCredito = new NotasCredito();

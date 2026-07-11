@@ -658,7 +658,8 @@ function renderizarEventos(eventos) {
         const signoMonto = evento.signo || (evento.tipo === 'RETIRO' ? '−' : '+');
         const esRetiro = evento.tipo === 'RETIRO';
         const esApertura = evento.tipo === 'APERTURA';
-        const badgeColor = esRetiro ? 'bg-danger' : (esApertura ? 'bg-secondary' : 'bg-success');
+        const esExcedente = evento.tipo === 'EXCEDENTE_NC';
+        const badgeColor = esRetiro ? 'bg-danger' : (esApertura ? 'bg-secondary' : (esExcedente ? 'bg-success' : 'bg-success'));
         let icono = 'bi-circle';
         let colorIcono = 'text-secondary';
         
@@ -668,16 +669,17 @@ function renderizarEventos(eventos) {
         else if (evento.tipo === 'RETIRO') { icono = 'bi-arrow-down-circle'; colorIcono = 'text-danger'; }
         else if (evento.tipo === 'INGRESO') { icono = 'bi-arrow-up-circle'; colorIcono = 'text-warning'; }
         else if (evento.tipo === 'CIERRE') { icono = 'bi-lock'; colorIcono = 'text-secondary'; }
+        else if (evento.tipo === 'EXCEDENTE_NC') { icono = 'bi-arrow-up-circle'; colorIcono = 'text-success'; }
         
         html += `
             <div class="list-group-item list-group-item-action log-auditoria-item">
                 <div class="d-flex w-100 justify-content-between align-items-center">
-                    <div class="d-flex align-items-center flex-grow-1">
-                        <div class="log-auditoria-icon bg-${esRetiro ? 'danger' : (esApertura ? 'secondary' : 'success')} bg-opacity-10 me-3">
-                            <i class="bi ${icono} ${colorIcono}"></i>
-                        </div>
+                <div class="d-flex align-items-center flex-grow-1">
+                    <div class="log-auditoria-icon bg-${esRetiro ? 'danger' : (esApertura ? 'secondary' : (esExcedente ? 'success' : 'success'))} bg-opacity-10 me-3">
+                        <i class="bi ${icono} ${colorIcono}"></i>
+                    </div>
                 <div class="flex-grow-1">
-                    <h6 class="mb-1 fw-semibold">${evento.tipo.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</h6>
+                    <h6 class="mb-1 fw-semibold">${evento.tipo === 'EXCEDENTE_NC' ? 'Excedente Nota Crédito' : evento.tipo.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</h6>
                     <!-- Comprobante: extraer el nmero de SUNAT de la descripcin -->
                     ${evento.descripcion && evento.descripcion.startsWith('Comprobante:') ? 
                         `<div class="mb-1"><span class="badge" style="background:#6f42c1;color:white;font-size:0.75rem;border-radius:6px;padding:3px 8px;"><i class="bi bi-receipt me-1"></i>Comprobante:</span> <span style="font-weight:600;color:#495057;font-size:0.9rem;">${evento.descripcion.replace('Comprobante: ', '')}</span></div>` : 

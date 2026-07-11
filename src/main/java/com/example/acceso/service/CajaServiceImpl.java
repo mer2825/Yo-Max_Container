@@ -6,12 +6,14 @@ import com.example.acceso.dto.MovimientoLogDTO;
 import com.example.acceso.dto.ReportePeriodoDTO;
 import com.example.acceso.dto.ResumenDiaDTO;
 import com.example.acceso.dto.ResumenSesionActivaDTO;
+import com.example.acceso.model.CambioProducto;
 import com.example.acceso.model.Empresa;
 import com.example.acceso.model.MovimientoCaja;
 import com.example.acceso.model.NotasCredito;
 import com.example.acceso.model.SesionCaja;
 import com.example.acceso.model.Usuario;
 import com.example.acceso.model.Venta;
+import com.example.acceso.repository.CambioProductoRepository;
 import com.example.acceso.repository.MovimientoCajaRepository;
 import com.example.acceso.repository.NotasCreditoRepository;
 import com.example.acceso.repository.SesionCajaRepository;
@@ -41,6 +43,7 @@ public class CajaServiceImpl implements CajaService {
     private final MovimientoCajaRepository movimientoCajaRepository;
     private final UsuarioRepository usuarioRepository;
     private final NotasCreditoRepository notasCreditoRepository;
+    private final CambioProductoRepository cambioProductoRepository;
     private final EmailService emailService;
     private final PdfService pdfService;
     private final EmpresaService empresaService;
@@ -50,6 +53,7 @@ public class CajaServiceImpl implements CajaService {
                            MovimientoCajaRepository movimientoCajaRepository,
                            UsuarioRepository usuarioRepository,
                            NotasCreditoRepository notasCreditoRepository,
+                           CambioProductoRepository cambioProductoRepository,
                            EmailService emailService,
                            PdfService pdfService,
                            EmpresaService empresaService) {
@@ -58,6 +62,7 @@ public class CajaServiceImpl implements CajaService {
         this.movimientoCajaRepository = movimientoCajaRepository;
         this.usuarioRepository = usuarioRepository;
         this.notasCreditoRepository = notasCreditoRepository;
+        this.cambioProductoRepository = cambioProductoRepository;
         this.emailService = emailService;
         this.pdfService = pdfService;
         this.empresaService = empresaService;
@@ -629,20 +634,54 @@ public class CajaServiceImpl implements CajaService {
             String detalleAdicional = "Afecta venta: " + (nc.getVenta() != null && nc.getVenta().getSerieCorrelativo() != null ? 
                 nc.getVenta().getSerieCorrelativo() : "N° " + (nc.getVenta() != null ? nc.getVenta().getId() : "N/A"));
             
-            if (nc.getVenta() != null && "EFECTIVO".equalsIgnoreCase(nc.getVenta().getMetodoPago())) {
-                impactaEfectivo = true;
-                detalleAdicional = "Devolución en efectivo - " + detalleAdicional;
+            // Para notas de crédito tipo 11 (cambio de producto), mostrar solo el excedente
+            BigDecimal montoAMostrar = nc.getTotalAcreditado();
+            String nombreEvento = "Nota de Crédito";
+            String signoMonto = "−";
+            
+            if ("11".equals(nc.getTipoNota()) || "Cambio de Producto".equalsIgnoreCase(descripcionTipo)) {
+                // Buscar el cambio de producto asociado para obtener el monto del excedente
+                java.util.Optional<CambioProducto> cambioOpt = cambioProductoRepository.findByNotaCreditoId(nc.getId());
+                if (cambioOpt.isPresent()) {
+                    CambioProducto cambio = cambioOpt.get();
+                    BigDecimal montoExcedente = cambio.getMontoExcedente();
+                    
+                    if (montoExcedente != null && montoExcedente.compareTo(BigDecimal.ZERO) > 0) {
+                        // Hay excedente positivo: mostrar como ingreso
+                        montoAMostrar = montoExcedente;
+                        signoMonto = "+";
+                        nombreEvento = "Excedente Cambio Producto";
+                        detalleAdicional = "Excedente a favor del cliente - " + detalleAdicional;
+                    } else {
+                        // No hay excedente o es 0: no mostrar en el monitor (no impacta efectivo)
+                        continue;
+                    }
+                } else {
+                    // Si no se encuentra el cambio de producto, usar el comportamiento anterior
+                    if (nc.getVenta() != null && "EFECTIVO".equalsIgnoreCase(nc.getVenta().getMetodoPago())) {
+                        impactaEfectivo = true;
+                        detalleAdicional = "Devolución en efectivo - " + detalleAdicional;
+                    } else {
+                        detalleAdicional = "No impacta efectivo - " + detalleAdicional;
+                    }
+                }
             } else {
-                detalleAdicional = "No impacta efectivo - " + detalleAdicional;
+                // Para otros tipos de NC, mantener comportamiento original
+                if (nc.getVenta() != null && "EFECTIVO".equalsIgnoreCase(nc.getVenta().getMetodoPago())) {
+                    impactaEfectivo = true;
+                    detalleAdicional = "Devolución en efectivo - " + detalleAdicional;
+                } else {
+                    detalleAdicional = "No impacta efectivo - " + detalleAdicional;
+                }
             }
             
             EventoAuditoriaDTO evento = new EventoAuditoriaDTO(
                 EventoAuditoriaDTO.TipoEvento.NOTA_CREDITO,
-                "Nota de Crédito",
+                nombreEvento,
                 descripcionTipo + " - " + nc.getMotivo() + " | Comprobante: " + comprobante,
                 usuario,
                 nc.getFechaEmision(),
-                nc.getTotalAcreditado(),
+                montoAMostrar,
                 "bi-arrow-counterclockwise",
                 impactaEfectivo ? "text-danger" : "text-warning",
                 detalleAdicional
@@ -773,20 +812,55 @@ public class CajaServiceImpl implements CajaService {
             String detalleAdicional = "Afecta venta: " + (nc.getVenta() != null && nc.getVenta().getSerieCorrelativo() != null ? 
                 nc.getVenta().getSerieCorrelativo() : "N° " + (nc.getVenta() != null ? nc.getVenta().getId() : "N/A"));
             
-            if (nc.getVenta() != null && "EFECTIVO".equalsIgnoreCase(nc.getVenta().getMetodoPago())) {
-                impactaEfectivo = true;
-                detalleAdicional = "Devolución en efectivo - " + detalleAdicional;
+            // Para notas de crédito tipo 11 (cambio de producto), mostrar solo el excedente
+            BigDecimal montoAMostrar = nc.getTotalAcreditado();
+            String nombreEvento = "Nota de Crédito";
+            String signoMonto = "−";
+            
+            if ("11".equals(nc.getTipoNota()) || "Cambio de Producto".equalsIgnoreCase(descripcionTipo)) {
+                // Buscar el cambio de producto asociado para obtener el monto del excedente
+                java.util.Optional<CambioProducto> cambioOpt = cambioProductoRepository.findByNotaCreditoId(nc.getId());
+                if (cambioOpt.isPresent()) {
+                    CambioProducto cambio = cambioOpt.get();
+                    BigDecimal montoExcedente = cambio.getMontoExcedente();
+                    
+                    if (montoExcedente != null && montoExcedente.compareTo(BigDecimal.ZERO) > 0) {
+                        // Hay excedente positivo: mostrar como ingreso
+                        montoAMostrar = montoExcedente;
+                        signoMonto = "+";
+                        nombreEvento = "Excedente Cambio Producto";
+                        detalleAdicional = "Excedente a favor del cliente - " + detalleAdicional;
+                        impactaEfectivo = true;
+                    } else {
+                        // No hay excedente o es 0: no mostrar en el monitor (no impacta efectivo)
+                        continue;
+                    }
+                } else {
+                    // Si no se encuentra el cambio de producto, usar el comportamiento anterior
+                    if (nc.getVenta() != null && "EFECTIVO".equalsIgnoreCase(nc.getVenta().getMetodoPago())) {
+                        impactaEfectivo = true;
+                        detalleAdicional = "Devolución en efectivo - " + detalleAdicional;
+                    } else {
+                        detalleAdicional = "No impacta efectivo - " + detalleAdicional;
+                    }
+                }
             } else {
-                detalleAdicional = "No impacta efectivo - " + detalleAdicional;
+                // Para otros tipos de NC, mantener comportamiento original
+                if (nc.getVenta() != null && "EFECTIVO".equalsIgnoreCase(nc.getVenta().getMetodoPago())) {
+                    impactaEfectivo = true;
+                    detalleAdicional = "Devolución en efectivo - " + detalleAdicional;
+                } else {
+                    detalleAdicional = "No impacta efectivo - " + detalleAdicional;
+                }
             }
             
             EventoAuditoriaDTO evento = new EventoAuditoriaDTO(
                 EventoAuditoriaDTO.TipoEvento.NOTA_CREDITO,
-                "Nota de Crédito",
+                nombreEvento,
                 descripcionTipo + " - " + nc.getMotivo() + " | Comprobante: " + comprobante,
                 usuario,
                 nc.getFechaEmision(),
-                nc.getTotalAcreditado(),
+                montoAMostrar,
                 "bi-arrow-counterclockwise",
                 impactaEfectivo ? "text-danger" : "text-warning",
                 detalleAdicional
@@ -865,9 +939,40 @@ public class CajaServiceImpl implements CajaService {
             String descripcionTipo = nc.getDescripcionTipo() != null ? nc.getDescripcionTipo() : nc.getTipoNota();
             String comprobante = nc.getSerieCorrelativo() != null ? nc.getSerieCorrelativo() : "NC-" + nc.getId();
             
-            log.add(new MovimientoLogDTO("NOTA_CREDITO", 
+            // Para notas de crédito tipo 11 (cambio de producto), mostrar solo el excedente
+            BigDecimal montoAMostrar = nc.getTotalAcreditado();
+            String signoMonto = "−";
+            String tipoEvento = "NOTA_CREDITO";
+            boolean impactaEfectivo = false;
+            
+            if ("11".equals(nc.getTipoNota()) || "Cambio de Producto".equalsIgnoreCase(descripcionTipo)) {
+                // Buscar el cambio de producto asociado para obtener el monto del excedente
+                java.util.Optional<CambioProducto> cambioOpt = cambioProductoRepository.findByNotaCreditoId(nc.getId());
+                if (cambioOpt.isPresent()) {
+                    CambioProducto cambio = cambioOpt.get();
+                    BigDecimal montoExcedente = cambio.getMontoExcedente();
+                    
+                    if (montoExcedente != null && montoExcedente.compareTo(BigDecimal.ZERO) > 0) {
+                        // Hay excedente positivo: mostrar como ingreso
+                        montoAMostrar = montoExcedente;
+                        signoMonto = "+";
+                        tipoEvento = "EXCEDENTE_NC";
+                        impactaEfectivo = true;
+                    } else {
+                        // No hay excedente o es 0: no mostrar en el monitor (no impacta efectivo)
+                        continue;
+                    }
+                }
+            } else {
+                // Para otros tipos de NC, verificar si impacta efectivo
+                if (nc.getVenta() != null && "EFECTIVO".equalsIgnoreCase(nc.getVenta().getMetodoPago())) {
+                    impactaEfectivo = true;
+                }
+            }
+            
+            log.add(new MovimientoLogDTO(tipoEvento, 
                     descripcionTipo + " - " + nc.getMotivo() + " | Comprobante: " + comprobante,
-                    nc.getTotalAcreditado(), "−", false, null, "NOTA_CREDITO", usuario, nc.getFechaEmision()));
+                    montoAMostrar, signoMonto, impactaEfectivo, null, "NOTA_CREDITO", usuario, nc.getFechaEmision()));
         }
         
         // Evento de cierre si existe
@@ -958,9 +1063,45 @@ public class CajaServiceImpl implements CajaService {
                     String descripcionTipo = nc.getDescripcionTipo() != null ? nc.getDescripcionTipo() : nc.getTipoNota();
                     String comprobante = nc.getSerieCorrelativo() != null ? nc.getSerieCorrelativo() : "NC-" + nc.getId();
                     
-                    log.add(new MovimientoLogDTO("NOTA_CREDITO", 
+                    // Para notas de crédito tipo 11 (cambio de producto), mostrar solo el excedente
+                    BigDecimal montoAMostrar = nc.getTotalAcreditado();
+                    String signoMonto = "−";
+                    String tipoEvento = "NOTA_CREDITO";
+                    boolean impactaEfectivo = false;
+                    
+                    if ("11".equals(nc.getTipoNota()) || "Cambio de Producto".equalsIgnoreCase(descripcionTipo)) {
+                        // Buscar el cambio de producto asociado para obtener el monto del excedente
+                        java.util.Optional<CambioProducto> cambioOpt = cambioProductoRepository.findByNotaCreditoId(nc.getId());
+                        if (cambioOpt.isPresent()) {
+                            CambioProducto cambio = cambioOpt.get();
+                            BigDecimal montoExcedente = cambio.getMontoExcedente();
+                            
+                            if (montoExcedente != null && montoExcedente.compareTo(BigDecimal.ZERO) > 0) {
+                                // Hay excedente positivo: mostrar como ingreso
+                                montoAMostrar = montoExcedente;
+                                signoMonto = "+";
+                                tipoEvento = "EXCEDENTE_NC";
+                                impactaEfectivo = true;
+                            } else {
+                                // No hay excedente o es 0: no mostrar en el monitor (no impacta efectivo)
+                                continue;
+                            }
+                        } else {
+                            // Si no se encuentra el cambio de producto, usar el comportamiento anterior
+                            if (nc.getVenta() != null && "EFECTIVO".equalsIgnoreCase(nc.getVenta().getMetodoPago())) {
+                                impactaEfectivo = true;
+                            }
+                        }
+                    } else {
+                        // Para otros tipos de NC, verificar si impacta efectivo
+                        if (nc.getVenta() != null && "EFECTIVO".equalsIgnoreCase(nc.getVenta().getMetodoPago())) {
+                            impactaEfectivo = true;
+                        }
+                    }
+                    
+                    log.add(new MovimientoLogDTO(tipoEvento, 
                             descripcionTipo + " - " + nc.getMotivo() + " | Comprobante: " + comprobante,
-                            nc.getTotalAcreditado(), "−", false, null, "NOTA_CREDITO", usuario, nc.getFechaEmision()));
+                            montoAMostrar, signoMonto, impactaEfectivo, null, "NOTA_CREDITO", usuario, nc.getFechaEmision()));
                 }
             }
             
