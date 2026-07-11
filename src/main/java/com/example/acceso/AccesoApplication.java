@@ -4,9 +4,7 @@ package com.example.acceso;
 // Importaciones de clases necesarias de Spring Boot.
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import io.github.cdimascio.dotenv.Dotenv;
 
 // @SpringBootApplication: Es una anotación de conveniencia que combina tres anotaciones:
 // 1. @Configuration: Marca la clase como una fuente de definiciones de beans.
@@ -29,9 +27,4 @@ public class AccesoApplication {
 		SpringApplication.run(AccesoApplication.class, args);
 		System.out.println("CONEXIÓN EXITOSA");
 	}
-
-    @Bean
-    public Dotenv dotenv() {
-        return Dotenv.load();
-    }
 }
