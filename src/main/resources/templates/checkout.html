@@ -110,20 +110,23 @@
             color: #6c757d;
         }
         .btn-confirm {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            padding: 1rem 2rem;
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: white;
-            border-radius: 0.5rem;
-            width: 100%;
-            transition: all 0.3s ease;
+             background: linear-gradient(
+        135deg,
+        var(--ym-pink),
+        var(--ym-pink-dark)
+    );
+    color: var(--ym-yellow);
+    border:none;
+    border-radius:16px;
+    height:56px;
+    font-weight:700;
+    font-size:1rem;
+    transition:.25s;
         }
-        .btn-confirm:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
+        .btn-confirm:hover{
+    transform:translateY(-2px);
+    box-shadow:0 10px 25px rgba(255,42,166,.35);
+}
         .btn-confirm:disabled {
             opacity: 0.5;
             cursor: not-allowed;

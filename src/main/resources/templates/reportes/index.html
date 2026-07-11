@@ -114,7 +114,7 @@
     <div th:if="${tipoActivo == 'egresos'}" class="card reporte-card mb-4">
         <div class="card-body d-flex flex-wrap align-items-center gap-2 py-3">
             <span class="fw-semibold text-nowrap small me-1"><i class="bi bi-calendar-range me-1"></i>Período:</span>
-            <a th:href="@{/reportes/egresos(desde=${desde}, hasta=${hasta})}" class="btn btn-reportes-outline btn-sm periodo-btn">Ver mes actual</a>
+            <a th:href="@{/reportes/egresos}" class="btn btn-reportes-outline btn-sm periodo-btn">Ver mes actual</a>
             <form method="get" th:action="@{/reportes/egresos}" class="d-flex align-items-center gap-2 ms-2 border-start ps-3">
                 <input type="date" name="desde" th:value="${desde != null ? #temporals.format(desde, 'yyyy-MM-dd') : ''}" class="form-control form-control-sm" style="width: 140px;">
                 <span class="text-muted small">a</span>
@@ -136,8 +136,7 @@
     <div th:if="${tipoActivo == 'ingresos'}" class="card reporte-card mb-4">
         <div class="card-body d-flex flex-wrap align-items-center gap-2 py-3">
             <span class="fw-semibold text-nowrap small me-1"><i class="bi bi-calendar-range me-1"></i>Período:</span>
-            <a th:href="@{/reportes/ingresos(desde=${desde}, hasta=${hasta})}" class="btn btn-reportes-outline btn-sm periodo-btn">Ver mes actual</a>
-            <form method="get" th:action="@{/reportes/ingresos}" class="d-flex align-items-center gap-2 ms-2 border-start ps-3">
+            <a th:href="@{/reportes/ingresos}" class="btn btn-reportes-outline btn-sm periodo-btn">Ver mes actual</a>            <form method="get" th:action="@{/reportes/ingresos}" class="d-flex align-items-center gap-2 ms-2 border-start ps-3">
                 <input type="date" name="desde" th:value="${desde != null ? #temporals.format(desde, 'yyyy-MM-dd') : ''}" class="form-control form-control-sm" style="width: 140px;">
                 <span class="text-muted small">a</span>
                 <input type="date" name="hasta" th:value="${hasta != null ? #temporals.format(hasta, 'yyyy-MM-dd') : ''}" class="form-control form-control-sm" style="width: 140px;">
@@ -149,8 +148,7 @@
     <div th:if="${tipoActivo == 'ventas'}" class="card reporte-card mb-4">
         <div class="card-body d-flex flex-wrap align-items-center gap-2 py-3">
             <span class="fw-semibold text-nowrap small me-1"><i class="bi bi-calendar-range me-1"></i>Período:</span>
-            <a th:href="@{/reportes/ventas(desde=${desde}, hasta=${hasta})}" class="btn btn-reportes-outline btn-sm periodo-btn">Ver mes actual</a>
-            <form method="get" th:action="@{/reportes/ventas}" class="d-flex align-items-center gap-2 ms-2 border-start ps-3">
+            <a th:href="@{/reportes/ventas}" class="btn btn-reportes-outline btn-sm periodo-btn">Ver mes actual</a>            <form method="get" th:action="@{/reportes/ventas}" class="d-flex align-items-center gap-2 ms-2 border-start ps-3">
                 <input type="date" name="desde" th:value="${desde != null ? #temporals.format(desde, 'yyyy-MM-dd') : ''}" class="form-control form-control-sm" style="width: 140px;">
                 <span class="text-muted small">a</span>
                 <input type="date" name="hasta" th:value="${hasta != null ? #temporals.format(hasta, 'yyyy-MM-dd') : ''}" class="form-control form-control-sm" style="width: 140px;">
@@ -162,8 +160,7 @@
     <div th:if="${tipoActivo == 'comprobantes'}" class="card reporte-card mb-4">
         <div class="card-body d-flex flex-wrap align-items-center gap-2 py-3">
             <span class="fw-semibold text-nowrap small me-1"><i class="bi bi-calendar-range me-1"></i>Período:</span>
-            <a th:href="@{/reportes/comprobantes(desde=${desde}, hasta=${hasta})}" class="btn btn-reportes-outline btn-sm periodo-btn">Ver mes actual</a>
-            <form method="get" th:action="@{/reportes/comprobantes}" class="d-flex align-items-center gap-2 ms-2 border-start ps-3">
+            <a th:href="@{/reportes/comprobantes}" class="btn btn-reportes-outline btn-sm periodo-btn">Ver mes actual</a>            <form method="get" th:action="@{/reportes/comprobantes}" class="d-flex align-items-center gap-2 ms-2 border-start ps-3">
                 <input type="date" name="desde" th:value="${desde != null ? #temporals.format(desde, 'yyyy-MM-dd') : ''}" class="form-control form-control-sm" style="width: 140px;">
                 <span class="text-muted small">a</span>
                 <input type="date" name="hasta" th:value="${hasta != null ? #temporals.format(hasta, 'yyyy-MM-dd') : ''}" class="form-control form-control-sm" style="width: 140px;">
@@ -175,8 +172,7 @@
     <div th:if="${tipoActivo == 'caja'}" class="card reporte-card mb-4">
         <div class="card-body d-flex flex-wrap align-items-center gap-2 py-3">
             <span class="fw-semibold text-nowrap small me-1"><i class="bi bi-calendar-range me-1"></i>Período:</span>
-            <a th:href="@{/reportes/caja(desde=${desde}, hasta=${hasta})}" class="btn btn-reportes-outline btn-sm periodo-btn">Ver últimos 30 días</a>
-            <form method="get" th:action="@{/reportes/caja}" class="d-flex align-items-center gap-2 ms-2 border-start ps-3">
+            <a th:href="@{/reportes/caja}" class="btn btn-reportes-outline btn-sm periodo-btn">Ver últimos 30 días</a>            <form method="get" th:action="@{/reportes/caja}" class="d-flex align-items-center gap-2 ms-2 border-start ps-3">
                 <input type="date" name="desde" th:value="${desde != null ? #temporals.format(desde, 'yyyy-MM-dd') : ''}" class="form-control form-control-sm" style="width: 140px;">
                 <span class="text-muted small">a</span>
                 <input type="date" name="hasta" th:value="${hasta != null ? #temporals.format(hasta, 'yyyy-MM-dd') : ''}" class="form-control form-control-sm" style="width: 140px;">
