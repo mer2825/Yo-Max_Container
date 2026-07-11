@@ -142,53 +142,52 @@ $(document).ready(function() {
                         const isTotal = estadoNC && estadoNC.toUpperCase() === 'TOTAL';
                         const isRechazado = estadoSunat === 'rechazado';
 
+                        const btnSm = 'btn btn-sm';
+                        const gap = 'display:inline-flex;gap:4px;flex-wrap:nowrap;align-items:center;';
+
                         // Para Notas de Venta: editar y anular normalmente
                         if (isNotaVenta) {
-                            return `
-                                <button class="btn btn-sm btn-info action-edit" data-id="${row.id}" title="Editar Venta"><i class="bi bi-pencil-fill"></i></button>
-                                <button class="btn btn-sm btn-danger action-delete" data-id="${row.id}" title="Anular Venta"><i class="bi bi-trash-fill"></i></button>
-                                <a href="/ventas/imprimir/${row.id}" target="_blank" class="btn btn-sm btn-primary" title="Imprimir" style="margin-left:3px"><i class="bi bi-printer-fill"></i></a>
-                            `;
+                            return `<div style="${gap}">
+                                <button class="${btnSm} btn-info action-edit" data-id="${row.id}" title="Editar Venta"><i class="bi bi-pencil-fill"></i></button>
+                                <button class="${btnSm} btn-danger action-delete" data-id="${row.id}" title="Anular Venta"><i class="bi bi-trash-fill"></i></button>
+                                <a href="/ventas/imprimir/${row.id}" target="_blank" class="${btnSm} btn-primary" title="Imprimir"><i class="bi bi-printer-fill"></i></a>
+                            </div>`;
                         }
 
                         // Para Boletas/Facturas con NC Total: todo deshabilitado
                         if (isTotal) {
                             const verNcLink = row.ncPdfUrl ? 
-                                `<a href="/ventas/nota-credito/${row.id}/ver" target="_blank" class="btn btn-sm btn-success" title="Ver NC" style="margin-left:3px"><i class="bi bi-printer-fill"></i></a>` : '';
-                            return `
-                                <span style="background:#e0e0e0;color:#999;border-radius:4px;padding:4px 7px;font-size:9px;cursor:not-allowed" title="No editable">✏</span>
-                                <span style="background:#e0e0e0;color:#999;border-radius:4px;padding:4px 7px;font-size:9px;cursor:not-allowed;margin-left:3px" title="NC total emitida">NC emitida</span>
+                                `<a href="/ventas/nota-credito/${row.id}/ver" target="_blank" class="${btnSm} btn-success" title="Ver NC" style="padding:4px 8px;"><i class="bi bi-printer-fill"></i></a>` : '';
+                            return `<div style="${gap}">
+                                <span class="badge bg-secondary" style="font-size:9px;padding:5px 8px;cursor:not-allowed" title="No editable">✏ No editable</span>
                                 ${verNcLink}
-                            `;
+                            </div>`;
                         }
 
                         // Para Boletas/Facturas con NC Parcial: mostrar "Ver NC"
                         if (isParcial) {
                             const verNcLink = row.ncPdfUrl ? 
-                                `<a href="/ventas/nota-credito/${row.id}/ver" target="_blank" class="btn btn-sm" style="background:#fce4f3;color:#a3006b;border-radius:4px;padding:4px 7px;font-size:9px;text-decoration:none;margin-left:3px" title="Ver NC">Ver NC</a>` : '';
-                            return `
-                                <span style="background:#e0e0e0;color:#999;border-radius:4px;padding:4px 7px;font-size:9px;cursor:not-allowed" title="No editable — tiene NC parcial">✏</span>
-                                <a href="/ventas/nota-credito/${row.id}" class="btn btn-sm" style="background:#f0ad4e;color:#000;border-radius:4px;padding:4px 7px;font-size:9px;text-decoration:none;margin-left:3px" title="Emitir NC adicional">📋 NC Parcial</a>
+                                `<a href="/ventas/nota-credito/${row.id}/ver" target="_blank" style="background:#fce4f3;color:#a3006b;border-radius:4px;padding:5px 10px;font-size:10px;font-weight:600;text-decoration:none;" title="Ver NC">📄 Ver NC</a>` : '';
+                            return `<div style="${gap}">
+                                <a href="/ventas/nota-credito/${row.id}" style="background:#f0ad4e;color:#000;border-radius:4px;padding:5px 10px;font-size:10px;font-weight:600;text-decoration:none;" title="Emitir NC adicional">📋 NC Parcial</a>
                                 ${verNcLink}
-                                <a href="/ventas/imprimir/${row.id}" target="_blank" class="btn btn-sm btn-primary" title="Imprimir" style="margin-left:3px"><i class="bi bi-printer-fill"></i></a>
-                            `;
+                                <a href="/ventas/imprimir/${row.id}" target="_blank" class="${btnSm} btn-primary" title="Imprimir"><i class="bi bi-printer-fill"></i></a>
+                            </div>`;
                         }
 
-                        // Para Boletas/Facturas sin NC y no rechazadas: botón de emitir NC y cambiar producto
+                        // Para Boletas/Facturas sin NC y no rechazadas: botón de cambiar producto
                         if (!isRechazado) {
-                            return `
-                                <span style="background:#e0e0e0;color:#999;border-radius:4px;padding:4px 7px;font-size:9px;cursor:not-allowed" title="No editable — comprobante emitido a SUNAT">✏</span>
-                                <a href="/ventas/nota-credito/${row.id}" class="btn btn-sm" style="background:#d63384;color:#fff;border-radius:4px;padding:4px 7px;font-size:9px;text-decoration:none;margin-left:3px" title="Emitir Nota de Crédito">📋 Emitir NC</a>
-                                <a href="/ventas/nota-credito/${row.id}/cambiar-producto" class="btn btn-sm" style="background:#ffc107;color:#000;border-radius:4px;padding:4px 7px;font-size:9px;text-decoration:none;margin-left:3px" title="Cambiar Producto">🔄 Cambiar</a>
-                                <a href="/ventas/imprimir/${row.id}" target="_blank" class="btn btn-sm btn-primary" title="Imprimir" style="margin-left:3px"><i class="bi bi-printer-fill"></i></a>
-                            `;
+                            return `<div style="${gap}">
+                                <a href="/ventas/nota-credito/${row.id}/cambiar-producto" style="background:#ffc107;color:#000;border-radius:4px;padding:5px 10px;font-size:10px;font-weight:600;text-decoration:none;" title="Cambiar Producto">🔄 Cambiar</a>
+                                <a href="/ventas/imprimir/${row.id}" target="_blank" class="${btnSm} btn-primary" title="Imprimir"><i class="bi bi-printer-fill"></i></a>
+                            </div>`;
                         }
 
                         // Para Boletas/Facturas rechazadas: solo imprimir
-                        return `
-                            <span style="background:#e0e0e0;color:#999;border-radius:4px;padding:4px 7px;font-size:9px;cursor:not-allowed" title="Comprobante rechazado">✏</span>
-                            <a href="/ventas/imprimir/${row.id}" target="_blank" class="btn btn-sm btn-primary" title="Imprimir" style="margin-left:3px"><i class="bi bi-printer-fill"></i></a>
-                        `;
+                        return `<div style="${gap}">
+                            <span class="badge bg-danger" style="font-size:9px;padding:5px 8px;" title="Comprobante rechazado">✏ Rechazado</span>
+                            <a href="/ventas/imprimir/${row.id}" target="_blank" class="${btnSm} btn-primary" title="Imprimir"><i class="bi bi-printer-fill"></i></a>
+                        </div>`;
                     }
                 }
             ],
