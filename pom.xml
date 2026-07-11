@@ -128,11 +128,9 @@
             <version>5.2.5</version>
         </dependency>
 
-        <!-- Spring Boot Mail (JavaMailSender para SMTP) -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
-        </dependency>
+        <!-- NOTA: spring-boot-starter-mail eliminado.
+             Ahora usamos API REST de MailerSend vía RestTemplate
+             (incluido en spring-boot-starter-web) -->
 	</dependencies>
 
 	<build>

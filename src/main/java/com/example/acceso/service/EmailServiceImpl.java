@@ -3,216 +3,102 @@ package com.example.acceso.service;
 import com.example.acceso.dto.EventoAuditoriaDTO;
 import com.example.acceso.model.Empresa;
 import com.example.acceso.model.SesionCaja;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class EmailServiceImpl implements EmailService {
 
     private static final Logger logger = LoggerFactory.getLogger(EmailServiceImpl.class);
 
-    private final JavaMailSender javaMailSender;
+    private final RestTemplate restTemplate;
     private final EmpresaService empresaService;
 
-    @Value("${spring.mail.from}")
+    @Value("${mailersend.api.token}")
+    private String apiToken;
+
+    @Value("${mailersend.from.email}")
     private String fromEmail;
 
-    public EmailServiceImpl(JavaMailSender javaMailSender, EmpresaService empresaService) {
-        this.javaMailSender = javaMailSender;
+    @Value("${mailersend.from.name}")
+    private String fromName;
+
+    private static final String MAILERSEND_API_URL = "https://api.mailersend.com/v1/email";
+
+    public EmailServiceImpl(EmpresaService empresaService) {
+        this.restTemplate = new RestTemplate();
         this.empresaService = empresaService;
     }
 
     @Override
     public void enviarEmailAprobacion(String emailDestino, String numeroPedido) {
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(emailDestino);
-            message.setFrom(fromEmail);
-            message.setSubject("¡Tu pedido ha sido confirmado!");
-            message.setText("Hola,\n\nTu pedido #" + numeroPedido + " ha sido aprobado exitosamente.\n" +
-                          "Pronto nos comunicaremos contigo para coordinar la entrega.\n\n" +
-                          "Gracias por tu compra.");
+        String subject = "¡Tu pedido ha sido confirmado!";
+        String text = "Hola,\n\nTu pedido #" + numeroPedido + " ha sido aprobado exitosamente.\n" +
+                      "Pronto nos comunicaremos contigo para coordinar la entrega.\n\n" +
+                      "Gracias por tu compra.";
 
-            javaMailSender.send(message);
-            logger.info("Email de aprobación enviado a {} para pedido {}", emailDestino, numeroPedido);
-        } catch (Exception e) {
-            logger.error("Error al enviar email de aprobación a {}: {}", emailDestino, e.getMessage());
-        }
+        enviarEmailSimple(emailDestino, subject, text);
     }
 
     @Override
     public void enviarEmailRechazo(String emailDestino, String numeroPedido, String motivo) {
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(emailDestino);
-            message.setFrom(fromEmail);
-            message.setSubject("Información sobre tu pedido #" + numeroPedido);
-            message.setText("Hola,\n\nLamentamos informarte que tu pedido #" + numeroPedido +
-                          " no pudo procesarse por el siguiente motivo:\n\n" +
-                          motivo + "\n\n" +
-                          "Por favor contáctanos si tienes alguna duda o deseas realizar el pedido nuevamente.\n\n" +
-                          "Gracias por tu comprensión.");
+        String subject = "Información sobre tu pedido #" + numeroPedido;
+        String text = "Hola,\n\nLamentamos informarte que tu pedido #" + numeroPedido +
+                      " no pudo procesarse por el siguiente motivo:\n\n" +
+                      motivo + "\n\n" +
+                      "Por favor contáctanos si tienes alguna duda o deseas realizar el pedido nuevamente.\n\n" +
+                      "Gracias por tu comprensión.";
 
-            javaMailSender.send(message);
-            logger.info("Email de rechazo enviado a {} para pedido {}", emailDestino, numeroPedido);
-        } catch (Exception e) {
-            logger.error("Error al enviar email de rechazo a {}: {}", emailDestino, e.getMessage());
-        }
+        enviarEmailSimple(emailDestino, subject, text);
     }
 
     @Override
     public void enviarEmailConfirmacionConPdf(String emailDestino, String numeroPedido, String nombreCliente, ByteArrayInputStream pdfBytes) {
-        try {
-            MimeMessage message = javaMailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+        Empresa empresa = empresaService.getEmpresaInfo();
+        String nombreEmpresa = (empresa != null && empresa.getNombre() != null) ? empresa.getNombre() : "Empresa";
 
-            Empresa empresa = empresaService.getEmpresaInfo();
-            String nombreEmpresa = (empresa != null && empresa.getNombre() != null) ? empresa.getNombre() : "Empresa";
+        String subject = "✅ ¡Tu pedido #" + numeroPedido + " ha sido aprobado - " + nombreEmpresa;
+        String htmlBody = construirHtmlConfirmacion(nombreCliente, numeroPedido, nombreEmpresa, null);
 
-            helper.setTo(emailDestino);
-            helper.setFrom(fromEmail);
-            helper.setSubject("✅ ¡Tu pedido #" + numeroPedido + " ha sido aprobado - " + nombreEmpresa);
-
-            String cuerpoHtml = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"
-                + "body { font-family: Arial, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; }"
-                + ".container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }"
-                + ".header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; text-align: center; }"
-                + ".header h1 { margin: 0; font-size: 24px; }"
-                + ".content { padding: 30px; }"
-                + ".content p { color: #495057; line-height: 1.6; }"
-                + ".pedido-number { font-size: 1.5rem; font-weight: bold; color: #28a745; text-align: center; margin: 20px 0; }"
-                + ".footer { text-align: center; padding: 20px; color: #6c757d; font-size: 12px; border-top: 1px solid #eee; }"
-                + "</style></head><body>"
-                + "<div class='container'>"
-                + "<div class='header'><h1>✅ ¡Pedido Aprobado!</h1></div>"
-                + "<div class='content'>"
-                + "<p>Hola <strong>" + nombreCliente + "</strong>,</p>"
-                + "<p>¡Tu pedido ha sido aprobado exitosamente!</p>"
-                + "<div class='pedido-number'>Pedido #" + numeroPedido + "</div>"
-                + "<p>Adjuntamos la especificación de compra con los detalles de tu pedido.</p>"
-                + "<p>Si tienes alguna pregunta, no dudes en contactarnos.</p>"
-                + "<p>¡Gracias por tu compra!</p>"
-                + "</div>"
-                + "<div class='footer'>"
-                + "<p>© " + java.time.LocalDate.now().getYear() + " " + nombreEmpresa + "</p>"
-                + "</div></div></body></html>";
-
-            helper.setText(cuerpoHtml, true);
-
-            // Adjuntar el PDF de especificación
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            byte[] buffer = new byte[1024];
-            int bytesRead;
-            while ((bytesRead = pdfBytes.read(buffer)) != -1) {
-                baos.write(buffer, 0, bytesRead);
-            }
-            byte[] pdfData = baos.toByteArray();
-
-            helper.addAttachment("especificacion-compra-" + numeroPedido + ".pdf",
-                    new org.springframework.core.io.ByteArrayResource(pdfData));
-
-            javaMailSender.send(message);
-            logger.info("Email de confirmación con PDF enviado a {} para pedido {}", emailDestino, numeroPedido);
-        } catch (Exception e) {
-            logger.error("Error al enviar email de confirmación a {}: {}", emailDestino, e.getMessage());
+        List<MailerSendAttachment> attachments = new ArrayList<>();
+        if (pdfBytes != null) {
+            attachments.add(crearAttachment(pdfBytes, "especificacion-compra-" + numeroPedido + ".pdf"));
         }
+
+        enviarEmailConAdjuntos(emailDestino, subject, htmlBody, attachments);
     }
 
     @Override
-    public void enviarEmailConfirmacionConPdf(String emailDestino, String numeroPedido, String nombreCliente, 
-                                               ByteArrayInputStream especPdfBytes, ByteArrayInputStream boletaPdfBytes, 
+    public void enviarEmailConfirmacionConPdf(String emailDestino, String numeroPedido, String nombreCliente,
+                                               ByteArrayInputStream especPdfBytes, ByteArrayInputStream boletaPdfBytes,
                                                String serieCorrelativo) {
-        try {
-            MimeMessage message = javaMailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+        Empresa empresa = empresaService.getEmpresaInfo();
+        String nombreEmpresa = (empresa != null && empresa.getNombre() != null) ? empresa.getNombre() : "Empresa";
 
-            Empresa empresa = empresaService.getEmpresaInfo();
-            String nombreEmpresa = (empresa != null && empresa.getNombre() != null) ? empresa.getNombre() : "Empresa";
+        String comprobanteInfo = (serieCorrelativo != null) ? " - Comp. " + serieCorrelativo : "";
+        String subject = "✅ Pedido #" + numeroPedido + " aprobado" + comprobanteInfo + " - " + nombreEmpresa;
+        String htmlBody = construirHtmlConfirmacionConBoleta(nombreCliente, numeroPedido, nombreEmpresa, serieCorrelativo);
 
-            helper.setTo(emailDestino);
-            helper.setFrom(fromEmail);
-            
-            String comprobanteInfo = (serieCorrelativo != null) ? " - Comp. " + serieCorrelativo : "";
-            helper.setSubject("✅ Pedido #" + numeroPedido + " aprobado" + comprobanteInfo + " - " + nombreEmpresa);
-
-            String cuerpoHtml = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"
-                + "body { font-family: Arial, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; }"
-                + ".container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }"
-                + ".header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; text-align: center; }"
-                + ".header h1 { margin: 0; font-size: 24px; }"
-                + ".content { padding: 30px; }"
-                + ".content p { color: #495057; line-height: 1.6; }"
-                + ".pedido-number { font-size: 1.5rem; font-weight: bold; color: #28a745; text-align: center; margin: 20px 0; }"
-                + ".comprobante-info { background: #f0fdf4; border: 1px solid #28a745; border-radius: 8px; padding: 12px; margin: 15px 0; text-align: center; }"
-                + ".comprobante-info span { color: #155724; font-size: 0.9rem; }"
-                + ".footer { text-align: center; padding: 20px; color: #6c757d; font-size: 12px; border-top: 1px solid #eee; }"
-                + "</style></head><body>"
-                + "<div class='container'>"
-                + "<div class='header'><h1>✅ ¡Pedido Aprobado!</h1></div>"
-                + "<div class='content'>"
-                + "<p>Hola <strong>" + nombreCliente + "</strong>,</p>"
-                + "<p>¡Tu pedido ha sido aprobado y el comprobante de pago ha sido emitido exitosamente!</p>"
-                + "<div class='pedido-number'>Pedido #" + numeroPedido + "</div>"
-                + (serieCorrelativo != null ? "<div class='comprobante-info'><span>🧾 Comprobante: <strong>" + serieCorrelativo + "</strong></span></div>" : "")
-                + "<p>Adjuntamos los siguientes documentos:</p>"
-                + "<ul>"
-                + "<li><strong>Especificación de compra</strong> — detalle de los productos adquiridos</li>"
-                + "<li><strong>Boleta/Factura electrónica</strong> — comprobante oficial emitido</li>"
-                + "</ul>"
-                + "<p>Si tienes alguna pregunta, no dudes en contactarnos.</p>"
-                + "<p>¡Gracias por tu compra!</p>"
-                + "</div>"
-                + "<div class='footer'>"
-                + "<p>© " + java.time.LocalDate.now().getYear() + " " + nombreEmpresa + "</p>"
-                + "</div></div></body></html>";
-
-            helper.setText(cuerpoHtml, true);
-
-            // Adjuntar especificación
-            if (especPdfBytes != null) {
-                ByteArrayOutputStream baosEspec = new ByteArrayOutputStream();
-                byte[] buffer = new byte[1024];
-                int bytesRead;
-                while ((bytesRead = especPdfBytes.read(buffer)) != -1) {
-                    baosEspec.write(buffer, 0, bytesRead);
-                }
-                helper.addAttachment("especificacion-compra-" + numeroPedido + ".pdf",
-                        new org.springframework.core.io.ByteArrayResource(baosEspec.toByteArray()));
-            }
-
-            // Adjuntar boleta PDF
-            if (boletaPdfBytes != null) {
-                ByteArrayOutputStream baosBoleta = new ByteArrayOutputStream();
-                byte[] buffer = new byte[1024];
-                int bytesRead;
-                while ((bytesRead = boletaPdfBytes.read(buffer)) != -1) {
-                    baosBoleta.write(buffer, 0, bytesRead);
-                }
-                String nombreArchivo = (serieCorrelativo != null ? "comprobante-" + serieCorrelativo : "boleta-" + numeroPedido) + ".pdf";
-                helper.addAttachment(nombreArchivo,
-                        new org.springframework.core.io.ByteArrayResource(baosBoleta.toByteArray()));
-            }
-
-            javaMailSender.send(message);
-            logger.info("Email de confirmación con especificación + boleta enviado a {} para pedido {}", emailDestino, numeroPedido);
-        } catch (Exception e) {
-            logger.error("Error al enviar email de confirmación con boleta a {}: {}", emailDestino, e.getMessage());
+        List<MailerSendAttachment> attachments = new ArrayList<>();
+        if (especPdfBytes != null) {
+            attachments.add(crearAttachment(especPdfBytes, "especificacion-compra-" + numeroPedido + ".pdf"));
         }
+        if (boletaPdfBytes != null) {
+            String nombreArchivo = (serieCorrelativo != null ? "comprobante-" + serieCorrelativo : "boleta-" + numeroPedido) + ".pdf";
+            attachments.add(crearAttachment(boletaPdfBytes, nombreArchivo));
+        }
+
+        enviarEmailConAdjuntos(emailDestino, subject, htmlBody, attachments);
     }
 
     @Override
@@ -226,44 +112,191 @@ public class EmailServiceImpl implements EmailService {
             return;
         }
 
-        try {
-            MimeMessage message = javaMailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+        Empresa empresa = empresaService.getEmpresaInfo();
+        String nombreEmpresa = (empresa != null && empresa.getNombre() != null) ? empresa.getNombre() : "Empresa";
 
-            Empresa empresa = empresaService.getEmpresaInfo();
-            String nombreEmpresa = (empresa != null && empresa.getNombre() != null) ? empresa.getNombre() : "Empresa";
+        String subject = "📊 Reporte de Cierre de Caja - " + nombreEmpresa;
+        String htmlBody = construirCuerpoHtml(sesion, detalle, nombreEmpresa);
 
-            helper.setTo(destinatario);
-            helper.setFrom(fromEmail);
-            helper.setSubject("📊 Reporte de Cierre de Caja - " + nombreEmpresa);
-
-            // Construir cuerpo HTML del email
-            String cuerpoHtml = construirCuerpoHtml(sesion, detalle, nombreEmpresa);
-            helper.setText(cuerpoHtml, true);
-
-            // Adjuntar el PDF
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            byte[] buffer = new byte[1024];
-            int bytesRead;
-            while ((bytesRead = pdfBytes.read(buffer)) != -1) {
-                baos.write(buffer, 0, bytesRead);
-            }
-            byte[] pdfData = baos.toByteArray();
-
+        List<MailerSendAttachment> attachments = new ArrayList<>();
+        if (pdfBytes != null) {
             String fechaFormateada = sesion.getFechaCierre() != null
                     ? sesion.getFechaCierre().format(DateTimeFormatter.ofPattern("dd-MM-yyyy_HH-mm"))
                     : "sin-fecha";
-
-            helper.addAttachment("reporte-caja-" + sesion.getId() + "_" + fechaFormateada + ".pdf",
-                    new ByteArrayResource(pdfData));
-
-            // Enviar
-            javaMailSender.send(message);
-            logger.info("Reporte de cierre de caja #{} enviado exitosamente a {}", sesion.getId(), destinatario);
-
-        } catch (MessagingException | IOException e) {
-            logger.error("Error al enviar reporte de cierre de caja #{} a {}: {}", sesion.getId(), destinatario, e.getMessage());
+            attachments.add(crearAttachment(pdfBytes, "reporte-caja-" + sesion.getId() + "_" + fechaFormateada + ".pdf"));
         }
+
+        enviarEmailConAdjuntos(destinatario, subject, htmlBody, attachments);
+    }
+
+    // ========================================================================
+    // MÉTODOS PRIVADOS PARA CONSTRUIR Y ENVIAR PETICIONES A LA API DE MAILERSEND
+    // ========================================================================
+
+    /**
+     * Envía un email simple (solo texto plano, sin HTML ni adjuntos)
+     */
+    private void enviarEmailSimple(String emailDestino, String subject, String text) {
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("from", Map.of("email", fromEmail, "name", fromName));
+            payload.put("to", List.of(Map.of("email", emailDestino)));
+            payload.put("subject", subject);
+            payload.put("text", text);
+
+            ejecutarPeticion(payload);
+            logger.info("Email simple enviado a {}: {}", emailDestino, subject);
+        } catch (Exception e) {
+            logger.error("Error al enviar email simple a {}: {}", emailDestino, e.getMessage());
+        }
+    }
+
+    /**
+     * Envía un email con contenido HTML y adjuntos opcionales
+     */
+    private void enviarEmailConAdjuntos(String emailDestino, String subject, String htmlBody,
+                                         List<MailerSendAttachment> attachments) {
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("from", Map.of("email", fromEmail, "name", fromName));
+            payload.put("to", List.of(Map.of("email", emailDestino)));
+            payload.put("subject", subject);
+            payload.put("html", htmlBody);
+
+            if (attachments != null && !attachments.isEmpty()) {
+                List<Map<String, String>> attachList = new ArrayList<>();
+                for (MailerSendAttachment att : attachments) {
+                    attachList.add(Map.of(
+                        "content", att.getContent(),
+                        "filename", att.getFilename()
+                    ));
+                }
+                payload.put("attachments", attachList);
+            }
+
+            ejecutarPeticion(payload);
+            logger.info("Email con adjuntos enviado a {}: {}", emailDestino, subject);
+        } catch (Exception e) {
+            logger.error("Error al enviar email con adjuntos a {}: {}", emailDestino, e.getMessage());
+        }
+    }
+
+    /**
+     * Ejecuta la petición HTTP POST a la API de MailerSend
+     */
+    private void ejecutarPeticion(Map<String, Object> payload) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(apiToken);
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    MAILERSEND_API_URL,
+                    HttpMethod.POST,
+                    request,
+                    String.class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                logger.info("MailerSend API respondió con status: {} - Email enviado exitosamente", response.getStatusCode());
+            } else {
+                logger.warn("MailerSend API respondió con status: {} - body: {}", response.getStatusCode(), response.getBody());
+            }
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            logger.error("Error HTTP {} al llamar a MailerSend API. Cuerpo de la respuesta: {}",
+                    e.getStatusCode(), e.getResponseBodyAsString());
+            logger.error("Verifica que MAILERSEND_API_TOKEN sea un token de API REST de MailerSend (no la contraseña SMTP).");
+            logger.error("Para obtener un token API: ve a https://app.mailersend.com/ → API Tokens → Generate new token");
+        } catch (Exception e) {
+            logger.error("Error inesperado al llamar a MailerSend API: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Convierte un ByteArrayInputStream a un attachment de MailerSend (base64)
+     */
+    private MailerSendAttachment crearAttachment(ByteArrayInputStream bais, String filename) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = bais.read(buffer)) != -1) {
+                baos.write(buffer, 0, bytesRead);
+            }
+            byte[] fileBytes = baos.toByteArray();
+            String base64Content = Base64.getEncoder().encodeToString(fileBytes);
+            return new MailerSendAttachment(base64Content, filename);
+        } catch (IOException e) {
+            logger.error("Error al leer bytes del PDF para adjuntar: {}", e.getMessage());
+            throw new RuntimeException("Error al procesar attachment", e);
+        }
+    }
+
+    // ========================================================================
+    // CONSTRUCCIÓN DE HTML
+    // ========================================================================
+
+    private String construirHtmlConfirmacion(String nombreCliente, String numeroPedido,
+                                              String nombreEmpresa, String serieCorrelativo) {
+        return "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"
+            + "body { font-family: Arial, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; }"
+            + ".container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }"
+            + ".header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; text-align: center; }"
+            + ".header h1 { margin: 0; font-size: 24px; }"
+            + ".content { padding: 30px; }"
+            + ".content p { color: #495057; line-height: 1.6; }"
+            + ".pedido-number { font-size: 1.5rem; font-weight: bold; color: #28a745; text-align: center; margin: 20px 0; }"
+            + ".footer { text-align: center; padding: 20px; color: #6c757d; font-size: 12px; border-top: 1px solid #eee; }"
+            + "</style></head><body>"
+            + "<div class='container'>"
+            + "<div class='header'><h1>✅ ¡Pedido Aprobado!</h1></div>"
+            + "<div class='content'>"
+            + "<p>Hola <strong>" + nombreCliente + "</strong>,</p>"
+            + "<p>¡Tu pedido ha sido aprobado exitosamente!</p>"
+            + "<div class='pedido-number'>Pedido #" + numeroPedido + "</div>"
+            + "<p>Adjuntamos la especificación de compra con los detalles de tu pedido.</p>"
+            + "<p>Si tienes alguna pregunta, no dudes en contactarnos.</p>"
+            + "<p>¡Gracias por tu compra!</p>"
+            + "</div>"
+            + "<div class='footer'>"
+            + "<p>© " + java.time.LocalDate.now().getYear() + " " + nombreEmpresa + "</p>"
+            + "</div></div></body></html>";
+    }
+
+    private String construirHtmlConfirmacionConBoleta(String nombreCliente, String numeroPedido,
+                                                       String nombreEmpresa, String serieCorrelativo) {
+        return "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"
+            + "body { font-family: Arial, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; }"
+            + ".container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }"
+            + ".header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; text-align: center; }"
+            + ".header h1 { margin: 0; font-size: 24px; }"
+            + ".content { padding: 30px; }"
+            + ".content p { color: #495057; line-height: 1.6; }"
+            + ".pedido-number { font-size: 1.5rem; font-weight: bold; color: #28a745; text-align: center; margin: 20px 0; }"
+            + ".comprobante-info { background: #f0fdf4; border: 1px solid #28a745; border-radius: 8px; padding: 12px; margin: 15px 0; text-align: center; }"
+            + ".comprobante-info span { color: #155724; font-size: 0.9rem; }"
+            + ".footer { text-align: center; padding: 20px; color: #6c757d; font-size: 12px; border-top: 1px solid #eee; }"
+            + "</style></head><body>"
+            + "<div class='container'>"
+            + "<div class='header'><h1>✅ ¡Pedido Aprobado!</h1></div>"
+            + "<div class='content'>"
+            + "<p>Hola <strong>" + nombreCliente + "</strong>,</p>"
+            + "<p>¡Tu pedido ha sido aprobado y el comprobante de pago ha sido emitido exitosamente!</p>"
+            + "<div class='pedido-number'>Pedido #" + numeroPedido + "</div>"
+            + (serieCorrelativo != null ? "<div class='comprobante-info'><span>🧾 Comprobante: <strong>" + serieCorrelativo + "</strong></span></div>" : "")
+            + "<p>Adjuntamos los siguientes documentos:</p>"
+            + "<ul>"
+            + "<li><strong>Especificación de compra</strong> — detalle de los productos adquiridos</li>"
+            + "<li><strong>Boleta/Factura electrónica</strong> — comprobante oficial emitido</li>"
+            + "</ul>"
+            + "<p>Si tienes alguna pregunta, no dudes en contactarnos.</p>"
+            + "<p>¡Gracias por tu compra!</p>"
+            + "</div>"
+            + "<div class='footer'>"
+            + "<p>© " + java.time.LocalDate.now().getYear() + " " + nombreEmpresa + "</p>"
+            + "</div></div></body></html>";
     }
 
     private String construirCuerpoHtml(SesionCaja sesion, Map<String, Object> detalle, String nombreEmpresa) {
@@ -332,5 +365,27 @@ public class EmailServiceImpl implements EmailService {
           .append("</div></div></body></html>");
 
         return sb.toString();
+    }
+
+    // ========================================================================
+    // CLASE INTERNA PARA REPRESENTAR UN ATTACHMENT DE MAILERSEND
+    // ========================================================================
+
+    private static class MailerSendAttachment {
+        private final String content;
+        private final String filename;
+
+        public MailerSendAttachment(String content, String filename) {
+            this.content = content;
+            this.filename = filename;
+        }
+
+        public String getContent() {
+            return content;
+        }
+
+        public String getFilename() {
+            return filename;
+        }
     }
 }
