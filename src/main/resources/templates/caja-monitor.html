@@ -65,17 +65,19 @@
     </div>
 </div>
 
-    <div class="row g-4 mb-4">
-        <div class="col-md-3">
-            <div class="card monitor-card h-100 border-0">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center">
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius: 14px; background: linear-gradient(135deg, #ffffff 0%, #f8fffb 100%); border-left: 4px solid #28a745 !important;">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start">
                         <div class="flex-grow-1">
-                            <p class="monitor-stat-label mb-2">Total Ventas del Día</p>
-                            <h3 class="monitor-stat-value mb-1" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.totalVentas, 0, 2)}">S/ 0.00</h3>
-                            <small class="monitor-stat-sublabel">Todos los métodos de pago</small>
+                            <p class="mb-1 fw-semibold" style="font-size: 0.75rem; color: #28a745; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="bi bi-currency-dollar me-1"></i>Ventas del Día
+                            </p>
+                            <h3 class="mb-0 fw-bold" style="font-size: 1.55rem; color: #1a1a2e;" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.totalVentas, 0, 2)}">S/ 0.00</h3>
+                            <small style="font-size: 0.7rem; color: #6c757d;">Todos los métodos de pago</small>
                         </div>
-                        <div class="monitor-stat-icon" style="background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 100%); color: #28a745;">
+                        <div style="width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); color: white; font-size: 1.2rem; box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3); flex-shrink: 0;">
                             <i class="bi bi-currency-dollar"></i>
                         </div>
                     </div>
@@ -83,16 +85,18 @@
             </div>
         </div>
 
-        <div class="col-md-3">
-            <div class="card monitor-card h-100 border-0">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center">
+        <div class="col-md-3 col-6">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius: 14px; background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%); border-left: 4px solid #198754 !important;">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start">
                         <div class="flex-grow-1">
-                            <p class="monitor-stat-label mb-2">Solo Efectivo</p>
-                            <h3 class="monitor-stat-value mb-1" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.soloEfectivo, 0, 2)}">S/ 0.00</h3>
-                            <small class="monitor-stat-sublabel">Lo que realmente entró a caja</small>
+                            <p class="mb-1 fw-semibold" style="font-size: 0.75rem; color: #198754; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="bi bi-cash me-1"></i>Solo Efectivo
+                            </p>
+                            <h3 class="mb-0 fw-bold" style="font-size: 1.55rem; color: #1a1a2e;" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.soloEfectivo, 0, 2)}">S/ 0.00</h3>
+                            <small style="font-size: 0.7rem; color: #6c757d;">Lo que realmente entró a caja</small>
                         </div>
-                        <div class="monitor-stat-icon" style="background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 100%); color: #28a745;">
+                        <div style="width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: linear-gradient(135deg, #198754 0%, #146c43 100%); color: white; font-size: 1.2rem; box-shadow: 0 4px 12px rgba(25, 135, 84, 0.3); flex-shrink: 0;">
                             <i class="bi bi-cash"></i>
                         </div>
                     </div>
@@ -100,16 +104,18 @@
             </div>
         </div>
 
-        <div class="col-md-3">
-            <div class="card monitor-card h-100 border-0">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center">
+        <div class="col-md-3 col-6">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius: 14px; background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%); border-left: 4px solid #ffc107 !important;">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start">
                         <div class="flex-grow-1">
-                            <p class="monitor-stat-label mb-2">Yape / Otros Métodos</p>
-                            <h3 class="monitor-stat-value mb-1" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.otrosMedios, 0, 2)}">S/ 0.00</h3>
-                            <small class="monitor-stat-sublabel">No impacta caja física</small>
+                            <p class="mb-1 fw-semibold" style="font-size: 0.75rem; color: #d49b00; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="bi bi-phone me-1"></i>Yape / Otros
+                            </p>
+                            <h3 class="mb-0 fw-bold" style="font-size: 1.55rem; color: #1a1a2e;" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.otrosMedios, 0, 2)}">S/ 0.00</h3>
+                            <small style="font-size: 0.7rem; color: #6c757d;">No impacta caja física</small>
                         </div>
-                        <div class="monitor-stat-icon" style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 193, 7, 0.05) 100%); color: #ffc107;">
+                        <div style="width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); color: white; font-size: 1.2rem; box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3); flex-shrink: 0;">
                             <i class="bi bi-phone"></i>
                         </div>
                     </div>
@@ -117,16 +123,18 @@
             </div>
         </div>
 
-        <div class="col-md-3">
-            <div class="card monitor-card h-100 border-0">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center">
+        <div class="col-md-3 col-6">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius: 14px; background: linear-gradient(135deg, #ffffff 0%, #fdf2f9 100%); border-left: 4px solid var(--ym-pink) !important;">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start">
                         <div class="flex-grow-1">
-                            <p class="monitor-stat-label mb-2">Efectivo en Caja</p>
-                            <h3 class="monitor-stat-value mb-1" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.efectivoEnCaja, 0, 2)}">S/ 0.00</h3>
-                            <small class="monitor-stat-sublabel">Fondo + ventas + movimientos</small>
+                            <p class="mb-1 fw-semibold" style="font-size: 0.75rem; color: #cc007f; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="bi bi-safe me-1"></i>Efectivo en Caja
+                            </p>
+                            <h3 class="mb-0 fw-bold" style="font-size: 1.55rem; color: #1a1a2e;" th:text="'S/ ' + ${#numbers.formatDecimal(resumen.efectivoEnCaja, 0, 2)}">S/ 0.00</h3>
+                            <small style="font-size: 0.7rem; color: #6c757d;">Fondo + ventas + movimientos</small>
                         </div>
-                        <div class="monitor-stat-icon" style="background: linear-gradient(135deg, rgba(255, 42, 166, 0.1) 0%, rgba(255, 42, 166, 0.05) 100%); color: var(--ym-pink);">
+                        <div style="width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: linear-gradient(135deg, #ff2aa6 0%, #cc007f 100%); color: white; font-size: 1.2rem; box-shadow: 0 4px 12px rgba(255, 42, 166, 0.3); flex-shrink: 0;">
                             <i class="bi bi-safe"></i>
                         </div>
                     </div>

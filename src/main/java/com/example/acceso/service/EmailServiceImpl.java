@@ -134,6 +134,88 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    public void enviarEmailConfirmacionConPdf(String emailDestino, String numeroPedido, String nombreCliente, 
+                                               ByteArrayInputStream especPdfBytes, ByteArrayInputStream boletaPdfBytes, 
+                                               String serieCorrelativo) {
+        try {
+            MimeMessage message = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            Empresa empresa = empresaService.getEmpresaInfo();
+            String nombreEmpresa = (empresa != null && empresa.getNombre() != null) ? empresa.getNombre() : "Empresa";
+
+            helper.setTo(emailDestino);
+            helper.setFrom(fromEmail);
+            
+            String comprobanteInfo = (serieCorrelativo != null) ? " - Comp. " + serieCorrelativo : "";
+            helper.setSubject("✅ Pedido #" + numeroPedido + " aprobado" + comprobanteInfo + " - " + nombreEmpresa);
+
+            String cuerpoHtml = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"
+                + "body { font-family: Arial, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; }"
+                + ".container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }"
+                + ".header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; text-align: center; }"
+                + ".header h1 { margin: 0; font-size: 24px; }"
+                + ".content { padding: 30px; }"
+                + ".content p { color: #495057; line-height: 1.6; }"
+                + ".pedido-number { font-size: 1.5rem; font-weight: bold; color: #28a745; text-align: center; margin: 20px 0; }"
+                + ".comprobante-info { background: #f0fdf4; border: 1px solid #28a745; border-radius: 8px; padding: 12px; margin: 15px 0; text-align: center; }"
+                + ".comprobante-info span { color: #155724; font-size: 0.9rem; }"
+                + ".footer { text-align: center; padding: 20px; color: #6c757d; font-size: 12px; border-top: 1px solid #eee; }"
+                + "</style></head><body>"
+                + "<div class='container'>"
+                + "<div class='header'><h1>✅ ¡Pedido Aprobado!</h1></div>"
+                + "<div class='content'>"
+                + "<p>Hola <strong>" + nombreCliente + "</strong>,</p>"
+                + "<p>¡Tu pedido ha sido aprobado y el comprobante de pago ha sido emitido exitosamente!</p>"
+                + "<div class='pedido-number'>Pedido #" + numeroPedido + "</div>"
+                + (serieCorrelativo != null ? "<div class='comprobante-info'><span>🧾 Comprobante: <strong>" + serieCorrelativo + "</strong></span></div>" : "")
+                + "<p>Adjuntamos los siguientes documentos:</p>"
+                + "<ul>"
+                + "<li><strong>Especificación de compra</strong> — detalle de los productos adquiridos</li>"
+                + "<li><strong>Boleta/Factura electrónica</strong> — comprobante oficial emitido</li>"
+                + "</ul>"
+                + "<p>Si tienes alguna pregunta, no dudes en contactarnos.</p>"
+                + "<p>¡Gracias por tu compra!</p>"
+                + "</div>"
+                + "<div class='footer'>"
+                + "<p>© " + java.time.LocalDate.now().getYear() + " " + nombreEmpresa + "</p>"
+                + "</div></div></body></html>";
+
+            helper.setText(cuerpoHtml, true);
+
+            // Adjuntar especificación
+            if (especPdfBytes != null) {
+                ByteArrayOutputStream baosEspec = new ByteArrayOutputStream();
+                byte[] buffer = new byte[1024];
+                int bytesRead;
+                while ((bytesRead = especPdfBytes.read(buffer)) != -1) {
+                    baosEspec.write(buffer, 0, bytesRead);
+                }
+                helper.addAttachment("especificacion-compra-" + numeroPedido + ".pdf",
+                        new org.springframework.core.io.ByteArrayResource(baosEspec.toByteArray()));
+            }
+
+            // Adjuntar boleta PDF
+            if (boletaPdfBytes != null) {
+                ByteArrayOutputStream baosBoleta = new ByteArrayOutputStream();
+                byte[] buffer = new byte[1024];
+                int bytesRead;
+                while ((bytesRead = boletaPdfBytes.read(buffer)) != -1) {
+                    baosBoleta.write(buffer, 0, bytesRead);
+                }
+                String nombreArchivo = (serieCorrelativo != null ? "comprobante-" + serieCorrelativo : "boleta-" + numeroPedido) + ".pdf";
+                helper.addAttachment(nombreArchivo,
+                        new org.springframework.core.io.ByteArrayResource(baosBoleta.toByteArray()));
+            }
+
+            javaMailSender.send(message);
+            logger.info("Email de confirmación con especificación + boleta enviado a {} para pedido {}", emailDestino, numeroPedido);
+        } catch (Exception e) {
+            logger.error("Error al enviar email de confirmación con boleta a {}: {}", emailDestino, e.getMessage());
+        }
+    }
+
+    @Override
     public void enviarReporteCierreConAdjunto(String destinatario,
                                                SesionCaja sesion,
                                                Map<String, Object> detalle,

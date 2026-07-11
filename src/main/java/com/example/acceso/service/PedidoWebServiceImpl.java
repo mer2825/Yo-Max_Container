@@ -253,16 +253,42 @@ public class PedidoWebServiceImpl implements PedidoWebService {
 
         PedidoWeb pedidoFinal = pedidoWebRepository.save(pedido);
 
-        // Enviar email de confirmación al cliente con el PDF adjunto
+        // Enviar email de confirmación al cliente con PDFs adjuntos (especificación + boleta)
         if (pedidoFinal.getEmailCliente() != null && !pedidoFinal.getEmailCliente().isBlank()) {
             try {
-                byte[] pdfBytes = pdfService.generarEspecificacionCompra(pedidoFinal).readAllBytes();
-                java.io.ByteArrayInputStream pdfStream = new java.io.ByteArrayInputStream(pdfBytes);
+                byte[] especPdfBytes = pdfService.generarEspecificacionCompra(pedidoFinal).readAllBytes();
+                java.io.ByteArrayInputStream especPdfStream = new java.io.ByteArrayInputStream(especPdfBytes);
+                
+                // Intentar descargar la boleta PDF desde la URL de SUNAT
+                java.io.ByteArrayInputStream boletaPdfStream = null;
+                String serieCorrelativo = null;
+                if (ventaProcesada != null) {
+                    serieCorrelativo = ventaProcesada.getSerieCorrelativo();
+                    if (ventaProcesada.getPdfUrl() != null && !ventaProcesada.getPdfUrl().isBlank()) {
+                        try {
+                            java.net.URL boletaUrl = new java.net.URL(ventaProcesada.getPdfUrl());
+                            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                            try (java.io.InputStream is = boletaUrl.openStream()) {
+                                byte[] buffer = new byte[4096];
+                                int bytesRead;
+                                while ((bytesRead = is.read(buffer)) != -1) {
+                                    baos.write(buffer, 0, bytesRead);
+                                }
+                            }
+                            boletaPdfStream = new java.io.ByteArrayInputStream(baos.toByteArray());
+                        } catch (Exception ex) {
+                            System.err.println("No se pudo descargar la boleta PDF desde " + ventaProcesada.getPdfUrl() + ": " + ex.getMessage());
+                        }
+                    }
+                }
+                
                 emailService.enviarEmailConfirmacionConPdf(
                     pedidoFinal.getEmailCliente(),
                     pedidoFinal.getNumeroPedido(),
                     pedidoFinal.getNombreCliente(),
-                    pdfStream
+                    especPdfStream,
+                    boletaPdfStream,
+                    serieCorrelativo
                 );
             } catch (Exception e) {
                 System.err.println("Error al enviar email de confirmación a " + pedidoFinal.getEmailCliente() + ": " + e.getMessage());

@@ -46,4 +46,17 @@ public interface EmailService {
      * @param pdfBytes PDF de la especificación de compra
      */
     void enviarEmailConfirmacionConPdf(String emailDestino, String numeroPedido, String nombreCliente, ByteArrayInputStream pdfBytes);
+
+    /**
+     * Envía un email de confirmación de venta al cliente con PDFs adjuntos (especificación + boleta)
+     * @param emailDestino Email del cliente
+     * @param numeroPedido Número del pedido aprobado
+     * @param nombreCliente Nombre del cliente
+     * @param especPdfBytes PDF de la especificación de compra
+     * @param boletaPdfBytes PDF de la boleta/factura SUNAT (puede ser null)
+     * @param serieCorrelativo Serie-Correlativo de la boleta/factura (puede ser null)
+     */
+    void enviarEmailConfirmacionConPdf(String emailDestino, String numeroPedido, String nombreCliente, 
+                                       ByteArrayInputStream especPdfBytes, ByteArrayInputStream boletaPdfBytes, 
+                                       String serieCorrelativo);
 }
