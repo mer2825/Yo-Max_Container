@@ -83,9 +83,11 @@ public class ReporteService {
             .map(v -> {
                 Map<String, Object> ingreso = new java.util.HashMap<>();
                 ingreso.put("cliente", v.getCliente() != null ? v.getCliente().getNombre() : "Sin cliente");
-                ingreso.put("numeroComprobante", v.getNumeroVenta());
+                ingreso.put("numeroComprobante", v.getSerieCorrelativo() != null ? v.getSerieCorrelativo() : v.getNumeroVenta());
                 ingreso.put("fecha", v.getFechaVenta());
-                ingreso.put("periodo", v.getNumeroVenta());
+                ingreso.put("periodo", v.getFechaVenta() != null ? 
+                    java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy").format(v.getFechaVenta()) : 
+                    java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy").format(java.time.LocalDateTime.now()));
                 ingreso.put("concepto", "pos".equalsIgnoreCase(v.getOrigen()) ? "Venta en Local" : "Venta Web");
                 ingreso.put("metodoPago", v.getMetodoPago());
                 ingreso.put("subtotal", v.getSubtotal());

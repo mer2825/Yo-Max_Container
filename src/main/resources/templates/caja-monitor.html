@@ -668,16 +668,22 @@ function renderizarEventos(eventos) {
                         <div class="log-auditoria-icon bg-${esRetiro ? 'danger' : (esApertura ? 'secondary' : 'success')} bg-opacity-10 me-3">
                             <i class="bi ${icono} ${colorIcono}"></i>
                         </div>
-                        <div class="flex-grow-1">
-                            <h6 class="mb-1 fw-semibold">${evento.tipo.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</h6>
-                            <p class="mb-1 text-muted small">${evento.descripcion}</p>
-                            <small class="text-muted">
-                                <i class="bi bi-person me-1"></i>${evento.usuario} • 
-                                <i class="bi bi-clock me-1"></i>${fecha}
-                            </small>
-                            ${evento.categoria ? `<br><span class="badge bg-light text-dark mt-1">${evento.categoria}</span>` : ''}
-                            ${!evento.impactaEfectivo ? `<br><small class="text-warning"><i class="bi bi-info-circle me-1"></i>No impacta efectivo</small>` : ''}
-                        </div>
+                <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-semibold">${evento.tipo.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</h6>
+                    <!-- Comprobante: extraer el nmero de SUNAT de la descripcin -->
+                    ${evento.descripcion && evento.descripcion.startsWith('Comprobante:') ? 
+                        `<div class="mb-1"><span class="badge" style="background:#6f42c1;color:white;font-size:0.75rem;border-radius:6px;padding:3px 8px;"><i class="bi bi-receipt me-1"></i>Comprobante:</span> <span style="font-weight:600;color:#495057;font-size:0.9rem;">${evento.descripcion.replace('Comprobante: ', '')}</span></div>` : 
+                        `<p class="mb-1 text-muted small">${evento.descripcion}</p>`
+                    }
+                    <small class="text-muted">
+                        <i class="bi bi-person me-1"></i>${evento.usuario}
+                    </small>
+                    <br><small class="text-muted">
+                        <i class="bi bi-calendar3 me-1"></i><strong>Periodo:</strong> ${fecha}
+                    </small>
+                    ${evento.categoria ? `<br><span class="badge bg-light text-dark mt-1">${evento.categoria}</span>` : ''}
+                    ${!evento.impactaEfectivo ? `<br><small class="text-warning"><i class="bi bi-info-circle me-1"></i>No impacta efectivo</small>` : ''}
+                </div>
                     </div>
                     ${montoFormateado ? `<div class="ms-3">
                         <span class="badge log-auditoria-badge ${badgeColor}">

@@ -34,7 +34,7 @@ $(document).ready(function() {
                 return row;
             },
             columns: [
-                { data: 'id' }, { data: 'numeroVenta' }, { data: 'nombreCliente' },
+                { data: 'id' }, { data: 'nombreCliente' },
                 { data: 'fechaVenta', render: data => new Date(data).toLocaleString('es-PE') },
                 { data: 'metodoPago' },
                 {
