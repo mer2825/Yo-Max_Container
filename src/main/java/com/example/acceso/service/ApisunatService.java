@@ -49,6 +49,7 @@ public class ApisunatService {
     private final String miapiCreditNoteUri;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final FechaHoraService fechaHoraService;
 
     @Autowired
     public ApisunatService(@Value("${apisunat.url}") String apisunatUrl,
@@ -61,7 +62,8 @@ public class ApisunatService {
                            @Value("${miapi.secret-key:}") String miapiSecretKey,
                            @Value("${miapi.base-url:https://miapi.cloud}") String miapiBaseUrl,
                            @Value("${miapi.credit-note-uri:/apifact/creditnote/create}") String miapiCreditNoteUri,
-                           @Value("${miapi.token:${apisunat.token}}") String miapiToken) {
+                           @Value("${miapi.token:${apisunat.token}}") String miapiToken,
+                           FechaHoraService fechaHoraService) {
         this.apisunatUrl = apisunatUrl;
         this.apisunatToken = apisunatToken;
         this.apisunatPersonaId = apisunatPersonaId;
@@ -74,6 +76,7 @@ public class ApisunatService {
         this.miapiSecretKey = miapiSecretKey != null ? miapiSecretKey : "";
         this.miapiCreditNoteUri = (miapiCreditNoteUri != null && !miapiCreditNoteUri.isBlank()) ? miapiCreditNoteUri : "/apifact/creditnote/create";
         this.restTemplate = new RestTemplate();
+        this.fechaHoraService = fechaHoraService;
     }
 
     public ApisunatService(String apisunatUrl,
@@ -83,7 +86,7 @@ public class ApisunatService {
                            String apisunatRuc,
                            String documentsUri) {
         this(apisunatUrl, apisunatToken, apisunatPersonaId, apisunatPersonaToken, apisunatRuc, documentsUri,
-            "apisunat", "", "https://miapi.cloud", "/apifact/creditnote/create", null);
+            "apisunat", "", "https://miapi.cloud", "/apifact/creditnote/create", null, null);
     }
 
     public ApisunatService(String apisunatUrl,
@@ -97,7 +100,7 @@ public class ApisunatService {
                            String miapiBaseUrl,
                            String miapiCreditNoteUri) {
         this(apisunatUrl, apisunatToken, apisunatPersonaId, apisunatPersonaToken, apisunatRuc, documentsUri,
-            provider, miapiSecretKey, miapiBaseUrl, miapiCreditNoteUri, null);
+            provider, miapiSecretKey, miapiBaseUrl, miapiCreditNoteUri, null, null);
     }
 
     public ApisunatResult emitirBoleta(Venta venta, Empresa empresa, String serie, int correlativo) {
@@ -167,8 +170,8 @@ public class ApisunatService {
         documentBody.put("cbc:UBLVersionID", Map.of("_text", "2.1"));
         documentBody.put("cbc:CustomizationID", Map.of("_text", "2.0"));
         documentBody.put("cbc:ID", Map.of("_text", serie + "-" + String.format("%08d", correlativo)));
-        documentBody.put("cbc:IssueDate", Map.of("_text", LocalDate.now().toString()));
-        documentBody.put("cbc:IssueTime", Map.of("_text", java.time.LocalTime.now().toString().substring(0, 8)));
+        documentBody.put("cbc:IssueDate", Map.of("_text", fechaHoraService.hoy().toString()));
+        documentBody.put("cbc:IssueTime", Map.of("_text", fechaHoraService.ahoraHora().toString().substring(0, 8)));
         documentBody.put("cbc:DocumentCurrencyCode", Map.of("_text", "PEN"));
 
         // ==================== NOTA (monto en letras) ====================

@@ -47,6 +47,7 @@ public class CajaServiceImpl implements CajaService {
     private final EmailService emailService;
     private final PdfService pdfService;
     private final EmpresaService empresaService;
+    private final FechaHoraService fechaHoraService;
 
     public CajaServiceImpl(SesionCajaRepository sesionCajaRepository,
                            VentaRepository ventaRepository,
@@ -56,7 +57,8 @@ public class CajaServiceImpl implements CajaService {
                            CambioProductoRepository cambioProductoRepository,
                            EmailService emailService,
                            PdfService pdfService,
-                           EmpresaService empresaService) {
+                           EmpresaService empresaService,
+                           FechaHoraService fechaHoraService) {
         this.sesionCajaRepository = sesionCajaRepository;
         this.ventaRepository = ventaRepository;
         this.movimientoCajaRepository = movimientoCajaRepository;
@@ -66,6 +68,7 @@ public class CajaServiceImpl implements CajaService {
         this.emailService = emailService;
         this.pdfService = pdfService;
         this.empresaService = empresaService;
+        this.fechaHoraService = fechaHoraService;
     }
 
     @Override
@@ -84,7 +87,7 @@ public class CajaServiceImpl implements CajaService {
         // Crear nueva sesión de caja
         SesionCaja sesionCaja = new SesionCaja();
         sesionCaja.setMontoInicial(montoInicial);
-        sesionCaja.setFechaApertura(LocalDateTime.now());
+        sesionCaja.setFechaApertura(fechaHoraService.ahora());
         sesionCaja.setUsuarioApertura(usuario);
         sesionCaja.setEstado("ABIERTA");
 
@@ -129,7 +132,7 @@ public class CajaServiceImpl implements CajaService {
         BigDecimal efectivoEsperado = resumen.getEfectivoEsperado();
         BigDecimal diferencia = montoDeclarado.subtract(efectivoEsperado);
 
-        sesion.setFechaCierre(LocalDateTime.now());
+        sesion.setFechaCierre(fechaHoraService.ahora());
 
         // Nombres de campos según tu entidad SesionCaja
         sesion.setMontoCierreDeclarado(montoDeclarado);
@@ -244,7 +247,7 @@ public class CajaServiceImpl implements CajaService {
         movimiento.setCategoria(categoria.toUpperCase());
         movimiento.setUsuario(usuario);
         movimiento.setSesion(sesion);
-        movimiento.setFecha(LocalDateTime.now());
+        movimiento.setFecha(fechaHoraService.ahora());
 
         movimientoCajaRepository.save(movimiento);
 
@@ -280,8 +283,8 @@ public class CajaServiceImpl implements CajaService {
         }
 
         // Calcular total de ventas del día agrupadas por método de pago
-        LocalDateTime inicioDia = LocalDate.now().atStartOfDay();
-        LocalDateTime finDia = LocalDate.now().atTime(23, 59, 59);
+        LocalDateTime inicioDia = fechaHoraService.hoy().atStartOfDay();
+        LocalDateTime finDia = fechaHoraService.hoy().atTime(23, 59, 59);
 
         List<Object[]> ventasPorMetodoPago = ventaRepository.obtenerVentasPorMetodoPagoEnSesion(
                 sesion.getId(), inicioDia, finDia);
@@ -325,8 +328,8 @@ public class CajaServiceImpl implements CajaService {
             .subtract(movimientoCajaRepository.sumRetirosBySesionId(sesion.getId()) != null ? movimientoCajaRepository.sumRetirosBySesionId(sesion.getId()) : BigDecimal.ZERO);
 
         // Calcular duración de la sesión
-        LocalDateTime fechaApertura = sesion.getFechaApertura() != null ? sesion.getFechaApertura() : LocalDateTime.now();
-        long minutosAbierta = java.time.Duration.between(fechaApertura, LocalDateTime.now()).toMinutes();
+        LocalDateTime fechaApertura = sesion.getFechaApertura() != null ? sesion.getFechaApertura() : fechaHoraService.ahora();
+        long minutosAbierta = java.time.Duration.between(fechaApertura, fechaHoraService.ahora()).toMinutes();
         String duracion = String.format("%dh %02dmin", minutosAbierta / 60, minutosAbierta % 60);
 
         // Crear y retornar el DTO

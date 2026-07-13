@@ -36,6 +36,7 @@ public class CambioProductoServiceImpl implements CambioProductoService {
     private final ApisunatService apisunatService;
 
     private final VentaService ventaService;
+    private final FechaHoraService fechaHoraService;
 
     @Autowired
     public CambioProductoServiceImpl(
@@ -46,7 +47,8 @@ public class CambioProductoServiceImpl implements CambioProductoService {
             DetalleVentaRepository detalleVentaRepository,
             EmpresaRepository empresaRepository,
             ApisunatService apisunatService,
-            VentaService ventaService
+            VentaService ventaService,
+            FechaHoraService fechaHoraService
     ) {
         this.ventaRepository = ventaRepository;
         this.cambioProductoRepository = cambioProductoRepository;
@@ -56,6 +58,7 @@ public class CambioProductoServiceImpl implements CambioProductoService {
         this.empresaRepository = empresaRepository;
         this.apisunatService = apisunatService;
         this.ventaService = ventaService;
+        this.fechaHoraService = fechaHoraService;
     }
 
     @Override
@@ -79,7 +82,7 @@ public class CambioProductoServiceImpl implements CambioProductoService {
 
         // ⚠️ VALIDACIÓN: Solo se puede emitir nota de crédito si no han pasado más de 7 días desde la emisión
         if (ventaOriginal.getFechaVenta() != null) {
-            long diasDesdeEmision = ChronoUnit.DAYS.between(ventaOriginal.getFechaVenta(), LocalDateTime.now());
+            long diasDesdeEmision = ChronoUnit.DAYS.between(ventaOriginal.getFechaVenta(), fechaHoraService.ahora());
             if (diasDesdeEmision > 7) {
                 throw new RuntimeException(
                     "No se puede realizar el cambio de producto porque han pasado " + diasDesdeEmision +
@@ -193,7 +196,7 @@ public class CambioProductoServiceImpl implements CambioProductoService {
         notaCredito.setTotalAcreditado(montoNC);
         notaCredito.setEstadoSunat("pendiente");
         notaCredito.setEmitidaPorUsuario(usuarioActual);
-        notaCredito.setFechaEmision(LocalDateTime.now());
+        notaCredito.setFechaEmision(fechaHoraService.ahora());
         notaCredito = notasCreditoRepository.save(notaCredito);
 
         ApisunatService.ApisunatResult resultado = apisunatService.emitirNotaCredito(
@@ -272,7 +275,7 @@ public class CambioProductoServiceImpl implements CambioProductoService {
             ventaExcedente.setTipoComprobante(ventaOriginal.getTipoComprobante());
             ventaExcedente.setOrigen("pos");
             ventaExcedente.setEstado(1);
-            ventaExcedente.setFechaVenta(LocalDateTime.now());
+            ventaExcedente.setFechaVenta(fechaHoraService.ahora());
             ventaExcedente.setSubtotal(montoExcedenteFinal);
             ventaExcedente.setDescuento(BigDecimal.ZERO);
             ventaExcedente.setTotal(montoExcedenteFinal);
@@ -310,7 +313,7 @@ public class CambioProductoServiceImpl implements CambioProductoService {
         cambioProducto.setMontoExcedente(montoExcedenteFinal);
         cambioProducto.setMotivo(request.getMotivo());
         cambioProducto.setEstado("COMPLETADO");
-        cambioProducto.setFechaCambio(LocalDateTime.now());
+        cambioProducto.setFechaCambio(fechaHoraService.ahora());
         cambioProducto.setUsuario(usuarioActual);
 
         cambioProducto = cambioProductoRepository.save(cambioProducto);

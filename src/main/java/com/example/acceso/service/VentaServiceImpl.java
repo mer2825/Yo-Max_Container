@@ -41,18 +41,21 @@ public class VentaServiceImpl implements VentaService {
     private final ClienteRepository clienteRepository;
     private final EmpresaService empresaService;
     private final ApisunatService apisunatService;
+    private final FechaHoraService fechaHoraService;
 
     @Autowired
     public VentaServiceImpl(VentaRepository ventaRepository,
                             ProductoRepository productoRepository,
                             ClienteRepository clienteRepository,
                             EmpresaService empresaService,
-                            ApisunatService apisunatService) {
+                            ApisunatService apisunatService,
+                            FechaHoraService fechaHoraService) {
         this.ventaRepository = ventaRepository;
         this.productoRepository = productoRepository;
         this.clienteRepository = clienteRepository;
         this.empresaService = empresaService;
         this.apisunatService = apisunatService;
+        this.fechaHoraService = fechaHoraService;
     }
 
     @Override
@@ -112,7 +115,7 @@ public class VentaServiceImpl implements VentaService {
         // Generar número de venta y fecha
         String numeroVenta = generarNumeroVenta(venta.getTipoComprobante());
         venta.setNumeroVenta(numeroVenta);
-        venta.setFechaVenta(LocalDateTime.now());
+        venta.setFechaVenta(fechaHoraService.ahora());
 
         if ("Boleta".equalsIgnoreCase(venta.getTipoComprobante()) || "Factura".equalsIgnoreCase(venta.getTipoComprobante())) {
             venta.setEstadoSunat("pendiente");
@@ -431,7 +434,7 @@ public class VentaServiceImpl implements VentaService {
         ventaExistente.setTipoComprobante(ventaActualizada.getTipoComprobante());
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-        String formattedDateTime = LocalDateTime.now().format(formatter);
+        String formattedDateTime = fechaHoraService.ahora().format(formatter);
         String nota = "COMPROBANTE MODIFICADO (" + formattedDateTime + ")";
         ventaExistente.setNota(nota);
 
@@ -636,7 +639,7 @@ public class VentaServiceImpl implements VentaService {
 
     @Override
     public long obtenerNumeroVentasDiarias() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = fechaHoraService.hoy();
         LocalDateTime startOfDay = today.atStartOfDay();
         LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
         return ventaRepository.countByFechaVenta(startOfDay, endOfDay);
@@ -644,7 +647,7 @@ public class VentaServiceImpl implements VentaService {
 
     @Override
     public BigDecimal obtenerTotalVentasDiarias() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = fechaHoraService.hoy();
         LocalDateTime startOfDay = today.atStartOfDay();
         LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
         BigDecimal total = ventaRepository.sumTotalByFechaVenta(startOfDay, endOfDay);
@@ -653,7 +656,7 @@ public class VentaServiceImpl implements VentaService {
 
     @Override
     public long obtenerNumeroVentasMensuales() {
-        YearMonth currentMonth = YearMonth.now();
+        YearMonth currentMonth = YearMonth.from(fechaHoraService.ahora());
         LocalDateTime startOfMonth = currentMonth.atDay(1).atStartOfDay();
         LocalDateTime endOfMonth = currentMonth.atEndOfMonth().atTime(LocalTime.MAX);
         return ventaRepository.countByFechaVentaMonth(startOfMonth, endOfMonth);
@@ -661,7 +664,7 @@ public class VentaServiceImpl implements VentaService {
 
     @Override
     public BigDecimal obtenerTotalVentasMensuales() {
-        YearMonth currentMonth = YearMonth.now();
+        YearMonth currentMonth = YearMonth.from(fechaHoraService.ahora());
         LocalDateTime startOfMonth = currentMonth.atDay(1).atStartOfDay();
         LocalDateTime endOfMonth = currentMonth.atEndOfMonth().atTime(LocalTime.MAX);
         BigDecimal total = ventaRepository.sumTotalByFechaVentaMonth(startOfMonth, endOfMonth);
@@ -671,7 +674,7 @@ public class VentaServiceImpl implements VentaService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductoMasVendidoDTO> obtenerTop5ProductosMasVendidosDeLaSemana() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = fechaHoraService.hoy();
         LocalDateTime inicioSemana = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).atStartOfDay();
         LocalDateTime finSemana = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY)).atTime(LocalTime.MAX);
 
@@ -688,7 +691,7 @@ public class VentaServiceImpl implements VentaService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductoMasVendidoDTO> obtenerProductosMasVendidosDeHoy() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = fechaHoraService.hoy();
         LocalDateTime inicioHoy = today.atStartOfDay();
         LocalDateTime finHoy = today.atTime(LocalTime.MAX);
 
