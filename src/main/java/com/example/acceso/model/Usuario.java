@@ -16,13 +16,13 @@ public class Usuario extends Auditable {
 
     @NotBlank(message = "El nombre es obligatorio")
     @Size(min = 2, max = 100, message = "El nombre debe tener entre 2 y 100 caracteres")
-    @Pattern(regexp = "^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$", message = "El nombre solo puede contener letras y espacios")
+    @Pattern(regexp = "^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$", message = "El nombre solo puede contener letras y espacios. No se permiten números ni caracteres especiales.")
     @Column(nullable = false, length = 100)
     private String nombre;
 
     @NotBlank(message = "El usuario es obligatorio")
     @Size(min = 3, max = 50, message = "El usuario debe tener entre 3 y 50 caracteres")
-    @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "El usuario solo puede contener letras, números y guión bajo")
+    @Pattern(regexp = "^[a-zA-Z][a-zA-Z0-9_]*$", message = "El usuario debe comenzar con una letra y solo puede contener letras, números y guión bajo. No se permiten caracteres especiales.")
     @Column(nullable = false, unique = true, length = 50)
     private String usuario;
 
@@ -75,6 +75,10 @@ public class Usuario extends Auditable {
     }
 
     public void setNombre(String nombre) {
+        if (nombre != null) {
+            // Eliminar números y caracteres especiales, solo permitir letras y espacios
+            nombre = nombre.replaceAll("[^a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]", "").trim();
+        }
         this.nombre = nombre;
     }
 
@@ -83,6 +87,10 @@ public class Usuario extends Auditable {
     }
 
     public void setUsuario(String usuario) {
+        if (usuario != null) {
+            // Eliminar caracteres especiales (excepto guión bajo) del nombre de usuario
+            usuario = usuario.replaceAll("[^a-zA-Z0-9_]", "").trim();
+        }
         this.usuario = usuario;
     }
 

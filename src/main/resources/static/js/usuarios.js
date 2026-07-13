@@ -84,6 +84,34 @@ $(document).ready(function() {
         $('#clave').on('input', function() {
             validatePasswordRealTime($(this));
         });
+
+        // Validación en tiempo real para el nombre (solo letras y espacios, sin números)
+        $('#nombre').on('input', function() {
+            const value = $(this).val();
+            // Eliminar cualquier caracter que no sea letra o espacio
+            const sanitized = value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
+            if (value !== sanitized) {
+                $(this).val(sanitized);
+                showFieldError('nombre', 'El nombre solo puede contener letras y espacios.');
+            } else {
+                $('#nombre').removeClass('is-invalid');
+                $('#nombre-feedback').text('');
+            }
+        });
+
+        // Validación en tiempo real para el usuario (solo letras, números y guión bajo)
+        $('#usuario').on('input', function() {
+            const value = $(this).val();
+            // Eliminar cualquier caracter especial (excepto guión bajo)
+            const sanitized = value.replace(/[^a-zA-Z0-9_]/g, '');
+            if (value !== sanitized) {
+                $(this).val(sanitized);
+                showFieldError('usuario', 'El usuario solo puede contener letras, números y guión bajo.');
+            } else {
+                $('#usuario').removeClass('is-invalid');
+                $('#usuario-feedback').text('');
+            }
+        });
     }
 
     function validatePasswordRealTime(passwordInput) {
@@ -215,14 +243,22 @@ $(document).ready(function() {
         let isValid = true;
         clearFieldErrors();
 
-        // Validar nombre
-        if (!$('#nombre').val()) {
+        // Validar nombre (solo letras y espacios)
+        const nombre = $('#nombre').val();
+        if (!nombre || nombre.trim() === '') {
             showFieldError('nombre', 'El nombre es obligatorio.');
             isValid = false;
+        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(nombre)) {
+            showFieldError('nombre', 'El nombre solo puede contener letras y espacios. No se permiten números ni caracteres especiales.');
+            isValid = false;
         }
-        // Validar usuario
-        if (!$('#usuario').val()) {
+        // Validar usuario (solo letras, números y guión bajo)
+        const usuario = $('#usuario').val();
+        if (!usuario || usuario.trim() === '') {
             showFieldError('usuario', 'El nombre de usuario es obligatorio.');
+            isValid = false;
+        } else if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(usuario)) {
+            showFieldError('usuario', 'El usuario debe comenzar con una letra y solo puede contener letras, números y guión bajo.');
             isValid = false;
         }
         // Validar correo
