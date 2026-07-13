@@ -3,6 +3,7 @@ package com.example.acceso.model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 @Entity
@@ -15,11 +16,13 @@ public class Usuario extends Auditable {
 
     @NotBlank(message = "El nombre es obligatorio")
     @Size(min = 2, max = 100, message = "El nombre debe tener entre 2 y 100 caracteres")
+    @Pattern(regexp = "^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$", message = "El nombre solo puede contener letras y espacios")
     @Column(nullable = false, length = 100)
     private String nombre;
 
     @NotBlank(message = "El usuario es obligatorio")
     @Size(min = 3, max = 50, message = "El usuario debe tener entre 3 y 50 caracteres")
+    @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "El usuario solo puede contener letras, números y guión bajo")
     @Column(nullable = false, unique = true, length = 50)
     private String usuario;
 
