@@ -291,9 +291,10 @@ const categoriasIngreso = [
     { valor: 'INGRESO_OTRO', nombre: 'Otro Ingreso', placeholder: 'Ej: Ingreso por cobro de servicio adicional' }
 ];
 
-// Variables de estado
-let tipoSeleccionado = null;
-let categoriaSeleccionada = null;
+    // Variables de estado
+    let tipoSeleccionado = null;
+    let categoriaSeleccionada = null;
+    let efectivoEnCaja = [[${resumen.efectivoEnCaja}]];
 
     // Historial de movimientos
     let historialCompleto = [];
@@ -459,12 +460,34 @@ let filtroActual = 'TODOS';
                 return;
             }
             
-            const monto = document.getElementById('montoMovimiento').value;
+            const montoInput = document.getElementById('montoMovimiento');
+            const monto = montoInput.value;
             if (!monto || parseFloat(monto) <= 0 || parseFloat(monto) > 9999) {
                 e.preventDefault();
                 const monErr = document.getElementById('montoError');
                 if (monErr) monErr.textContent = 'El monto debe estar entre S/ 0.01 y S/ 9,999';
                 return;
+            }
+            
+            // Validar que un retiro no supere el efectivo disponible en caja
+            if (tipoSeleccionado === 'RETIRO') {
+                const montoNumerico = parseFloat(monto);
+                if (montoNumerico > efectivoEnCaja) {
+                    e.preventDefault();
+                    const monErr = document.getElementById('montoError');
+                    if (monErr) {
+                        monErr.textContent = 'El monto a retirar supera el efectivo disponible en caja.';
+                    }
+                    // Mostrar modal de error estilizado en lugar de alert()
+                    const modalElement = document.getElementById('errorRetiroExcedeModal');
+                    if (modalElement) {
+                        document.getElementById('errorMontoRetiro').textContent = montoNumerico.toFixed(2);
+                        document.getElementById('errorEfectivoDisponible').textContent = efectivoEnCaja.toFixed(2);
+                        const errorModal = new bootstrap.Modal(modalElement);
+                        errorModal.show();
+                    }
+                    return;
+                }
             }
             
             const descripcion = document.getElementById('descripcionMovimiento').value;
@@ -793,6 +816,29 @@ function renderizarEventos(eventos) {
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de error estilizado para retiro que excede caja -->
+<div class="modal fade" id="errorRetiroExcedeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 16px; border: none; box-shadow: 0 20px 60px rgba(0,0,0,0.15);">
+            <div class="modal-body text-center p-4">
+                <div style="width: 72px; height: 72px; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: linear-gradient(135deg, #fff5f5 0%, #ffe0e0 100%);">
+                    <i class="bi bi-exclamation-triangle-fill" style="font-size: 2rem; color: #dc3545;"></i>
+                </div>
+                <h5 class="fw-bold mb-2" style="color: #dc3545;">Retiro no permitido</h5>
+                <p class="text-muted mb-1" style="font-size: 0.9rem;">
+                    El monto a retirar (<strong>S/ <span id="errorMontoRetiro">0.00</span></strong>) supera el efectivo disponible en caja (<strong>S/ <span id="errorEfectivoDisponible">0.00</span></strong>).
+                </p>
+                <p class="fw-semibold mb-3" style="font-size: 0.95rem; color: #495057;">
+                    La caja no puede quedar en números negativos.
+                </p>
+                <button type="button" class="btn btn-danger px-4" data-bs-dismiss="modal" style="border-radius: 10px; font-weight: 600;">
+                    <i class="bi bi-check-circle me-2"></i>Entendido
+                </button>
+            </div>
         </div>
     </div>
 </div>
