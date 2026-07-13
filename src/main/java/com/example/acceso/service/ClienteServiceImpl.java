@@ -87,13 +87,9 @@ public class ClienteServiceImpl implements ClienteService {
                     return clienteRepository.save(foundClient); // Guardar el cliente reactivado
                 }
                 // Si el cliente existe y no está eliminado lógicamente (estado 0 o 1),
-                // la validación de duplicidad en ClienteController debería haberlo capturado.
-                // Si llega aquí, significa que se está intentando crear un nuevo cliente
-                // con un documento ya existente y activo/inactivo, lo cual resultará en
-                // una DataIntegrityViolationException manejada por el controlador.
-                // Por lo tanto, simplemente establecemos el estado para el nuevo cliente
-                // y dejamos que el save final maneje el posible error de duplicidad.
-                cliente.setEstado(1); // Establecer estado activo para el nuevo cliente
+                // lanzamos una excepción para evitar violación de la restricción unique.
+                // Esto previene el error "Could not commit JPA transaction".
+                throw new IllegalArgumentException("Ya existe un cliente con el número de documento '" + cliente.getNumeroDocumento() + "'.");
             } else {
                 // No se encontró ningún cliente con ese numeroDocumento (en ningún estado),
                 // así que es un cliente completamente nuevo.

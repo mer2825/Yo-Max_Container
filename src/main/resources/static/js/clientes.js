@@ -3,6 +3,7 @@ $(document).ready(function() {
     let clienteModal;
     let currentFilter = null; // Para mantener el filtro actual al recargar la tabla
     let documentSearchedAndValid = false; // Nueva bandera para la validación del documento
+    let isEditing = false; // Bandera para indicar si estamos editando un cliente existente
 
     const API_BASE = '/clientes/api';
     const ENDPOINTS = {
@@ -31,7 +32,10 @@ $(document).ready(function() {
         } else { // Asumimos RUC u otro
             numeroDocumentoInput.attr('maxlength', 11);
         }
-        numeroDocumentoInput.val(''); // Limpiar el campo al cambiar de tipo
+        // Solo limpiar el campo si NO estamos editando un cliente existente
+        if (!isEditing) {
+            numeroDocumentoInput.val('');
+        }
     }
 
     // Función para mostrar/ocultar el campo de dirección
@@ -161,7 +165,7 @@ $(document).ready(function() {
         });
 
         $('#telefono').on('input', function() {
-            this.value = this.value.replace(/[^0-9]/g, '');
+            this.value = this.value.replace(/[^0-9]/g, '').substring(0, 9);
         });
 
         $('#tipoDocumento').on('change', function() {
@@ -181,6 +185,7 @@ $(document).ready(function() {
     function openModalForNew() {
         clearForm();
         $('#modalTitle').text('Agregar Cliente');
+        isEditing = false;
         documentSearchedAndValid = false;
         toggleDireccionField();
         actualizarValidacionDocumento();
@@ -195,6 +200,7 @@ $(document).ready(function() {
         if (result) {
             fillForm(result.data);
             $('#modalTitle').text('Editar Cliente');
+            isEditing = true; // Marcar que estamos editando
             documentSearchedAndValid = true; // Un cliente existente se considera válido
             toggleDireccionField();
             actualizarValidacionDocumento();
@@ -209,10 +215,21 @@ $(document).ready(function() {
         const id = $('#id').val();
         const numeroDocumento = $('#numeroDocumento').val();
         const tipoDocumento = $('#tipoDocumento').val();
+        const email = $('#email').val();
 
         if (!id && numeroDocumento && !documentSearchedAndValid) {
             showNotification('Por favor, busque y valide el documento antes de guardar.', 'error');
             return;
+        }
+
+        // Validar formato de email si se ingresó algo
+        if (email && email.trim() !== '') {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showNotification('Ingrese un correo válido', 'error');
+                $('#email').focus();
+                return;
+            }
         }
 
         const clienteData = {
@@ -222,7 +239,7 @@ $(document).ready(function() {
             nombre: $('#nombre').val(),
             direccion: $('#direccion').val(),
             telefono: $('#telefono').val(),
-            email: $('#email').val(),
+            email: email,
         };
 
         const result = await apiCall(ENDPOINTS.save, 'POST', clienteData, 'Cliente guardado exitosamente.');
@@ -303,6 +320,7 @@ $(document).ready(function() {
         $('#formCliente')[0].reset();
         $('#id').val('');
         $('#tipoDocumento').val('dni');
+        isEditing = false;
         documentSearchedAndValid = false;
         toggleDireccionField();
         actualizarValidacionDocumento();
